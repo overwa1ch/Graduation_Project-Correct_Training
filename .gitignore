@@ -1,0 +1,11 @@
+# 忽略虚拟环境
+.venv/
+
+# 忽略数据文件
+data/
+milestoneA_outputs/
+*.csv
+result.json
+
+#参考Python脚本
+milestoneA_v11.py
