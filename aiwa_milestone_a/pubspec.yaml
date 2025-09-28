@@ -1,0 +1,16 @@
+name: aiwa_milestone_a
+version: 0.1.0
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dependencies:
+  args: ^2.5.0
+  collection: ^1.18.0
+  json_annotation: ^4.9.0
+  csv: ^6.0.0
+
+dev_dependencies:
+  lints: ^5.0.0
+  test: ^1.25.0
+  build_runner: ^2.4.9
+  json_serializable: ^6.7.1
