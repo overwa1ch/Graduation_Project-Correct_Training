@@ -9,3 +9,5 @@ result.json
 
 #参考Python脚本
 milestoneA_v11.py
+
+*.patch

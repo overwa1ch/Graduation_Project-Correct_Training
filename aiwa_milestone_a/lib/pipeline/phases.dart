@@ -1,11 +1,58 @@
 class PhaseSeg {
   final int startMs, endMs;
-  PhaseSeg(this.startMs, this.endMs);
+  final bool isDown; // true 表示下蹲 (angle decreasing)，false 表示起身 (angle increasing)
+  PhaseSeg(this.startMs, this.endMs, this.isDown);
 }
 
-// 简化：基于 knee_main 一阶差分方向 + minMs=250（或规则覆盖）
-List<PhaseSeg> segmentDownUp(List<int> tMs, List<double?> kneeMain, {required int minMs}) {
-  // 生成 Down 与 Up 的时间段，确保每段持续 ≥ minMs（缺测帧不改变趋势，直接跳过）
-  // ……（实现略，按 v1.1 口径）
-  return <PhaseSeg>[];
+List<PhaseSeg> segmentDownUp(List<int> tMs, List<double?> kneeMain,
+    {required int minMs}) {
+  final samples = <({int t, double angle})>[];
+  for (var i = 0; i < kneeMain.length; i++) {
+    final angle = kneeMain[i];
+    if (angle != null) {
+      samples.add((t: tMs[i], angle: angle));
+    }
+  }
+  if (samples.length < 2) {
+    return <PhaseSeg>[];
+  }
+
+  final segs = <PhaseSeg>[];
+  bool? currentDown;
+  int? segStart;
+  var prev = samples.first;
+
+  for (var i = 1; i < samples.length; i++) {
+    final curr = samples[i];
+    final diff = curr.angle - prev.angle;
+    if (diff.abs() < 1e-3) {
+      prev = curr;
+      continue;
+    }
+
+    final isDown = diff < 0;
+    if (currentDown == null) {
+      currentDown = isDown;
+      segStart = prev.t;
+    } else if (isDown != currentDown) {
+      final segEnd = prev.t;
+      if (segStart != null && segEnd - segStart >= minMs) {
+        segs.add(PhaseSeg(segStart, segEnd, currentDown));
+      }
+      currentDown = isDown;
+      segStart = prev.t;
+    }
+
+    prev = curr;
+  }
+
+  if (currentDown != null) {
+    final segEnd = prev.t;
+    final start = segStart ?? samples.first.t;
+    if (segEnd - start >= minMs) {
+      segs.add(PhaseSeg(start, segEnd, currentDown));
+    }
+  }
+
+  return segs;
 }
