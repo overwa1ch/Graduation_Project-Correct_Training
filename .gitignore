@@ -3,12 +3,9 @@
 
 # 忽略数据文件
 data/
-milestoneA_outputs/
 *.csv
 result.json
+kp_sample.json
 __pycache__/
-
-#参考Python脚本
-milestoneA_v11.py
 
 *.patch
