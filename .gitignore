@@ -2,7 +2,6 @@
 .venv/
 
 # 忽略数据文件
-data/
 *.csv
 result.json
 kp_sample.json
