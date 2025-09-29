@@ -11,10 +11,18 @@ import 'package:aiwa_milestone_a/pose/kp_models.dart';
 
 void main(List<String> args) async {
   final p = ArgParser()
-    ..addOption('keypoints', abbr: 'k', help: 'Path to kp.json', defaultsTo: 'D:\\Graduation_Project-Correct_Training-main\\aiwa_milestone_a\\test\\fixtures\\fake_data_array.json')
-    ..addOption('rule', abbr: 'r', help: 'Path to squat.v1.json', defaultsTo: 'D:\\Graduation_Project-Correct_Training-main\\aiwa_milestone_a\\test\\fixtures\\squat.v1.json')
-    ..addOption('strictness', defaultsTo: 'relaxed', allowed: ['relaxed','strict'])
-    ..addOption('out', abbr: 'o', help: 'Output dir', defaultsTo: 'D:\\Graduation_Project-Correct_Training-main\\aiwa_milestone_a\\test\\fixtures\\outs');
+    ..addOption('keypoints',
+        abbr: 'k',
+        help: 'Path to kp.json',
+        defaultsTo: 'test/fixtures/fake_data_array.json')
+    ..addOption('rule',
+        abbr: 'r',
+        help: 'Path to squat.v1.json',
+        defaultsTo: 'test/fixtures/squat.v1.json')
+    ..addOption('strictness',
+        defaultsTo: 'relaxed', allowed: ['relaxed', 'strict'])
+    ..addOption('out',
+        abbr: 'o', help: 'Output dir', defaultsTo: 'build/offline_out');
   final opts = p.parse(args);
 
   try {
