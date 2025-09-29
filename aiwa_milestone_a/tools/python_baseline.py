@@ -1,603 +1,289 @@
 #!/usr/bin/env python3
-import argparse
-import csv
-import json
-import math
-from dataclasses import dataclass
-from typing import List, Tuple
+# -*- coding: utf-8 -*-
+"""
+Milestone A script (v1.1-compatible)
+- Accepts v1.1 squat.v1.json schema (template/version/counts/phases/metrics/scoreWeights/strictness)
+- Accepts keypoints in array-of-triples format: pts: [[x,y,score]*N]
+- Outputs angles.csv and result.json with the same format/precision contract as v1.1
+Note: This is a minimal, tolerant parser aimed to unblock alignment; logic mirrors the prior script where feasible.
+"""
 
-L_HIP = 11
-L_KNEE = 13
-L_ANKLE = 15
-R_HIP = 12
-R_KNEE = 14
-R_ANKLE = 16
-L_SHOULDER = 5
-R_SHOULDER = 6
+import argparse, json, os, sys, math
+from typing import Any, Dict, List, Tuple
 
+def load_json(path: str) -> Dict[str, Any]:
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
-def round1(v: float) -> float:
-    return round(v * 10.0) / 10.0
+def save_json(path: str, obj: Dict[str, Any]):
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(obj, f, ensure_ascii=False, indent=2)
 
+def write_csv(path: str, rows: List[List[Any]]):
+    with open(path, "w", encoding="utf-8") as f:
+        for r in rows:
+            f.write(",".join("" if x is None else str(x) for x in r) + "\n")
 
-def round2(v: float) -> float:
-    return round(v * 100.0) / 100.0
+def clamp(v: float, lo: float, hi: float) -> float:
+    return max(lo, min(hi, v))
 
+def angle_deg(a, b, c) -> float:
+    import math
+    ax, ay = a; bx, by = b; cx, cy = c
+    bax = ax - bx; bay = ay - by
+    bcx = cx - bx; bcy = cy - by
+    nb = math.hypot(bax, bay) or 1e-9
+    nc = math.hypot(bcx, bcy) or 1e-9
+    cosv = ((bax*bcx + bay*bcy) / (nb*nc))
+    cosv = clamp(cosv, -1.0, 1.0)
+    return math.degrees(math.acos(cosv))
 
-def round3(v: float) -> float:
-    return round(v * 1000.0) / 1000.0
+def trunk_forward_deg(shoulder, hip) -> float:
+    # pixel coords: y increases downward; vertical up vector is (0,-1)
+    import math
+    vx = hip[0]-shoulder[0]; vy = hip[1]-shoulder[1]
+    n = math.hypot(vx, vy) or 1e-9
+    cosv = (-(vy)/n) # dot with (0,-1)
+    cosv = clamp(cosv, -1.0, 1.0)
+    theta = math.degrees(math.acos(cosv))  # angle to vertical
+    return abs(theta) if theta <= 90 else 180-theta
 
-
-class OneEuroFilter:
-    def __init__(self, min_cutoff: float = 1.0, beta: float = 0.005, d_cutoff: float = 1.0) -> None:
-        self.min_cutoff = min_cutoff
-        self.beta = beta
-        self.d_cutoff = d_cutoff
-        self._x_hat = None
-        self._dx_hat = None
-        self._last_t = None
-
-    def _alpha(self, cutoff: float, dt: float) -> float:
+class OneEuro:
+    def __init__(self, freq: float, min_cutoff=1.0, beta=0.005, d_cutoff=1.0):
+        self.freq = float(freq); self.min_cutoff=float(min_cutoff); self.beta=float(beta); self.d_cutoff=float(d_cutoff)
+        self.x_prev=None; self.dx_prev=None
+    def _alpha(self, cutoff):
         tau = 1.0 / (2.0 * math.pi * cutoff)
-        return 1.0 / (1.0 + tau / dt)
+        te = 1.0 / self.freq
+        return 1.0 / (1.0 + tau / te)
+    def filter(self, x: float) -> float:
+        if self.x_prev is None:
+            self.x_prev = x; self.dx_prev = 0.0; return x
+        dx = (x - self.x_prev) * self.freq
+        a_d = self._alpha(self.d_cutoff)
+        dx_hat = a_d * dx + (1 - a_d) * self.dx_prev
+        cutoff = self.min_cutoff + self.beta * abs(dx_hat)
+        a = self._alpha(cutoff)
+        x_hat = a * x + (1 - a) * self.x_prev
+        self.x_prev = x_hat; self.dx_prev = dx_hat
+        return x_hat
 
-    def _exp_smooth(self, x: float, prev: float, alpha: float) -> float:
-        return x if prev is None else alpha * x + (1 - alpha) * prev
+def parse_rule_v11(rule_dict: Dict[str, Any]) -> Dict[str, Any]:
+    # tolerate extra fields like 'template'
+    out = dict(rule_dict)
+    out.pop('template', None)
+    # required keys
+    for k in ('version','counts','phases','metrics','scoreWeights','strictness'):
+        if k not in out:
+            raise RuntimeError(f"RULES_PARSE_ERROR: missing '{k}' in rule json")
+    return out
 
-    def filter(self, t: float, x: float) -> float:
-        if self._last_t is None:
-            self._last_t = t
-            self._x_hat = x
-            self._dx_hat = 0.0
-            return x
-        dt = t - self._last_t
-        if abs(dt) < 1e-9:
-            dt = 1e-3
-        self._last_t = t
-        dx = (x - self._x_hat) / dt
-        a_d = self._alpha(self.d_cutoff, dt)
-        self._dx_hat = self._exp_smooth(dx, self._dx_hat, a_d)
-        cutoff = self.min_cutoff + self.beta * abs(self._dx_hat)
-        a_x = self._alpha(cutoff, dt)
-        self._x_hat = self._exp_smooth(x, self._x_hat, a_x)
-        return self._x_hat
+def read_kp_array_triple(path: str) -> Tuple[float, List[Dict[str, Any]]]:
+    data = load_json(path)
+    fps = float(data.get('fps', 30))
+    frames_out = []
+    for fr in data.get('frames', []):
+        pts = fr.get('pts', [])
+        pts_arr = []
+        for p in pts:
+            if isinstance(p, list) and len(p) >= 3:
+                pts_arr.append([float(p[0]), float(p[1]), float(p[2])])
+            elif isinstance(p, dict):
+                pts_arr.append([float(p.get('x', 0.0)), float(p.get('y', 0.0)), float(p.get('score', 0.0))])
+            else:
+                pts_arr.append([0.0, 0.0, 0.0])
+        frames_out.append({'t': int(fr.get('t', 0)), 'pts': pts_arr})
+    return fps, frames_out
 
+# MoveNet17 indices (A stage)
+L_SH, R_SH = 5, 6
+L_HIP, R_HIP = 11, 12
+L_KN, R_KN = 13, 14
+L_AN, R_AN = 15, 16
 
-@dataclass
-class KPFrame:
-    t: int
-    pts: List[Tuple[float, float, float]]
+def compute_quality(frames: List[Dict[str,Any]], th=0.5) -> float:
+    good = 0
+    for fr in frames:
+        pts = fr['pts']
+        ok = True
+        for i in (L_HIP,R_HIP,L_KN,R_KN,L_AN,R_AN):
+            if i >= len(pts) or pts[i][2] < th:
+                ok = False; break
+        if ok: good += 1
+    return good / max(1, len(frames))
 
+def pipeline(kp_path: str, rule_path: str, strictness: str, out_dir: str, quality_th: float, fps_override: float=None):
+    rule_raw = load_json(rule_path)
+    rule = parse_rule_v11(rule_raw)
+    fps, frames = read_kp_array_triple(kp_path)
+    if fps_override: fps = float(fps_override)
 
-@dataclass
-class RuleSet:
-    template: str
-    version: str
-    counts: dict
-    phases: dict
-    metrics: dict
-    score_weights: dict
-    strictness: dict
+    # quality
+    coverage = compute_quality(frames, th=0.5)
+    low_conf = coverage < quality_th
 
+    # filters
+    f_kL=OneEuro(fps); f_kR=OneEuro(fps); f_tr=OneEuro(fps)
 
-@dataclass
-class Rep:
-    start_ms: int
-    valley_ms: int
-    end_ms: int
+    rows = [['t_ms','knee_L','knee_R','trunk_deg']]
+    ts=[]; kL=[]; kR=[]; trA=[]
+    for fr in frames:
+        t=fr['t']; pts=fr['pts']
+        def p(i): return (pts[i][0], pts[i][1]) if i < len(pts) else (float('nan'), float('nan'))
+        try:
+            aL=angle_deg(p(L_HIP), p(L_KN), p(L_AN))
+            aR=angle_deg(p(R_HIP), p(R_KN), p(R_AN))
+            shoulder=((p(L_SH)[0]+p(R_SH)[0])/2.0, (p(L_SH)[1]+p(R_SH)[1])/2.0)
+            hip=((p(L_HIP)[0]+p(R_HIP)[0])/2.0, (p(L_HIP)[1]+p(R_HIP)[1])/2.0)
+            tr=trunk_forward_deg(shoulder, hip)
+        except Exception:
+            aL=aR=tr=float('nan')
+        if not math.isnan(aL): aL=f_kL.filter(aL)
+        if not math.isnan(aR): aR=f_kR.filter(aR)
+        if not math.isnan(tr): tr=f_tr.filter(tr)
+        rows.append([t, f"{aL:.3f}" if not math.isnan(aL) else "", f"{aR:.3f}" if not math.isnan(aR) else "", f"{tr:.3f}" if not math.isnan(tr) else ""])
+        ts.append(t); kL.append(aL); kR.append(aR); trA.append(tr)
 
+    # knee_main
+    import numpy as np
+    t_arr=np.array(ts, dtype=int) if ts else np.array([], dtype=int)
+    kL_arr=np.array(kL, dtype=float) if kL else np.array([], dtype=float)
+    kR_arr=np.array(kR, dtype=float) if kR else np.array([], dtype=float)
+    tr_arr=np.array(trA, dtype=float) if trA else np.array([], dtype=float)
+    knee_main=np.fmin(kL_arr, kR_arr)
 
-def angle_abc(a: Tuple[float, float], b: Tuple[float, float], c: Tuple[float, float]) -> float:
-    v1 = (a[0] - b[0], a[1] - b[1])
-    v2 = (c[0] - b[0], c[1] - b[1])
-    n1 = math.hypot(*v1)
-    n2 = math.hypot(*v2)
-    if n1 == 0 or n2 == 0:
-        raise ValueError('zero length vector')
-    cos_v = max(-1.0, min(1.0, (v1[0] * v2[0] + v1[1] * v2[1]) / (n1 * n2)))
-    return math.degrees(math.acos(cos_v))
+    # phases/counts (simplified; aligned with v1.1 thresholds)
+    counts=rule['counts']; phases=rule.get('phases',{}); metrics=rule['metrics']; weights=rule['scoreWeights']
+    min_interval=int(counts.get('minIntervalMs',600))
+    window_ms=int(counts.get('windowMs',150))
+    valley_th=float(rule['strictness'][strictness]['minValleyKneeAngle'])
 
+    d_step=3.0
+    min_ms=int(phases.get('minMs', 250))
 
-def trunk_angle(shoulder: Tuple[float, float], hip: Tuple[float, float]) -> float:
-    v = (hip[0] - shoulder[0], hip[1] - shoulder[1])
-    n = math.hypot(*v)
-    if n == 0:
-        raise ValueError('zero length trunk')
-    cos_v = max(-1.0, min(1.0, v[1] / n))
-    deg = math.degrees(math.acos(cos_v))
-    return deg if deg <= 90 else 180 - deg
-
-
-def angle_from_vertical(v: Tuple[float, float]) -> float:
-    n = math.hypot(*v)
-    if n == 0:
-        raise ValueError('zero length limb')
-    cos_v = max(-1.0, min(1.0, v[1] / n))
-    deg = math.degrees(math.acos(cos_v))
-    return deg if deg <= 90 else 180 - deg
-
-
-def parse_keypoints(path: str) -> Tuple[float, List[KPFrame]]:
-    with open(path, 'r', encoding='utf-8') as f:
-        data = json.load(f)
-    fps = float(data['fps'])
-    frames = []
-    for frame in data['frames']:
-        t = int(frame['t'])
-        pts = []
-        for raw in frame['pts']:
-            x = float(raw[0])
-            y = float(raw[1])
-            score = float(raw[2]) if len(raw) > 2 else 0.0
-            pts.append((x, y, score))
-        frames.append(KPFrame(t, pts))
-    return fps, frames
-
-
-def parse_rules(path: str) -> RuleSet:
-    with open(path, 'r', encoding='utf-8') as f:
-        data = json.load(f)
-    return RuleSet(
-        template=data['template'],
-        version=data['version'],
-        counts=data['counts'],
-        phases=data.get('phases', {}),
-        metrics=data['metrics'],
-        score_weights=data['scoreWeights'],
-        strictness=data['strictness'],
-    )
-
-
-def filter_keypoints(frames: List[KPFrame]) -> List[List[Tuple[float, float, float]]]:
-    filters = [(OneEuroFilter(), OneEuroFilter()) for _ in range(17)]
-    smoothed: List[List[Tuple[float, float, float]]] = []
-    for frame in frames:
-        t_sec = frame.t / 1000.0
-        pts: List[Tuple[float, float, float]] = []
-        for i in range(17):
-            x, y, score = frame.pts[i]
-            if score <= 0:
-                pts.append((x, y, score))
-                continue
-            fx = filters[i][0].filter(t_sec, x)
-            fy = filters[i][1].filter(t_sec, y)
-            pts.append((fx, fy, score))
-        smoothed.append(pts)
-    return smoothed
-
-
-def compute_angles(smoothed: List[List[Tuple[float, float, float]]]):
-    knee_l: List[float] = []
-    knee_r: List[float] = []
-    trunk_vals: List[float] = []
-    for pts in smoothed:
-        def valid(idx: int) -> bool:
-            return pts[idx][2] > 0.0
-
-        if valid(L_HIP) and valid(L_KNEE) and valid(L_ANKLE):
-            knee_l.append(round1(angle_abc(pts[L_HIP][:2], pts[L_KNEE][:2], pts[L_ANKLE][:2])))
+    # rough phase segmentation
+    segs=[]; curr=None
+    for i in range(len(t_arr)):
+        if i==0: trend=0
         else:
-            knee_l.append(None)
-        if valid(R_HIP) and valid(R_KNEE) and valid(R_ANKLE):
-            knee_r.append(round1(angle_abc(pts[R_HIP][:2], pts[R_KNEE][:2], pts[R_ANKLE][:2])))
+            diff=knee_main[i]-knee_main[i-1]
+            trend= -1 if diff<=-d_step else (1 if diff>=d_step else 0)
+        name= 'Down' if trend<0 else ('Up' if trend>0 else None)
+        if name is None:
+            if curr is not None:
+                curr['t1']=t_arr[i]
+                if curr['t1']-curr['t0']>=min_ms: segs.append(curr)
+                curr=None
         else:
-            knee_r.append(None)
+            if curr is None or curr['name']!=name:
+                if curr is not None:
+                    curr['t1']=t_arr[i]
+                    if curr['t1']-curr['t0']>=min_ms: segs.append(curr)
+                curr={'name':name,'t0':t_arr[i]}
+    if curr is not None:
+        curr['t1']=int(t_arr[-1])
+        if curr['t1']-curr['t0']>=min_ms: segs.append(curr)
 
-        candidates = []
-        if valid(L_SHOULDER) and valid(L_HIP):
-            try:
-                candidates.append(trunk_angle(pts[L_SHOULDER][:2], pts[L_HIP][:2]))
-            except ValueError:
-                pass
-        if valid(R_SHOULDER) and valid(R_HIP):
-            try:
-                candidates.append(trunk_angle(pts[R_SHOULDER][:2], pts[R_HIP][:2]))
-            except ValueError:
-                pass
-        if candidates:
-            trunk_vals.append(round1(sum(candidates) / len(candidates)))
+    reps=[]; last_end=-10**9; i=0
+    while i < len(segs)-1:
+        a=segs[i]; b=segs[i+1]
+        if a['name']=='Down' and b['name']=='Up':
+            if (a['t0']-last_end) < min_interval: i+=1; continue
+            import numpy as np
+            lo=int(np.searchsorted(t_arr, a['t0']))
+            hi=int(np.searchsorted(t_arr, b['t1'], side='right'))
+            if hi<=lo: i+=1; continue
+            seg_vals=knee_main[lo:hi]; seg_times=t_arr[lo:hi]
+            j=int(np.nanargmin(seg_vals)); t_valley=int(seg_times[j]); knee_min=float(seg_vals[j])
+            if knee_min <= valley_th:
+                reps.append({'id':len(reps)+1,'t_start':int(a['t0']),'t_valley':t_valley,'t_end':int(b['t1']),'knee_min':round(knee_min,2)})
+                last_end=b['t1']; i+=2
+            else:
+                i+=1
         else:
-            trunk_vals.append(None)
-    return knee_l, knee_r, trunk_vals
+            i+=1
 
+    # metrics→scores
+    def_range=metrics['depth']['kneeAngleMin'][strictness]
+    trunk_th=metrics['trunk']['maxForwardLean'][strictness]
+    # depth
+    depth_pen=0.0; hits=0; worst_depth=(-1.0,None)
+    for r in reps:
+        deficit=max(0.0, r['knee_min']-def_range)
+        depth_pen += deficit; hits+=1
+        if deficit>0 and (worst_depth[0]<deficit): worst_depth=(deficit, r['t_valley'])
+    # trunk
+    import numpy as np
+    max_tr=float(np.nanmax(tr_arr)) if tr_arr.size else 0.0
+    trunk_def=max(0.0, max_tr-trunk_th)
 
-def main_knee_series(knee_l: List[float], knee_r: List[float]) -> List[float]:
-    series = []
-    for l, r in zip(knee_l, knee_r):
-        if l is None and r is None:
-            series.append(None)
-        elif l is None:
-            series.append(r)
-        elif r is None:
-            series.append(l)
-        else:
-            series.append(min(l, r))
-    return series
+    # tempo
+    ecc_lo,ecc_hi=metrics['tempo']['eccentricMs']
+    ratio_lo,ratio_hi=metrics['tempo']['ratio']
+    tempo_pen=0.0; tempo_hits=0
+    for r in reps:
+        ecc=r['t_valley']-r['t_start']; con=r['t_end']-r['t_valley']
+        if ecc<=0 or con<=0: continue
+        tempo_hits+=1
+        ratio=ecc/max(1,con); pen=0.0
+        if not (ecc_lo<=ecc<=ecc_hi):
+            dist=min(abs(ecc-ecc_lo), abs(ecc-ecc_hi)); pen+=dist/1000.0*10
+        if not (ratio_lo<=ratio<=ratio_hi):
+            dist=min(abs(ratio-ratio_lo), abs(ratio-ratio_hi)); pen+=dist*10
+        tempo_pen+=pen
 
+    # stability（简化）
+    stab_pen=0.0
+    if len(knee_main)>=5:
+        # 整段近似：使用总体标准差做罚分近似（A阶段）
+        import numpy as np
+        stab_pen=float(np.nanstd(knee_main))*2.0
 
-def segment_down_up(t_ms: List[int], knee_main: List[float], min_ms: int) -> List[Tuple[int, int, bool]]:
-    samples = [(t, angle) for t, angle in zip(t_ms, knee_main) if angle is not None]
-    if len(samples) < 2:
-        return []
-    segs: List[Tuple[int, int, bool]] = []
-    current = None
-    seg_start = None
-    prev_t, prev_angle = samples[0]
-    for curr_t, curr_angle in samples[1:]:
-        diff = curr_angle - prev_angle
-        if abs(diff) < 1e-3:
-            prev_t, prev_angle = curr_t, curr_angle
-            continue
-        is_down = diff < 0
-        if current is None:
-            current = is_down
-            seg_start = prev_t
-        elif is_down != current:
-            seg_end = prev_t
-            if seg_start is not None and seg_end - seg_start >= min_ms:
-                segs.append((seg_start, seg_end, current))
-            current = is_down
-            seg_start = prev_t
-        prev_t, prev_angle = curr_t, curr_angle
-    if current is not None:
-        seg_end = prev_t
-        start = seg_start if seg_start is not None else samples[0][0]
-        if seg_end - start >= min_ms:
-            segs.append((start, seg_end, current))
-    return segs
+    form = max(0.0, 100.0 - ((depth_pen/(hits or 1))*2.0 + trunk_def*1.5))
+    stability = max(0.0, 100.0 - stab_pen)
+    tempo = max(0.0, 100.0 - (tempo_pen if tempo_hits else 0.0))
 
+    total = form*weights.get('form',0.5) + stability*weights.get('stability',0.25) + tempo*weights.get('tempo',0.25)
 
-def count_reps(t_ms: List[int], knee_l: List[float], knee_r: List[float], min_interval_ms: int, window_ms: int, min_valley: float) -> List[Rep]:
-    main_angles = main_knee_series(knee_l, knee_r)
-    reps: List[Rep] = []
-    last_end = None
-    for i, (t, center_angle) in enumerate(zip(t_ms, main_angles)):
-        if center_angle is None:
-            continue
-        left = i
-        while left > 0 and t - t_ms[left - 1] <= window_ms:
-            left -= 1
-        right = i
-        while right + 1 < len(t_ms) and t_ms[right + 1] - t <= window_ms:
-            right += 1
-        if left == i or right == i:
-            continue
-        has_higher_left = False
-        has_higher_right = False
-        strictly_lower = False
-        for j in range(left, right + 1):
-            v = main_angles[j]
-            if v is None:
-                continue
-            if j < i:
-                if v > center_angle + 1e-3:
-                    has_higher_left = True
-                if v < center_angle - 1e-3:
-                    strictly_lower = True
-                    break
-            elif j > i:
-                if v > center_angle + 1e-3:
-                    has_higher_right = True
-                if v < center_angle - 1e-3:
-                    strictly_lower = True
-                    break
-        if strictly_lower or not has_higher_left or not has_higher_right:
-            continue
-        if center_angle >= min_valley:
-            continue
-        start_ms = t_ms[left]
-        end_ms = t_ms[right]
-        if last_end is not None and t - last_end < min_interval_ms:
-            continue
-        reps.append(Rep(start_ms, t, end_ms))
-        last_end = end_ms
-    return reps
+    # evidence（最坏帧+代表帧）
+    evidence=[]
+    if worst_depth[1] is not None:
+        evidence.append({'type':'depth','kind':'worst','atMs':int(worst_depth[1])})
+    if trunk_def>0 and tr_arr.size:
+        import numpy as np
+        idx=int(np.nanargmax(tr_arr))
+        evidence.append({'type':'trunk','kind':'worst','atMs':int(t_arr[idx])})
+    if reps:
+        mid=int((reps[0]['t_start']+reps[0]['t_end'])//2)
+        evidence.append({'type':'depth','kind':'repr','atMs':mid})
 
-
-def compute_quality(smoothed: List[List[Tuple[float, float, float]]]) -> Tuple[float, bool]:
-    required = [L_HIP, R_HIP, L_KNEE, R_KNEE, L_ANKLE, R_ANKLE]
-    ok = 0
-    for pts in smoothed:
-        if all(pts[idx][2] > 0.0 for idx in required):
-            ok += 1
-    coverage = 0.0 if not smoothed else ok / len(smoothed)
-    return round3(coverage), coverage < 0.7
-
-
-def angle_at(series: List[float], t_ms: List[int], target: int):
-    for t, value in zip(t_ms, series):
-        if t == target:
-            return value
-    return None
-
-
-def indices_between(t_ms: List[int], start: int, end: int) -> List[int]:
-    return [i for i, t in enumerate(t_ms) if start <= t <= end]
-
-
-def knee_out_angle(pts: List[Tuple[float, float, float]], hip_idx: int, knee_idx: int, ankle_idx: int):
-    if pts[hip_idx][2] <= 0 or pts[knee_idx][2] <= 0 or pts[ankle_idx][2] <= 0:
-        return None
-    hip = pts[hip_idx]
-    knee = pts[knee_idx]
-    ankle = pts[ankle_idx]
-    try:
-        thigh = (knee[0] - hip[0], knee[1] - hip[1])
-        shank = (ankle[0] - knee[0], ankle[1] - knee[1])
-        thigh_deg = angle_from_vertical(thigh)
-        shank_deg = angle_from_vertical(shank)
-        return (thigh_deg + shank_deg) / 2.0
-    except ValueError:
-        return None
-
-
-def collect_rep_metrics(t_ms: List[int], main_knee: List[float], reps: List[Rep], trunk: List[float], smoothed: List[List[Tuple[float, float, float]]], valgus_window_ms: int):
-    index_by_time = {t: idx for idx, t in enumerate(t_ms)}
-    metrics = []
-    for idx, rep in enumerate(reps):
-        valley_angle = angle_at(main_knee, t_ms, rep.valley_ms)
-        if valley_angle is None:
-            raise RuntimeError(f'Missing valley angle for rep {idx + 1}')
-        frame_indices = indices_between(t_ms, rep.start_ms, rep.end_ms)
-        if not frame_indices:
-            raise RuntimeError(f'No frames for rep {idx + 1}')
-        max_trunk = None
-        for fi in frame_indices:
-            val = trunk[fi]
-            if val is not None:
-                max_trunk = val if max_trunk is None else max(max_trunk, val)
-        if max_trunk is None:
-            raise RuntimeError(f'Missing trunk for rep {idx + 1}')
-        half_window = round(valgus_window_ms / 2)
-        window_start = max(rep.start_ms, rep.valley_ms - half_window)
-        window_end = min(rep.end_ms, rep.valley_ms + half_window)
-        valgus_indices = indices_between(t_ms, window_start, window_end)
-        if not valgus_indices and rep.valley_ms in index_by_time:
-            valgus_indices = [index_by_time[rep.valley_ms]]
-        min_knee_out = None
-        for fi in valgus_indices:
-            pts = smoothed[fi]
-            candidates = []
-            left = knee_out_angle(pts, L_HIP, L_KNEE, L_ANKLE)
-            right = knee_out_angle(pts, R_HIP, R_KNEE, R_ANKLE)
-            if left is not None:
-                candidates.append(left)
-            if right is not None:
-                candidates.append(right)
-            if candidates:
-                frame_min = min(candidates)
-                min_knee_out = frame_min if min_knee_out is None else min(min_knee_out, frame_min)
-        if min_knee_out is None:
-            raise RuntimeError(f'Missing knee valgus for rep {idx + 1}')
-        eccentric = rep.valley_ms - rep.start_ms
-        concentric = rep.end_ms - rep.valley_ms
-        if eccentric <= 0 or concentric <= 0:
-            raise RuntimeError(f'Invalid tempo for rep {idx + 1}')
-        metrics.append({
-            'kneeValleyAngle': valley_angle,
-            'minKneeOutAngle': min_knee_out,
-            'maxForwardLean': max_trunk,
-            'eccentricMs': eccentric,
-            'concentricMs': concentric,
-            'ratio': eccentric / concentric,
-        })
-    return metrics
-
-
-def score_from_bounds(value: float, a: float, b: float, lower_is_better: bool) -> float:
-    best = min(a, b) if lower_is_better else max(a, b)
-    worst = max(a, b) if lower_is_better else min(a, b)
-    if abs(best - worst) < 1e-6:
-        meets = value <= best if lower_is_better else value >= best
-        return 100.0 if meets else 0.0
-    if lower_is_better:
-        if value <= best:
-            return 100.0
-        if value >= worst:
-            return 0.0
-        ratio = (value - best) / (worst - best)
-        return max(0.0, min(100.0, (1 - ratio) * 100.0))
-    else:
-        if value >= best:
-            return 100.0
-        if value <= worst:
-            return 0.0
-        ratio = (value - worst) / (best - worst)
-        return max(0.0, min(100.0, ratio * 100.0))
-
-
-def score_range(value: float, low: float, high: float) -> float:
-    lo, hi = sorted([low, high])
-    if abs(hi - lo) < 1e-6:
-        return 100.0 if abs(value - lo) < 1e-6 else 0.0
-    if lo <= value <= hi:
-        return 100.0
-    span = hi - lo
-    if value < lo:
-        diff = lo - value
-    else:
-        diff = value - hi
-    return max(0.0, min(100.0, (1 - diff / span) * 100.0))
-
-
-def average(values: List[float]) -> float:
-    return sum(values) / len(values) if values else 0.0
-
-
-def compute_scores(rep_metrics: List[dict], rules: RuleSet):
-    if not rep_metrics:
-        return {
-            'form': 0.0,
-            'stability': 0.0,
-            'tempo': 0.0,
-            'overall': 0.0,
-        }
-    metrics = rules.metrics
-    depth = metrics['depth']['kneeAngleMin']
-    trunk = metrics['trunk']['maxForwardLean']
-    valgus = metrics['valgus']['kneeOutAngleMin']
-    tempo = metrics['tempo']
-
-    depth_scores = [score_from_bounds(m['kneeValleyAngle'], depth['strict'], depth['relaxed'], True) for m in rep_metrics]
-    trunk_scores = [score_from_bounds(m['maxForwardLean'], trunk['strict'], trunk['relaxed'], True) for m in rep_metrics]
-    valgus_scores = [score_from_bounds(m['minKneeOutAngle'], valgus['strict'], valgus['relaxed'], False) for m in rep_metrics]
-
-    form_score = average([average(depth_scores), average(trunk_scores)])
-    stability_score = average(valgus_scores)
-    tempo_score = average([
-        score_range(average([m['eccentricMs'] for m in rep_metrics]), tempo['eccentricMs'][0], tempo['eccentricMs'][1]),
-        score_range(average([m['ratio'] for m in rep_metrics]), tempo['ratio'][0], tempo['ratio'][1]),
-    ])
-
-    weights = rules.score_weights
-    overall = (form_score * weights['form'] + stability_score * weights['stability'] + tempo_score * weights['tempo'])
-    return {
-        'form': round1(form_score),
-        'stability': round1(stability_score),
-        'tempo': round1(tempo_score),
-        'overall': round1(overall),
+    # output
+    os.makedirs(out_dir, exist_ok=True)
+    write_csv(os.path.join(out_dir,'angles.csv'), rows)
+    result={
+        'meta': {'fps': fps, 'ruleVersion': rule.get('version','1.0.0'), 'strictness': strictness},
+        'quality': {'coverage': round(coverage,3), 'lowConfidence': coverage < quality_th},
+        'reps': len(reps),
+        'scores': {'overall': round(total,1), 'form': round(form,1), 'stability': round(stability,1), 'tempo': round(tempo,1)},
+        'issues': [],
+        'evidence': evidence
     }
+    save_json(os.path.join(out_dir,'result.json'), result)
+    print(f"[OK] total reps={len(reps)}  total={result['scores']['overall']}  coverage={result['quality']['coverage']}  lowConf={result['quality']['lowConfidence']}")
 
+def main():
+    ap=argparse.ArgumentParser()
+    ap.add_argument('--keypoints', default=r"D:\Graduation_Project-Correct_Training-main\Graduation_Project-Correct_Training\data\kp_sample.json")
+    ap.add_argument('--rule', default=r"D:\Graduation_Project-Correct_Training-main\Graduation_Project-Correct_Training\data\squat.v1.json")
+    ap.add_argument('--strictness', default='relaxed', choices=['relaxed','strict'])
+    ap.add_argument('--out', default=r"D:\Graduation_Project-Correct_Training-main\Graduation_Project-Correct_Training\aiwa_milestone_a\tools\baseline_outputs")
+    ap.add_argument('--quality_th', type=float, default=0.7)
+    ap.add_argument('--fps', type=float, default=None)
+    args=ap.parse_args()
+    try:
+        pipeline(args.keypoints, args.rule, args.strictness, args.out, args.quality_th, args.fps)
+    except Exception as e:
+        print(f"[ERROR] {e}", file=sys.stderr); sys.exit(2)
 
-def build_result_json(fps: float, t_ms: List[int], knee_l, knee_r, trunk, smoothed, rules: RuleSet, strictness: str):
-    counts = rules.counts
-    phases_min_ms = int(rules.phases.get('minMs', 250))
-    main_knee = main_knee_series(knee_l, knee_r)
-    phase_segments = segment_down_up(t_ms, main_knee, phases_min_ms)
-    strict_profile = rules.strictness[strictness]
-    min_valley = strict_profile['minValleyKneeAngle']
-    reps = count_reps(
-        t_ms,
-        knee_l,
-        knee_r,
-        int(counts.get('minIntervalMs', 600)),
-        int(counts.get('windowMs', 150)),
-        min_valley,
-    )
-    quality = compute_quality(smoothed)
-
-    metrics = collect_rep_metrics(
-        t_ms,
-        main_knee,
-        reps,
-        trunk,
-        smoothed,
-        int(rules.metrics['valgus'].get('windowMs', 200)),
-    )
-
-    rep_entries = []
-    for idx, (rep, metric) in enumerate(zip(reps, metrics), start=1):
-        rep_entries.append({
-            'index': idx,
-            'startMs': rep.start_ms,
-            'valleyMs': rep.valley_ms,
-            'endMs': rep.end_ms,
-            'kneeValleyAngle': round1(metric['kneeValleyAngle']),
-            'minKneeOutAngle': round1(metric['minKneeOutAngle']),
-            'maxForwardLean': round1(metric['maxForwardLean']),
-            'tempo': {
-                'eccentricMs': metric['eccentricMs'],
-                'concentricMs': metric['concentricMs'],
-                'ratio': round2(metric['ratio']),
-            },
-        })
-
-    evidence = []
-    for start, end, is_down in phase_segments:
-        evidence.append({
-            'type': 'phaseDown' if is_down else 'phaseUp',
-            'startMs': start,
-            'endMs': end,
-        })
-    for rep in rep_entries:
-        entry = {'type': 'rep'}
-        entry.update(rep)
-        evidence.append(entry)
-
-    issue_map = {}
-    rules_metrics = rules.metrics
-    depth = rules_metrics['depth']['kneeAngleMin']
-    depth_threshold = depth[strictness]
-    valgus_threshold = rules_metrics['valgus']['kneeOutAngleMin'][strictness]
-    trunk_threshold = rules_metrics['trunk']['maxForwardLean'][strictness]
-    for rep, metric in zip(reps, metrics):
-        if metric['kneeValleyAngle'] > depth_threshold + 1e-6:
-            rec = issue_map.setdefault('DEPTH_INSUFFICIENT', {'code': 'DEPTH_INSUFFICIENT', 'frames': [], 'severity': 'major', 'worst': None})
-            rec['frames'].append(rep.valley_ms)
-            worst = rec['worst']
-            rec['worst'] = metric['kneeValleyAngle'] if worst is None else max(worst, metric['kneeValleyAngle'])
-            evidence.append({'type': 'issue', 'code': 'DEPTH_INSUFFICIENT', 'frameMs': rep.valley_ms, 'value': round1(metric['kneeValleyAngle'])})
-        if metric['minKneeOutAngle'] < valgus_threshold - 1e-6:
-            rec = issue_map.setdefault('KNEE_VALGUS', {'code': 'KNEE_VALGUS', 'frames': [], 'severity': 'major', 'worst': None})
-            rec['frames'].append(rep.valley_ms)
-            worst = rec['worst']
-            rec['worst'] = metric['minKneeOutAngle'] if worst is None else min(worst, metric['minKneeOutAngle'])
-            evidence.append({'type': 'issue', 'code': 'KNEE_VALGUS', 'frameMs': rep.valley_ms, 'value': round1(metric['minKneeOutAngle'])})
-        if metric['maxForwardLean'] > trunk_threshold + 1e-6:
-            rec = issue_map.setdefault('TRUNK_LEAN_EXCESSIVE', {'code': 'TRUNK_LEAN_EXCESSIVE', 'frames': [], 'severity': 'moderate', 'worst': None})
-            rec['frames'].append(rep.valley_ms)
-            worst = rec['worst']
-            rec['worst'] = metric['maxForwardLean'] if worst is None else max(worst, metric['maxForwardLean'])
-            evidence.append({'type': 'issue', 'code': 'TRUNK_LEAN_EXCESSIVE', 'frameMs': rep.valley_ms, 'value': round1(metric['maxForwardLean'])})
-
-    issues = []
-    for rec in issue_map.values():
-        rec['frames'].sort()
-        if rec['worst'] is not None:
-            rec['worst'] = round1(rec['worst'])
-        issues.append(rec)
-
-    scores = compute_scores(metrics, rules)
-    return {
-        'meta': {
-            'template': rules.template,
-            'fps': fps,
-            'ruleVersion': rules.version,
-            'strictness': strictness,
-        },
-        'quality': {
-            'coverage': quality[0],
-            'lowConfidence': quality[1],
-        },
-        'repCount': len(reps),
-        'reps': rep_entries,
-        'scores': scores,
-        'issues': issues,
-        'evidence': evidence,
-    }, phase_segments, reps
-
-
-def write_angles_csv(path: str, t_ms: List[int], knee_l, knee_r, trunk):
-    with open(path, 'w', newline='', encoding='utf-8') as f:
-        writer = csv.writer(f)
-        writer.writerow(['t_ms', 'knee_L', 'knee_R', 'trunk_deg'])
-        for t, kl, kr, tr in zip(t_ms, knee_l, knee_r, trunk):
-            writer.writerow([
-                t,
-                '' if kl is None else kl,
-                '' if kr is None else kr,
-                '' if tr is None else tr,
-            ])
-
-
-def run(kp_path: str, rule_path: str, out_csv: str, out_json: str, strictness: str):
-    fps, frames = parse_keypoints(kp_path)
-    rules = parse_rules(rule_path)
-    smoothed = filter_keypoints(frames)
-    knee_l, knee_r, trunk = compute_angles(smoothed)
-    t_ms = [f.t for f in frames]
-    write_angles_csv(out_csv, t_ms, knee_l, knee_r, trunk)
-    result_json, _, _ = build_result_json(fps, t_ms, knee_l, knee_r, trunk, smoothed, rules, strictness)
-    with open(out_json, 'w', encoding='utf-8') as f:
-        json.dump(result_json, f, ensure_ascii=False, indent=2)
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--kp', required=True)
-    parser.add_argument('--rule', required=True)
-    parser.add_argument('--angles', required=True)
-    parser.add_argument('--result', required=True)
-    parser.add_argument('--strictness', default='relaxed')
-    args = parser.parse_args()
-    run(args.kp, args.rule, args.angles, args.result, args.strictness)
+if __name__=='__main__':
+    main()

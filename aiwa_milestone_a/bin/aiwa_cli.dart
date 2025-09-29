@@ -14,7 +14,7 @@ void main(List<String> args) async {
     ..addOption('keypoints',
         abbr: 'k',
         help: 'Path to kp.json',
-        defaultsTo: 'test/fixtures/fake_data_array.json')
+        defaultsTo: 'test/fixtures/kp_sample.json')
     ..addOption('rule',
         abbr: 'r',
         help: 'Path to squat.v1.json',
