@@ -26,7 +26,8 @@ void main() {
       final anglesPath = p.join(tmpDir.path, 'angles.csv');
       final resultPath = p.join(tmpDir.path, 'result.json');
       final baselineScript = p.join(root, 'tools', 'python_baseline.py');
-      final proc = await Process.run('python3', [
+      final pythonExecutable = Platform.isWindows ? 'python' : 'python3';
+      final proc = await Process.run(pythonExecutable, [
         baselineScript,
         '--kp',
         kpPath,
