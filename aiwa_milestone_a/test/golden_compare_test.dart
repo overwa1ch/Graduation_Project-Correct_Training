@@ -13,7 +13,7 @@ import 'package:aiwa_milestone_a/spec/rule_parser.dart';
 void main() {
   test('golden alignment', () async {
     final root = Directory.current.path;
-    final kpPath = p.join(root, 'test', 'fixtures', 'fake_data_array.json');
+    final kpPath = p.join(root, 'test', 'fixtures', 'kp_sample.json');
     final rulePath = p.join(root, 'test', 'fixtures', 'squat.v1.json');
 
     final kp = parseKeypointSeries(await File(kpPath).readAsString());
