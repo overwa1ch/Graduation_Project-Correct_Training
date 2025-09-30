@@ -112,7 +112,15 @@ def compute_quality(frames: List[Dict[str,Any]], th=0.5) -> float:
         if ok: good += 1
     return good / max(1, len(frames))
 
-def pipeline(kp_path: str, rule_path: str, strictness: str, out_dir: str, quality_th: float, fps_override: float=None):
+def pipeline(
+    kp_path: str,
+    rule_path: str,
+    strictness: str,
+    angles_path: str,
+    result_path: str,
+    quality_th: float,
+    fps_override: float = None,
+):
     rule_raw = load_json(rule_path)
     rule = parse_rule_v11(rule_raw)
     fps, frames = read_kp_array_triple(kp_path)
@@ -258,8 +266,15 @@ def pipeline(kp_path: str, rule_path: str, strictness: str, out_dir: str, qualit
         evidence.append({'type':'depth','kind':'repr','atMs':mid})
 
     # output
-    os.makedirs(out_dir, exist_ok=True)
-    write_csv(os.path.join(out_dir,'angles.csv'), rows)
+    def ensure_parent(path: str):
+        parent = os.path.dirname(path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+
+    ensure_parent(angles_path)
+    ensure_parent(result_path)
+
+    write_csv(angles_path, rows)
     result={
         'meta': {'fps': fps, 'ruleVersion': rule.get('version','1.0.0'), 'strictness': strictness},
         'quality': {'coverage': round(coverage,3), 'lowConfidence': coverage < quality_th},
@@ -268,20 +283,25 @@ def pipeline(kp_path: str, rule_path: str, strictness: str, out_dir: str, qualit
         'issues': [],
         'evidence': evidence
     }
-    save_json(os.path.join(out_dir,'result.json'), result)
+    save_json(result_path, result)
     print(f"[OK] total reps={len(reps)}  total={result['scores']['overall']}  coverage={result['quality']['coverage']}  lowConf={result['quality']['lowConfidence']}")
 
 def main():
     ap=argparse.ArgumentParser()
-    ap.add_argument('--keypoints', default=r"D:\Graduation_Project-Correct_Training-main\Graduation_Project-Correct_Training\data\kp_sample.json")
+    ap.add_argument('--kp', '--keypoints', dest='keypoints', default=r"D:\Graduation_Project-Correct_Training-main\Graduation_Project-Correct_Training\data\kp_sample.json")
     ap.add_argument('--rule', default=r"D:\Graduation_Project-Correct_Training-main\Graduation_Project-Correct_Training\data\squat.v1.json")
+    ap.add_argument('--angles', help='Path to write the generated angles CSV file')
+    ap.add_argument('--result', help='Path to write the generated result JSON file')
     ap.add_argument('--strictness', default='relaxed', choices=['relaxed','strict'])
     ap.add_argument('--out', default=r"D:\Graduation_Project-Correct_Training-main\Graduation_Project-Correct_Training\aiwa_milestone_a\tools\baseline_outputs")
     ap.add_argument('--quality_th', type=float, default=0.7)
     ap.add_argument('--fps', type=float, default=None)
     args=ap.parse_args()
     try:
-        pipeline(args.keypoints, args.rule, args.strictness, args.out, args.quality_th, args.fps)
+        out_dir = args.out
+        angles_path = args.angles or os.path.join(out_dir, 'angles.csv')
+        result_path = args.result or os.path.join(out_dir, 'result.json')
+        pipeline(args.keypoints, args.rule, args.strictness, angles_path, result_path, args.quality_th, args.fps)
     except Exception as e:
         print(f"[ERROR] {e}", file=sys.stderr); sys.exit(2)
 
