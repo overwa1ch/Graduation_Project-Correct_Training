@@ -24,18 +24,20 @@ class OfflinePipeline {
     final tMs = frames.map((f) => f.tMs).toList(growable: false);
 
     final filteredPts = _filterKeypoints(frames);
-    final angles = _computeAngles(filteredPts);
+    final rawAngles = _computeAngles(filteredPts);
 
-    final hasAnyKnee = angles.kneeL.any((v) => v != null) ||
-        angles.kneeR.any((v) => v != null);
+    final hasAnyKnee = rawAngles.kneeL.any((v) => v != null) ||
+        rawAngles.kneeR.any((v) => v != null);
     if (!hasAnyKnee) {
       throw AngleComputeFailed('No valid knee angles available for analysis.');
     }
 
-    final hasTrunk = angles.trunk.any((v) => v != null);
+    final hasTrunk = rawAngles.trunk.any((v) => v != null);
     if (!hasTrunk) {
       throw AngleComputeFailed('No valid trunk angles available for analysis.');
     }
+
+    final angles = _smoothAngles(kp.fps, rawAngles);
 
     final rows = <List<num?>>[];
     for (var i = 0; i < frames.length; i++) {
@@ -549,6 +551,52 @@ double _average(List<double> values) {
   return sum / values.length;
 }
 
+({List<double?> kneeL, List<double?> kneeR, List<double?> trunk}) _smoothAngles(
+  double fps,
+  ({List<double?> kneeL, List<double?> kneeR, List<double?> trunk}) raw,
+) {
+  final kneeL = <double?>[];
+  final kneeR = <double?>[];
+  final trunk = <double?>[];
+
+  final step = 1.0 / fps;
+  var kneeLT = 0.0;
+  var kneeRT = 0.0;
+  var trunkT = 0.0;
+
+  final kneeLFilter = OneEuroFilter(minCutoff: 1.0, beta: 0.005, dCutoff: 1.0);
+  final kneeRFilter = OneEuroFilter(minCutoff: 1.0, beta: 0.005, dCutoff: 1.0);
+  final trunkFilter = OneEuroFilter(minCutoff: 1.0, beta: 0.005, dCutoff: 1.0);
+
+  for (var i = 0; i < raw.kneeL.length; i++) {
+    final left = raw.kneeL[i];
+    if (left != null) {
+      kneeL.add(kneeLFilter.filter(kneeLT, left));
+      kneeLT += step;
+    } else {
+      kneeL.add(null);
+    }
+
+    final right = raw.kneeR[i];
+    if (right != null) {
+      kneeR.add(kneeRFilter.filter(kneeRT, right));
+      kneeRT += step;
+    } else {
+      kneeR.add(null);
+    }
+
+    final trunkValue = raw.trunk[i];
+    if (trunkValue != null) {
+      trunk.add(trunkFilter.filter(trunkT, trunkValue));
+      trunkT += step;
+    } else {
+      trunk.add(null);
+    }
+  }
+
+  return (kneeL: kneeL, kneeR: kneeR, trunk: trunk);
+}
+
 ({List<double?> kneeL, List<double?> kneeR, List<double?> trunk}) _computeAngles(
     List<List<List<double>>> filteredPts) {
   final kneeL = <double?>[];
@@ -574,7 +622,7 @@ double? _kneeAngle(List<List<double>> pts, int hipIdx, int kneeIdx, int ankleIdx
   final knee = V2(pts[kneeIdx][0], pts[kneeIdx][1]);
   final ankle = V2(pts[ankleIdx][0], pts[ankleIdx][1]);
   try {
-    return round1(angleABC(hip, knee, ankle));
+    return angleABC(hip, knee, ankle);
   } catch (_) {
     return null;
   }
@@ -616,10 +664,10 @@ double? _trunkAngle(List<List<double>> pts) {
   final left = single(L_SHOULDER, L_HIP_IDX);
   final right = single(R_SHOULDER, R_HIP_IDX);
   if (left != null && right != null) {
-    return round1((left + right) / 2.0);
+    return (left + right) / 2.0;
   }
   final value = left ?? right;
-  return value == null ? null : round1(value);
+  return value;
 }
 
 double _angleFromVertical(V2 v) {
