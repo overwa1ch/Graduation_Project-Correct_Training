@@ -552,12 +552,15 @@ double _average(List<double> values) {
 }
 
 ({List<double?> kneeL, List<double?> kneeR, List<double?> trunk}) _smoothAngles(
+
   double fps,
+
   ({List<double?> kneeL, List<double?> kneeR, List<double?> trunk}) raw,
 ) {
   final kneeL = <double?>[];
   final kneeR = <double?>[];
   final trunk = <double?>[];
+
 
   final step = 1.0 / fps;
   var kneeLT = 0.0;
@@ -573,22 +576,27 @@ double _average(List<double> values) {
     if (left != null) {
       kneeL.add(kneeLFilter.filter(kneeLT, left));
       kneeLT += step;
+      
     } else {
       kneeL.add(null);
     }
 
     final right = raw.kneeR[i];
     if (right != null) {
+
       kneeR.add(kneeRFilter.filter(kneeRT, right));
       kneeRT += step;
+
     } else {
       kneeR.add(null);
     }
 
     final trunkValue = raw.trunk[i];
     if (trunkValue != null) {
+
       trunk.add(trunkFilter.filter(trunkT, trunkValue));
       trunkT += step;
+
     } else {
       trunk.add(null);
     }
