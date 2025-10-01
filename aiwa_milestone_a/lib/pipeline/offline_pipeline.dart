@@ -702,26 +702,51 @@ double? _kneeOutAngle(
 }
 
 double? _trunkAngle(List<List<double>> pts) {
-  double? single(int shoulderIdx, int hipIdx) {
-    if (!_valid(pts, shoulderIdx) || !_valid(pts, hipIdx)) {
-      return null;
+  double _conf(int idx) {
+    final score = pts[idx][2];
+    if (score.isNaN) {
+      return 0.0;
     }
-    final shoulder = V2(pts[shoulderIdx][0], pts[shoulderIdx][1]);
-    final hip = V2(pts[hipIdx][0], pts[hipIdx][1]);
-    try {
-      return trunkAngle(shoulder, hip);
-    } catch (_) {
-      return null;
-    }
+    return score.clamp(0.0, 1.0).toDouble();
   }
 
-  final left = single(L_SHOULDER, L_HIP_IDX);
-  final right = single(R_SHOULDER, R_HIP_IDX);
-  if (left != null && right != null) {
-    return (left + right) / 2.0;
+  V2? _midpoint(int aIdx, int bIdx) {
+    final hasA = _valid(pts, aIdx);
+    final hasB = _valid(pts, bIdx);
+    if (!hasA && !hasB) {
+      return null;
+    }
+
+    if (hasA && hasB) {
+      final a = pts[aIdx];
+      final b = pts[bIdx];
+      final wA = _conf(aIdx);
+      final wB = _conf(bIdx);
+      final w = wA + wB;
+      if (w <= 1e-6) {
+        return V2((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0);
+      }
+      return V2(
+        ((a[0] * wA) + (b[0] * wB)) / w,
+        ((a[1] * wA) + (b[1] * wB)) / w,
+      );
+    }
+
+    final idx = hasA ? aIdx : bIdx;
+    return V2(pts[idx][0], pts[idx][1]);
   }
-  final value = left ?? right;
-  return value;
+
+  final midShoulder = _midpoint(L_SHOULDER, R_SHOULDER);
+  final midHip = _midpoint(L_HIP_IDX, R_HIP_IDX);
+  if (midShoulder == null || midHip == null) {
+    return null;
+  }
+
+  try {
+    return trunkAngle(midShoulder, midHip);
+  } catch (_) {
+    return null;
+  }
 }
 
 double _angleFromVertical(V2 v) {
