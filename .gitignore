@@ -4,7 +4,6 @@
 # 忽略数据文件
 *.csv
 result.json
-kp_sample.json
 __pycache__/
 
 *.patch

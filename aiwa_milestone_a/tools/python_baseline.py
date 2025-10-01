@@ -288,8 +288,8 @@ def pipeline(
 
 def main():
     ap=argparse.ArgumentParser()
-    ap.add_argument('--kp', '--keypoints', dest='keypoints', default=r"D:\Graduation_Project-Correct_Training-main\Graduation_Project-Correct_Training\data\kp_sample.json")
-    ap.add_argument('--rule', default=r"D:\Graduation_Project-Correct_Training-main\Graduation_Project-Correct_Training\data\squat.v1.json")
+    ap.add_argument('--kp', '--keypoints', dest='keypoints', default=r"D:\Graduation_Project-Correct_Training-main\Graduation_Project-Correct_Training\aiwa_milestone_a\tools\data\kp_sample.json")
+    ap.add_argument('--rule', default=r"D:\Graduation_Project-Correct_Training-main\Graduation_Project-Correct_Training\aiwa_milestone_a\tools\data\squat.v1.json")
     ap.add_argument('--angles', help='Path to write the generated angles CSV file')
     ap.add_argument('--result', help='Path to write the generated result JSON file')
     ap.add_argument('--strictness', default='relaxed', choices=['relaxed','strict'])

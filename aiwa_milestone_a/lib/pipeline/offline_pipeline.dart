@@ -24,18 +24,20 @@ class OfflinePipeline {
     final tMs = frames.map((f) => f.tMs).toList(growable: false);
 
     final filteredPts = _filterKeypoints(frames);
-    final angles = _computeAngles(filteredPts);
+    final rawAngles = _computeAngles(filteredPts);
 
-    final hasAnyKnee = angles.kneeL.any((v) => v != null) ||
-        angles.kneeR.any((v) => v != null);
+    final hasAnyKnee = rawAngles.kneeL.any((v) => v != null) ||
+        rawAngles.kneeR.any((v) => v != null);
     if (!hasAnyKnee) {
       throw AngleComputeFailed('No valid knee angles available for analysis.');
     }
 
-    final hasTrunk = angles.trunk.any((v) => v != null);
+    final hasTrunk = rawAngles.trunk.any((v) => v != null);
     if (!hasTrunk) {
       throw AngleComputeFailed('No valid trunk angles available for analysis.');
     }
+
+    final angles = _smoothAngles(kp.fps, rawAngles);
 
     final rows = <List<num?>>[];
     for (var i = 0; i < frames.length; i++) {
@@ -196,12 +198,13 @@ class OfflinePipeline {
 
     final weights = rules.scoreWeights;
     final scores = repMetrics.isEmpty
-        ? {
-            'overall': 0.0,
-            'form': 0.0,
-            'stability': 0.0,
-            'tempo': 0.0,
-          }
+        ? _computeScoresNoReps(
+            mainKnee: mainKnee,
+            trunk: angles.trunk,
+            trunkThreshold:
+                strictness == Strictness.strict ? trunkStrict : trunkRelaxed,
+            weights: weights,
+          )
         : _computeScores(
             repMetrics: repMetrics,
             depthStrict: depthStrict,
@@ -483,6 +486,52 @@ Map<String, double> _computeScores({
   };
 }
 
+Map<String, double> _computeScoresNoReps({
+  required List<double?> mainKnee,
+  required List<double?> trunk,
+  required double trunkThreshold,
+  required Map<String, num> weights,
+}) {
+  final trunkValues = trunk.whereType<double>().toList();
+  final maxTrunk = trunkValues.isEmpty
+      ? 0.0
+      : trunkValues.reduce((a, b) => a > b ? a : b);
+  final trunkDeficit = math.max(0.0, maxTrunk - trunkThreshold);
+  // Without detected reps we cannot measure depth coverage against valleys, so
+  // the depth component stays neutral while trunk lean still reduces the form
+  // score, matching the baseline fallback behavior.
+  final form = _clampScore(100.0 - (trunkDeficit * 1.5));
+
+  final kneeValues = mainKnee.whereType<double>().toList();
+  double stabilityPenalty = 0.0;
+  if (mainKnee.length >= 5 && kneeValues.isNotEmpty) {
+    final mean = kneeValues.reduce((a, b) => a + b) / kneeValues.length;
+    final variance = kneeValues
+            .map((v) => (v - mean) * (v - mean))
+            .reduce((a, b) => a + b) /
+        kneeValues.length;
+    final stdDev = math.sqrt(variance);
+    stabilityPenalty = stdDev * 2.0;
+  }
+  final stability = _clampScore(100.0 - stabilityPenalty);
+
+  // No repetitions means no tempo measurement; treat as perfect tempo per
+  // baseline behavior.
+  const tempo = 100.0;
+
+  double weight(String key) => (weights[key] ?? 0).toDouble();
+  final overall = form * weight('form') +
+      stability * weight('stability') +
+      tempo * weight('tempo');
+
+  return {
+    'form': _roundScore(form),
+    'stability': _roundScore(stability),
+    'tempo': _roundScore(tempo),
+    'overall': _roundScore(overall),
+  };
+}
+
 double _roundScore(double value) => ((value * 10).roundToDouble()) / 10.0;
 
 double _scoreFromBounds({
@@ -549,6 +598,59 @@ double _average(List<double> values) {
   return sum / values.length;
 }
 
+({List<double?> kneeL, List<double?> kneeR, List<double?> trunk}) _smoothAngles(
+
+  double fps,
+
+  ({List<double?> kneeL, List<double?> kneeR, List<double?> trunk}) raw,
+) {
+  final kneeL = <double?>[];
+  final kneeR = <double?>[];
+  final trunk = <double?>[];
+
+  final step = 1.0 / fps;
+  var kneeLT = 0.0;
+  var kneeRT = 0.0;
+  var trunkT = 0.0;
+
+  final kneeLFilter = OneEuroFilter(minCutoff: 1.0, beta: 0.005, dCutoff: 1.0);
+  final kneeRFilter = OneEuroFilter(minCutoff: 1.0, beta: 0.005, dCutoff: 1.0);
+  final trunkFilter = OneEuroFilter(minCutoff: 1.0, beta: 0.005, dCutoff: 1.0);
+
+  for (var i = 0; i < raw.kneeL.length; i++) {
+    final left = raw.kneeL[i];
+    if (left != null) {
+      kneeL.add(kneeLFilter.filter(kneeLT, left));
+      kneeLT += step;
+
+    } else {
+      kneeL.add(null);
+    }
+
+    final right = raw.kneeR[i];
+    if (right != null) {
+
+      kneeR.add(kneeRFilter.filter(kneeRT, right));
+      kneeRT += step;
+
+    } else {
+      kneeR.add(null);
+    }
+
+    final trunkValue = raw.trunk[i];
+    if (trunkValue != null) {
+
+      trunk.add(trunkFilter.filter(trunkT, trunkValue));
+      trunkT += step;
+
+    } else {
+      trunk.add(null);
+    }
+  }
+
+  return (kneeL: kneeL, kneeR: kneeR, trunk: trunk);
+}
+
 ({List<double?> kneeL, List<double?> kneeR, List<double?> trunk}) _computeAngles(
     List<List<List<double>>> filteredPts) {
   final kneeL = <double?>[];
@@ -574,7 +676,7 @@ double? _kneeAngle(List<List<double>> pts, int hipIdx, int kneeIdx, int ankleIdx
   final knee = V2(pts[kneeIdx][0], pts[kneeIdx][1]);
   final ankle = V2(pts[ankleIdx][0], pts[ankleIdx][1]);
   try {
-    return round1(angleABC(hip, knee, ankle));
+    return angleABC(hip, knee, ankle);
   } catch (_) {
     return null;
   }
@@ -600,26 +702,51 @@ double? _kneeOutAngle(
 }
 
 double? _trunkAngle(List<List<double>> pts) {
-  double? single(int shoulderIdx, int hipIdx) {
-    if (!_valid(pts, shoulderIdx) || !_valid(pts, hipIdx)) {
-      return null;
+  double _conf(int idx) {
+    final score = pts[idx][2];
+    if (score.isNaN) {
+      return 0.0;
     }
-    final shoulder = V2(pts[shoulderIdx][0], pts[shoulderIdx][1]);
-    final hip = V2(pts[hipIdx][0], pts[hipIdx][1]);
-    try {
-      return trunkAngle(shoulder, hip);
-    } catch (_) {
-      return null;
-    }
+    return score.clamp(0.0, 1.0).toDouble();
   }
 
-  final left = single(L_SHOULDER, L_HIP_IDX);
-  final right = single(R_SHOULDER, R_HIP_IDX);
-  if (left != null && right != null) {
-    return round1((left + right) / 2.0);
+  V2? _midpoint(int aIdx, int bIdx) {
+    final hasA = _valid(pts, aIdx);
+    final hasB = _valid(pts, bIdx);
+    if (!hasA && !hasB) {
+      return null;
+    }
+
+    if (hasA && hasB) {
+      final a = pts[aIdx];
+      final b = pts[bIdx];
+      final wA = _conf(aIdx);
+      final wB = _conf(bIdx);
+      final w = wA + wB;
+      if (w <= 1e-6) {
+        return V2((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0);
+      }
+      return V2(
+        ((a[0] * wA) + (b[0] * wB)) / w,
+        ((a[1] * wA) + (b[1] * wB)) / w,
+      );
+    }
+
+    final idx = hasA ? aIdx : bIdx;
+    return V2(pts[idx][0], pts[idx][1]);
   }
-  final value = left ?? right;
-  return value == null ? null : round1(value);
+
+  final midShoulder = _midpoint(L_SHOULDER, R_SHOULDER);
+  final midHip = _midpoint(L_HIP_IDX, R_HIP_IDX);
+  if (midShoulder == null || midHip == null) {
+    return null;
+  }
+
+  try {
+    return trunkAngle(midShoulder, midHip);
+  } catch (_) {
+    return null;
+  }
 }
 
 double _angleFromVertical(V2 v) {
