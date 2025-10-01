@@ -37,7 +37,7 @@ class OfflinePipeline {
       throw AngleComputeFailed('No valid trunk angles available for analysis.');
     }
 
-    final angles = _smoothAngles(tMs, rawAngles);
+    final angles = _smoothAngles(kp.fps, rawAngles);
 
     final rows = <List<num?>>[];
     for (var i = 0; i < frames.length; i++) {
@@ -552,37 +552,51 @@ double _average(List<double> values) {
 }
 
 ({List<double?> kneeL, List<double?> kneeR, List<double?> trunk}) _smoothAngles(
-  List<int> tMs,
+
+  double fps,
+
   ({List<double?> kneeL, List<double?> kneeR, List<double?> trunk}) raw,
 ) {
   final kneeL = <double?>[];
   final kneeR = <double?>[];
   final trunk = <double?>[];
 
-  final kneeLFilter = OneEuroFilter();
-  final kneeRFilter = OneEuroFilter();
-  final trunkFilter = OneEuroFilter();
 
-  for (var i = 0; i < tMs.length; i++) {
-    final tSec = tMs[i] / 1000.0;
+  final step = 1.0 / fps;
+  var kneeLT = 0.0;
+  var kneeRT = 0.0;
+  var trunkT = 0.0;
 
+  final kneeLFilter = OneEuroFilter(minCutoff: 1.0, beta: 0.005, dCutoff: 1.0);
+  final kneeRFilter = OneEuroFilter(minCutoff: 1.0, beta: 0.005, dCutoff: 1.0);
+  final trunkFilter = OneEuroFilter(minCutoff: 1.0, beta: 0.005, dCutoff: 1.0);
+
+  for (var i = 0; i < raw.kneeL.length; i++) {
     final left = raw.kneeL[i];
     if (left != null) {
-      kneeL.add(kneeLFilter.filter(tSec, left));
+      kneeL.add(kneeLFilter.filter(kneeLT, left));
+      kneeLT += step;
+      
     } else {
       kneeL.add(null);
     }
 
     final right = raw.kneeR[i];
     if (right != null) {
-      kneeR.add(kneeRFilter.filter(tSec, right));
+
+      kneeR.add(kneeRFilter.filter(kneeRT, right));
+      kneeRT += step;
+
     } else {
       kneeR.add(null);
     }
 
     final trunkValue = raw.trunk[i];
     if (trunkValue != null) {
-      trunk.add(trunkFilter.filter(tSec, trunkValue));
+
+      trunk.add(trunkFilter.filter(trunkT, trunkValue));
+      trunkT += step;
+
     } else {
       trunk.add(null);
     }
