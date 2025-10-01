@@ -353,7 +353,7 @@ List<_RepMetrics> _collectRepMetrics({
     for (final idx in indices) {
       final trunkAngle = trunk[idx];
       if (trunkAngle != null) {
-        maxTrunk = maxTrunk == null ? trunkAngle : math.max(maxTrunk!, trunkAngle);
+        maxTrunk = maxTrunk == null ? trunkAngle : math.max(maxTrunk, trunkAngle);
       }
     }
 
@@ -377,7 +377,7 @@ List<_RepMetrics> _collectRepMetrics({
       if (right != null) candidates.add(right);
       if (candidates.isEmpty) continue;
       final frameMin = candidates.reduce(math.min);
-      minKneeOut = minKneeOut == null ? frameMin : math.min(minKneeOut!, frameMin);
+      minKneeOut = minKneeOut == null ? frameMin : math.min(minKneeOut, frameMin);
     }
 
     if (maxTrunk == null) {
@@ -666,16 +666,11 @@ double _average(List<double> values) {
   return (kneeL: kneeL, kneeR: kneeR, trunk: trunk);
 }
 
-bool _valid(List<List<double>> pts, int idx) => pts[idx][2] > 0.0;
-
 double? _kneeAngle(List<List<double>> pts, int hipIdx, int kneeIdx, int ankleIdx) {
-  if (!_valid(pts, hipIdx) || !_valid(pts, kneeIdx) || !_valid(pts, ankleIdx)) {
-    return null;
-  }
-  final hip = V2(pts[hipIdx][0], pts[hipIdx][1]);
-  final knee = V2(pts[kneeIdx][0], pts[kneeIdx][1]);
-  final ankle = V2(pts[ankleIdx][0], pts[ankleIdx][1]);
   try {
+    final hip = V2(pts[hipIdx][0], pts[hipIdx][1]);
+    final knee = V2(pts[kneeIdx][0], pts[kneeIdx][1]);
+    final ankle = V2(pts[ankleIdx][0], pts[ankleIdx][1]);
     return angleABC(hip, knee, ankle);
   } catch (_) {
     return null;
@@ -684,13 +679,10 @@ double? _kneeAngle(List<List<double>> pts, int hipIdx, int kneeIdx, int ankleIdx
 
 double? _kneeOutAngle(
     List<List<double>> pts, int hipIdx, int kneeIdx, int ankleIdx) {
-  if (!_valid(pts, hipIdx) || !_valid(pts, kneeIdx) || !_valid(pts, ankleIdx)) {
-    return null;
-  }
-  final hip = V2(pts[hipIdx][0], pts[hipIdx][1]);
-  final knee = V2(pts[kneeIdx][0], pts[kneeIdx][1]);
-  final ankle = V2(pts[ankleIdx][0], pts[ankleIdx][1]);
   try {
+    final hip = V2(pts[hipIdx][0], pts[hipIdx][1]);
+    final knee = V2(pts[kneeIdx][0], pts[kneeIdx][1]);
+    final ankle = V2(pts[ankleIdx][0], pts[ankleIdx][1]);
     final thigh = V2(knee.x - hip.x, knee.y - hip.y);
     final shank = V2(ankle.x - knee.x, ankle.y - knee.y);
     final thighDeg = _angleFromVertical(thigh);
@@ -702,48 +694,16 @@ double? _kneeOutAngle(
 }
 
 double? _trunkAngle(List<List<double>> pts) {
-  double _conf(int idx) {
-    final score = pts[idx][2];
-    if (score.isNaN) {
-      return 0.0;
-    }
-    return score.clamp(0.0, 1.0).toDouble();
-  }
-
-  V2? _midpoint(int aIdx, int bIdx) {
-    final hasA = _valid(pts, aIdx);
-    final hasB = _valid(pts, bIdx);
-    if (!hasA && !hasB) {
-      return null;
-    }
-
-    if (hasA && hasB) {
-      final a = pts[aIdx];
-      final b = pts[bIdx];
-      final wA = _conf(aIdx);
-      final wB = _conf(bIdx);
-      final w = wA + wB;
-      if (w <= 1e-6) {
-        return V2((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0);
-      }
-      return V2(
-        ((a[0] * wA) + (b[0] * wB)) / w,
-        ((a[1] * wA) + (b[1] * wB)) / w,
-      );
-    }
-
-    final idx = hasA ? aIdx : bIdx;
-    return V2(pts[idx][0], pts[idx][1]);
-  }
-
-  final midShoulder = _midpoint(L_SHOULDER, R_SHOULDER);
-  final midHip = _midpoint(L_HIP_IDX, R_HIP_IDX);
-  if (midShoulder == null || midHip == null) {
-    return null;
-  }
-
   try {
-    return trunkAngle(midShoulder, midHip);
+    final shoulder = V2(
+      (pts[L_SHOULDER][0] + pts[R_SHOULDER][0]) / 2.0,
+      (pts[L_SHOULDER][1] + pts[R_SHOULDER][1]) / 2.0,
+    );
+    final hip = V2(
+      (pts[L_HIP_IDX][0] + pts[R_HIP_IDX][0]) / 2.0,
+      (pts[L_HIP_IDX][1] + pts[R_HIP_IDX][1]) / 2.0,
+    );
+    return trunkAngle(shoulder, hip);
   } catch (_) {
     return null;
   }
@@ -759,27 +719,20 @@ double _angleFromVertical(V2 v) {
 
 List<List<List<double>>> _filterKeypoints(List<KPFrame> frames) {
   const kpCount = 17;
-  final filters = List.generate(
-      kpCount, (_) => (x: OneEuroFilter(), y: OneEuroFilter()));
-
-  final smoothed = <List<List<double>>>[];
+  final copied = <List<List<double>>>[];
   for (final frame in frames) {
-    final tSec = frame.tMs / 1000.0;
     final pts = <List<double>>[];
     for (var i = 0; i < kpCount; i++) {
       final raw = frame.pts[i];
-      final score = raw[2];
-      if (score <= 0) {
-        pts.add([raw[0].toDouble(), raw[1].toDouble(), score.toDouble()]);
-        continue;
-      }
-      final fx = filters[i].x.filter(tSec, raw[0].toDouble());
-      final fy = filters[i].y.filter(tSec, raw[1].toDouble());
-      pts.add([fx, fy, score.toDouble()]);
+      pts.add([
+        raw[0].toDouble(),
+        raw[1].toDouble(),
+        raw[2].toDouble(),
+      ]);
     }
-    smoothed.add(pts);
+    copied.add(pts);
   }
-  return smoothed;
+  return copied;
 }
 
 double? _angleAt(List<double?> angles, List<int> tMs, int targetMs) {

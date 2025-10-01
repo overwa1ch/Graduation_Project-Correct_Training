@@ -130,7 +130,7 @@ KeypointSeries parseKeypointSeries(String jsonStr) {
     }
     final tMs = _asIntMs(f['t'], 'frames[$i].t');
     if (tMs < 0) throw InputKpInvalid('frames[$i].t must be >= 0');
-    if (lastT != null && tMs < lastT!) {
+    if (lastT != null && tMs < lastT) {
       throw InputKpInvalid('frames[$i].t is not monotonic (previous=$lastT, current=$tMs)');
     }
     lastT = tMs;

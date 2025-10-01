@@ -14,7 +14,7 @@ String buildAnglesCsv(List<List<num?>> rows) {
         if (value == null) {
           converted.add('');
         } else {
-          final rounded = round3(value as num);
+          final rounded = round3(value);
           converted.add(rounded.toStringAsFixed(3));
         }
       }

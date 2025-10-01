@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Milestone A script (v1.1-compatible)
-- Accepts v1.1 squat.v1.json schema (template/version/counts/phases/metrics/scoreWeights/strictness)
-- Accepts keypoints in array-of-triples format: pts: [[x,y,score]*N]
-- Outputs angles.csv and result.json with the same format/precision contract as v1.1
-Note: This is a minimal, tolerant parser aimed to unblock alignment; logic mirrors the prior script where feasible.
+Milestone A script (v1.1-compatible, aligned with Dart golden)
+- 接收 v1.1 squat.v1.json 规则
+- 接收 A 阶段 keypoints: frames[].pts = [[x,y,score]*17]
+- 输出 angles.csv 与 result.json，字段与 Dart 侧 golden 对齐：
+  - angles.csv: 表头 + t_ms,knee_L,knee_R,trunk_deg
+  - result.json: { meta, quality, repCount, reps[], scores, issues[], evidence[] }
 """
 
 import argparse, json, os, sys, math
@@ -28,7 +29,6 @@ def clamp(v: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, v))
 
 def angle_deg(a, b, c) -> float:
-    import math
     ax, ay = a; bx, by = b; cx, cy = c
     bax = ax - bx; bay = ay - by
     bcx = cx - bx; bcy = cy - by
@@ -39,19 +39,22 @@ def angle_deg(a, b, c) -> float:
     return math.degrees(math.acos(cosv))
 
 def trunk_forward_deg(shoulder, hip) -> float:
-    # pixel coords: y increases downward; vertical up vector is (0,-1)
-    import math
+    # 像素坐标 y 向下为正；与竖直向上 (0,-1) 的夹角
     vx = hip[0]-shoulder[0]; vy = hip[1]-shoulder[1]
     n = math.hypot(vx, vy) or 1e-9
-    cosv = (-(vy)/n) # dot with (0,-1)
+    cosv = (-(vy)/n)
     cosv = clamp(cosv, -1.0, 1.0)
-    theta = math.degrees(math.acos(cosv))  # angle to vertical
-    return abs(theta) if theta <= 90 else 180-theta
+    theta = math.degrees(math.acos(cosv))  # 0..180
+    return theta if theta <= 90 else 180 - theta
 
 class OneEuro:
     def __init__(self, freq: float, min_cutoff=1.0, beta=0.005, d_cutoff=1.0):
-        self.freq = float(freq); self.min_cutoff=float(min_cutoff); self.beta=float(beta); self.d_cutoff=float(d_cutoff)
-        self.x_prev=None; self.dx_prev=None
+        self.freq = float(freq)
+        self.min_cutoff=float(min_cutoff)
+        self.beta=float(beta)
+        self.d_cutoff=float(d_cutoff)
+        self.x_prev=None
+        self.dx_prev=None
     def _alpha(self, cutoff):
         tau = 1.0 / (2.0 * math.pi * cutoff)
         te = 1.0 / self.freq
@@ -69,13 +72,10 @@ class OneEuro:
         return x_hat
 
 def parse_rule_v11(rule_dict: Dict[str, Any]) -> Dict[str, Any]:
-    # tolerate extra fields like 'template'
     out = dict(rule_dict)
-    out.pop('template', None)
-    # required keys
     for k in ('version','counts','phases','metrics','scoreWeights','strictness'):
         if k not in out:
-            raise RuntimeError(f"RULES_PARSE_ERROR: missing '{k}' in rule json")
+            raise RuntimeError(f"RULES_PARSE_ERROR: missing '{k}'")
     return out
 
 def read_kp_array_triple(path: str) -> Tuple[float, List[Dict[str, Any]]]:
@@ -121,6 +121,8 @@ def pipeline(
     quality_th: float,
     fps_override: float = None,
 ):
+    import numpy as np
+
     rule_raw = load_json(rule_path)
     rule = parse_rule_v11(rule_raw)
     fps, frames = read_kp_array_triple(kp_path)
@@ -130,14 +132,16 @@ def pipeline(
     coverage = compute_quality(frames, th=0.5)
     low_conf = coverage < quality_th
 
-    # filters
+    # filters on ANGLES only
     f_kL=OneEuro(fps); f_kR=OneEuro(fps); f_tr=OneEuro(fps)
 
+    # angles
     rows = [['t_ms','knee_L','knee_R','trunk_deg']]
     ts=[]; kL=[]; kR=[]; trA=[]
     for fr in frames:
         t=fr['t']; pts=fr['pts']
-        def p(i): return (pts[i][0], pts[i][1]) if i < len(pts) else (float('nan'), float('nan'))
+        def p(i): 
+            return (pts[i][0], pts[i][1]) if i < len(pts) else (float('nan'), float('nan'))
         try:
             aL=angle_deg(p(L_HIP), p(L_KN), p(L_AN))
             aR=angle_deg(p(R_HIP), p(R_KN), p(R_AN))
@@ -152,55 +156,91 @@ def pipeline(
         rows.append([t, f"{aL:.3f}" if not math.isnan(aL) else "", f"{aR:.3f}" if not math.isnan(aR) else "", f"{tr:.3f}" if not math.isnan(tr) else ""])
         ts.append(t); kL.append(aL); kR.append(aR); trA.append(tr)
 
-    # knee_main
-    import numpy as np
+    # arrays
     t_arr=np.array(ts, dtype=int) if ts else np.array([], dtype=int)
     kL_arr=np.array(kL, dtype=float) if kL else np.array([], dtype=float)
     kR_arr=np.array(kR, dtype=float) if kR else np.array([], dtype=float)
     tr_arr=np.array(trA, dtype=float) if trA else np.array([], dtype=float)
     knee_main=np.fmin(kL_arr, kR_arr)
-
-    # phases/counts (simplified; aligned with v1.1 thresholds)
+    # -------- LOCF 仅用于分段（修复 NaN 造成的相位滞后）--------
+    km_seg = knee_main.copy()
+    if km_seg.size:
+        import numpy as np
+        mask = ~np.isnan(km_seg)
+        if mask.any():
+            first = int(np.argmax(mask))  # 第一个非 NaN 的下标
+            # 用第一个有效值填充开头那段 NaN
+            km_seg[:first] = km_seg[first]
+            # 前向填充：遇到 NaN 用上一帧的值
+            for i in range(first + 1, km_seg.size):
+                if np.isnan(km_seg[i]):
+                    km_seg[i] = km_seg[i - 1]
+        else:
+            # 全 NaN 的极端情况：用 0（或干脆跳过分段，按你需求）
+            km_seg[:] = 0.0
+    # -----------------------------------------------------------
+    # thresholds
     counts=rule['counts']; phases=rule.get('phases',{}); metrics=rule['metrics']; weights=rule['scoreWeights']
     min_interval=int(counts.get('minIntervalMs',600))
     window_ms=int(counts.get('windowMs',150))
     valley_th=float(rule['strictness'][strictness]['minValleyKneeAngle'])
-
     d_step=3.0
     min_ms=int(phases.get('minMs', 250))
 
-    # rough phase segmentation
-    segs=[]; curr=None
+    # ------------- Segmentation (use km_seg for trend; anchor at PREVIOUS frame) -------------
+    segs = []
+    curr = None
+
+    def _ts_prev(i: int) -> int:
+        # 取“上一帧”时间戳；如果没有上一帧（i==0），就用第 0 帧
+        j = i - 1
+        if j >= 0:
+            return int(t_arr[j])
+        return int(t_arr[0])
+
     for i in range(len(t_arr)):
-        if i==0: trend=0
+        if i == 0:
+            trend = 0
         else:
-            diff=knee_main[i]-knee_main[i-1]
-            trend= -1 if diff<=-d_step else (1 if diff>=d_step else 0)
-        name= 'Down' if trend<0 else ('Up' if trend>0 else None)
+            diff = km_seg[i] - km_seg[i - 1]   # ✅ 仍用填充后的 km_seg 判定趋势
+            trend = -1 if diff <= -d_step else (1 if diff >= d_step else 0)
+
+        name = 'Down' if trend < 0 else ('Up' if trend > 0 else None)
+
         if name is None:
             if curr is not None:
-                curr['t1']=t_arr[i]
-                if curr['t1']-curr['t0']>=min_ms: segs.append(curr)
-                curr=None
+                curr['t1'] = _ts_prev(i)       # ✅ 结束边界：上一帧
+                if curr['t1'] - curr['t0'] >= min_ms:
+                    segs.append(curr)
+                curr = None
         else:
-            if curr is None or curr['name']!=name:
+            if curr is None or curr['name'] != name:
                 if curr is not None:
-                    curr['t1']=t_arr[i]
-                    if curr['t1']-curr['t0']>=min_ms: segs.append(curr)
-                curr={'name':name,'t0':t_arr[i]}
-    if curr is not None:
-        curr['t1']=int(t_arr[-1])
-        if curr['t1']-curr['t0']>=min_ms: segs.append(curr)
+                    curr['t1'] = _ts_prev(i)   # ✅ 结束边界：上一帧
+                    if curr['t1'] - curr['t0'] >= min_ms:
+                        segs.append(curr)
+                curr = {'name': name, 't0': _ts_prev(i)}  # ✅ 开始边界：上一帧
 
+    # 尾段收尾保持不变（用最后一帧时间）
+    if curr is not None:
+        curr['t1'] = int(t_arr[-1])
+        if curr['t1'] - curr['t0'] >= min_ms:
+            segs.append(curr)
+    # ------------------------------------------------------------------------------------------
+
+
+
+    # reps: Down 后接 Up，窗口 valley<=阈值
     reps=[]; last_end=-10**9; i=0
     while i < len(segs)-1:
         a=segs[i]; b=segs[i+1]
         if a['name']=='Down' and b['name']=='Up':
-            if (a['t0']-last_end) < min_interval: i+=1; continue
-            import numpy as np
-            lo=int(np.searchsorted(t_arr, a['t0']))
-            hi=int(np.searchsorted(t_arr, b['t1'], side='right'))
-            if hi<=lo: i+=1; continue
+            if (a['t0']-last_end) < min_interval:
+                i+=1; continue
+            lo=int(np.searchsorted(t_arr, a['t0']))                 # 左闭
+            hi=int(np.searchsorted(t_arr, b['t1'], side='right'))   # 右开
+            if hi<=lo:
+                i+=1; continue
             seg_vals=knee_main[lo:hi]; seg_times=t_arr[lo:hi]
             j=int(np.nanargmin(seg_vals)); t_valley=int(seg_times[j]); knee_min=float(seg_vals[j])
             if knee_min <= valley_th:
@@ -211,21 +251,19 @@ def pipeline(
         else:
             i+=1
 
-    # metrics→scores
+    # metrics → scores（近似，与先前一致）
     def_range=metrics['depth']['kneeAngleMin'][strictness]
     trunk_th=metrics['trunk']['maxForwardLean'][strictness]
-    # depth
+
     depth_pen=0.0; hits=0; worst_depth=(-1.0,None)
     for r in reps:
         deficit=max(0.0, r['knee_min']-def_range)
         depth_pen += deficit; hits+=1
         if deficit>0 and (worst_depth[0]<deficit): worst_depth=(deficit, r['t_valley'])
-    # trunk
-    import numpy as np
-    max_tr=float(np.nanmax(tr_arr)) if tr_arr.size else 0.0
+
+    max_tr = float(np.nanmax(tr_arr)) if tr_arr.size else 0.0
     trunk_def=max(0.0, max_tr-trunk_th)
 
-    # tempo
     ecc_lo,ecc_hi=metrics['tempo']['eccentricMs']
     ratio_lo,ratio_hi=metrics['tempo']['ratio']
     tempo_pen=0.0; tempo_hits=0
@@ -240,32 +278,51 @@ def pipeline(
             dist=min(abs(ratio-ratio_lo), abs(ratio-ratio_hi)); pen+=dist*10
         tempo_pen+=pen
 
-    # stability（简化）
     stab_pen=0.0
     if len(knee_main)>=5:
-        # 整段近似：使用总体标准差做罚分近似（A阶段）
-        import numpy as np
         stab_pen=float(np.nanstd(knee_main))*2.0
 
     form = max(0.0, 100.0 - ((depth_pen/(hits or 1))*2.0 + trunk_def*1.5))
     stability = max(0.0, 100.0 - stab_pen)
     tempo = max(0.0, 100.0 - (tempo_pen if tempo_hits else 0.0))
-
     total = form*weights.get('form',0.5) + stability*weights.get('stability',0.25) + tempo*weights.get('tempo',0.25)
 
-    # evidence（最坏帧+代表帧）
-    evidence=[]
-    if worst_depth[1] is not None:
-        evidence.append({'type':'depth','kind':'worst','atMs':int(worst_depth[1])})
-    if trunk_def>0 and tr_arr.size:
-        import numpy as np
-        idx=int(np.nanargmax(tr_arr))
-        evidence.append({'type':'trunk','kind':'worst','atMs':int(t_arr[idx])})
-    if reps:
-        mid=int((reps[0]['t_start']+reps[0]['t_end'])//2)
-        evidence.append({'type':'depth','kind':'repr','atMs':mid})
+    # evidence：phase / rep（issue 暂留空）
+    phase_evidence = []
+    for s in segs:
+        t0, t1 = int(s['t0']), int(s['t1'])
+        if s['name']=='Down':
+            phase_evidence.append({'type': 'phaseDown', 'startMs': t0, 'endMs': t1})
+        elif s['name']=='Up':
+            phase_evidence.append({'type': 'phaseUp', 'startMs': t0, 'endMs': t1})
 
-    # output
+    rep_evidence = [
+        {
+            'type': 'rep',
+            'index': i + 1,
+            'startMs': r['t_start'],
+            'valleyMs': r['t_valley'],
+            'endMs': r['t_end'],
+            'kneeValleyAngle': round(r['knee_min'], 2)
+        }
+        for i, r in enumerate(reps)
+    ]
+
+    evidence = phase_evidence + rep_evidence
+
+    # 与 Dart 对齐的 reps 列表
+    reps_list = [
+        {
+            'index': i + 1,
+            'startMs': r['t_start'],
+            'valleyMs': r['t_valley'],
+            'endMs': r['t_end'],
+            'kneeValleyAngle': round(r['knee_min'], 2),
+        }
+        for i, r in enumerate(reps)
+    ]
+
+    # 输出
     def ensure_parent(path: str):
         parent = os.path.dirname(path)
         if parent:
@@ -277,23 +334,24 @@ def pipeline(
     write_csv(angles_path, rows)
     result={
         'meta': {'fps': fps, 'ruleVersion': rule.get('version','1.0.0'), 'strictness': strictness},
-        'quality': {'coverage': round(coverage,3), 'lowConfidence': coverage < quality_th},
-        'reps': len(reps),
+        'quality': {'coverage': round(coverage,3), 'lowConfidence': low_conf},
+        'repCount': len(reps),
+        'reps': reps_list,
         'scores': {'overall': round(total,1), 'form': round(form,1), 'stability': round(stability,1), 'tempo': round(tempo,1)},
         'issues': [],
         'evidence': evidence
     }
     save_json(result_path, result)
-    print(f"[OK] total reps={len(reps)}  total={result['scores']['overall']}  coverage={result['quality']['coverage']}  lowConf={result['quality']['lowConfidence']}")
+    print(f"[OK] repCount={len(reps)}  overall={result['scores']['overall']}  coverage={result['quality']['coverage']}  lowConf={result['quality']['lowConfidence']}")
 
 def main():
     ap=argparse.ArgumentParser()
-    ap.add_argument('--kp', '--keypoints', dest='keypoints', default=r"D:\Graduation_Project-Correct_Training-main\Graduation_Project-Correct_Training\aiwa_milestone_a\tools\data\kp_sample.json")
-    ap.add_argument('--rule', default=r"D:\Graduation_Project-Correct_Training-main\Graduation_Project-Correct_Training\aiwa_milestone_a\tools\data\squat.v1.json")
-    ap.add_argument('--angles', help='Path to write the generated angles CSV file')
-    ap.add_argument('--result', help='Path to write the generated result JSON file')
+    ap.add_argument('--kp','--keypoints',dest='keypoints', default=r"../test/fixtures/kp_sample.json")
+    ap.add_argument('--rule', default=r"../test/fixtures/squat.v1.json")
+    ap.add_argument('--angles', help='Path to write angles CSV')
+    ap.add_argument('--result', help='Path to write result JSON')
     ap.add_argument('--strictness', default='relaxed', choices=['relaxed','strict'])
-    ap.add_argument('--out', default=r"D:\Graduation_Project-Correct_Training-main\Graduation_Project-Correct_Training\aiwa_milestone_a\tools\baseline_outputs")
+    ap.add_argument('--out', default=r"./tools/baseline_outputs")
     ap.add_argument('--quality_th', type=float, default=0.7)
     ap.add_argument('--fps', type=float, default=None)
     args=ap.parse_args()
