@@ -198,12 +198,13 @@ class OfflinePipeline {
 
     final weights = rules.scoreWeights;
     final scores = repMetrics.isEmpty
-        ? {
-            'overall': 0.0,
-            'form': 0.0,
-            'stability': 0.0,
-            'tempo': 0.0,
-          }
+        ? _computeScoresNoReps(
+            mainKnee: mainKnee,
+            trunk: angles.trunk,
+            trunkThreshold:
+                strictness == Strictness.strict ? trunkStrict : trunkRelaxed,
+            weights: weights,
+          )
         : _computeScores(
             repMetrics: repMetrics,
             depthStrict: depthStrict,
@@ -485,6 +486,52 @@ Map<String, double> _computeScores({
   };
 }
 
+Map<String, double> _computeScoresNoReps({
+  required List<double?> mainKnee,
+  required List<double?> trunk,
+  required double trunkThreshold,
+  required Map<String, num> weights,
+}) {
+  final trunkValues = trunk.whereType<double>().toList();
+  final maxTrunk = trunkValues.isEmpty
+      ? 0.0
+      : trunkValues.reduce((a, b) => a > b ? a : b);
+  final trunkDeficit = math.max(0.0, maxTrunk - trunkThreshold);
+  // Without detected reps we cannot measure depth coverage against valleys, so
+  // the depth component stays neutral while trunk lean still reduces the form
+  // score, matching the baseline fallback behavior.
+  final form = _clampScore(100.0 - (trunkDeficit * 1.5));
+
+  final kneeValues = mainKnee.whereType<double>().toList();
+  double stabilityPenalty = 0.0;
+  if (mainKnee.length >= 5 && kneeValues.isNotEmpty) {
+    final mean = kneeValues.reduce((a, b) => a + b) / kneeValues.length;
+    final variance = kneeValues
+            .map((v) => (v - mean) * (v - mean))
+            .reduce((a, b) => a + b) /
+        kneeValues.length;
+    final stdDev = math.sqrt(variance);
+    stabilityPenalty = stdDev * 2.0;
+  }
+  final stability = _clampScore(100.0 - stabilityPenalty);
+
+  // No repetitions means no tempo measurement; treat as perfect tempo per
+  // baseline behavior.
+  const tempo = 100.0;
+
+  double weight(String key) => (weights[key] ?? 0).toDouble();
+  final overall = form * weight('form') +
+      stability * weight('stability') +
+      tempo * weight('tempo');
+
+  return {
+    'form': _roundScore(form),
+    'stability': _roundScore(stability),
+    'tempo': _roundScore(tempo),
+    'overall': _roundScore(overall),
+  };
+}
+
 double _roundScore(double value) => ((value * 10).roundToDouble()) / 10.0;
 
 double _scoreFromBounds({
@@ -561,7 +608,6 @@ double _average(List<double> values) {
   final kneeR = <double?>[];
   final trunk = <double?>[];
 
-
   final step = 1.0 / fps;
   var kneeLT = 0.0;
   var kneeRT = 0.0;
@@ -576,7 +622,7 @@ double _average(List<double> values) {
     if (left != null) {
       kneeL.add(kneeLFilter.filter(kneeLT, left));
       kneeLT += step;
-      
+
     } else {
       kneeL.add(null);
     }
