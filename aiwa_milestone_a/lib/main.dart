@@ -1,50 +1,35 @@
 import 'package:flutter/material.dart';
 
-void main() {
-  runApp(const MyApp());
-}
+void main() => runApp(const MyApp());
 
-///
-/// 这是一个最小可运行的 Flutter 应用，
-/// 同时可以让默认的 widget_test.dart 测试通过。
-///
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'AIWA Milestone A',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: const CounterPage(),
+      title: 'AIWA',
+      home: const _CounterPage(),
     );
   }
 }
 
-class CounterPage extends StatefulWidget {
-  const CounterPage({super.key});
-
+class _CounterPage extends StatefulWidget {
+  const _CounterPage({super.key});
   @override
-  State<CounterPage> createState() => _CounterPageState();
+  State<_CounterPage> createState() => _CounterPageState();
 }
 
-class _CounterPageState extends State<CounterPage> {
+class _CounterPageState extends State<_CounterPage> {
   int _counter = 0;
-
-  void _increment() => setState(() => _counter++);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Counter')),
-      body: Center(
-        child: Text(
-          '$_counter',
-          style: const TextStyle(fontSize: 48),
-        ),
-      ),
+      body: Center(child: Text('$_counter')),
       floatingActionButton: FloatingActionButton(
-        onPressed: _increment,
+        onPressed: () => setState(() => _counter++),
         child: const Icon(Icons.add),
       ),
     );
