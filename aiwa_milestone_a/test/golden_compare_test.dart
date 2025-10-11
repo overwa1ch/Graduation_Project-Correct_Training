@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:csv/csv.dart';
 import 'package:path/path.dart' as p;
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import 'package:aiwa_milestone_a/pipeline/offline_pipeline.dart';
 import 'package:aiwa_milestone_a/pose/kp_models.dart';

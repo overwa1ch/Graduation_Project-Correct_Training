@@ -1,16 +1,27 @@
 name: aiwa_milestone_a
-version: 0.1.0
+description: AIWA milestone app (Flutter + ML Kit)
+publish_to: "none"
+
 environment:
   sdk: ">=3.4.0 <4.0.0"
 
 dependencies:
-  args: ^2.5.0
-  collection: ^1.18.0
-  json_annotation: ^4.9.0
+  flutter:
+    sdk: flutter
+
+  # ML Kit 姿态识别（后面里程碑 B 要用）
+  google_mlkit_pose_detection: ^0.14.0
+
+  # 这些是你上传的 CLI/导出代码常用到的依赖（避免 import 报错）
+  args: ^2.6.0
+  path: ^1.9.0
   csv: ^6.0.0
 
 dev_dependencies:
-  lints: ^5.0.0
-  test: ^1.25.0
-  build_runner: ^2.4.9
-  json_serializable: ^6.7.1
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+
