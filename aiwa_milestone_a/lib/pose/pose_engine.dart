@@ -10,11 +10,11 @@ import 'dart:typed_data';
 
 /// 中立关键点：统一名称 + 归一化坐标 + 置信度 + 可选深度
 class NeutralKeypoint {
-  final String name;   // 例如 nose、leftHip、rightKnee 等
-  final double x;      // 归一化到 [0,1]，相对于帧宽
-  final double y;      // 归一化到 [0,1]，相对于帧高（注意坐标系：屏幕/图像坐标）
-  final double? z;     // 可选（ML Kit 提供实验性 Z）
-  final double score;  // 置信度 [0,1]
+  final String name; // 例如 nose、leftHip、rightKnee 等
+  final double x; // 归一化到 [0,1]，相对于帧宽
+  final double y; // 归一化到 [0,1]，相对于帧高（注意坐标系：屏幕/图像坐标）
+  final double? z; // 可选（ML Kit 提供实验性 Z）
+  final double score; // 置信度 [0,1]
 
   const NeutralKeypoint({
     required this.name,
@@ -23,6 +23,21 @@ class NeutralKeypoint {
     required this.score,
     this.z,
   });
+
+  NeutralKeypoint copyWith({
+    double? x,
+    double? y,
+    double? score,
+    double? z,
+  }) {
+    return NeutralKeypoint(
+      name: name,
+      x: x ?? this.x,
+      y: y ?? this.y,
+      score: score ?? this.score,
+      z: z ?? this.z,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         'name': name,
@@ -35,11 +50,13 @@ class NeutralKeypoint {
 
 /// 单帧中立关键点及其时间/尺寸信息（便于导出与离线管线使用）
 class NeutralFrame {
-  final int frameIndex;      // 序号（从 0 递增）
-  final double timestampMs;  // 该帧时间戳（毫秒）
-  final int width;           // 原始帧宽（像素）
-  final int height;          // 原始帧高（像素）
+  final int frameIndex; // 序号（从 0 递增）
+  final double timestampMs; // 该帧时间戳（毫秒）
+  final int width; // 原始帧宽（像素）
+  final int height; // 原始帧高（像素）
   final List<NeutralKeypoint> keypoints;
+  final bool lowConfidence; // 当前帧是否低置信
+  final bool mirrorApplied; // 是否进行了镜像翻转
 
   const NeutralFrame({
     required this.frameIndex,
@@ -47,13 +64,15 @@ class NeutralFrame {
     required this.width,
     required this.height,
     required this.keypoints,
+    this.lowConfidence = false,
+    this.mirrorApplied = false,
   });
 
   Map<String, dynamic> toJson() => {
         'frameIndex': frameIndex,
-        'timestampMs': timestampMs,
-        'width': width,
-        'height': height,
+        'timestampMs': timestampMs.round(),
+        'lowConfidence': lowConfidence,
+        'mirrorApplied': mirrorApplied,
         'keypoints': keypoints.map((e) => e.toJson()).toList(),
       };
 }
@@ -83,6 +102,7 @@ class PoseEngineInput {
   final int rotationDeg; // 图像旋转角（如相机传感器方向）
   final int frameIndex;
   final double timestampMs;
+  final bool mirrorHorizontally;
 
   PoseEngineInput({
     required this.width,
@@ -91,6 +111,7 @@ class PoseEngineInput {
     required this.timestampMs,
     this.imageBytes,
     this.rotationDeg = 0,
+    this.mirrorHorizontally = false,
   });
 }
 
