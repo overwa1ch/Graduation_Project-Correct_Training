@@ -68,4 +68,41 @@
 ---
 
 ## 3️⃣ 输出目录规范
+build/offline_out/
+└── <video_basename>/
+├── neutral_keypoints.json # 新增输出
+├── angles.csv # 角度结果
+├── result.json # 汇总结果
+└── logs/
+├── run.log
+└── perf.json
+
+说明：  
+- `<video_basename>` 为输入视频文件名（无扩展名）。  
+- 日志目录保存运行参数与性能统计。  
+- 若启用多批次，可追加 `_vB1` 后缀区分。
+
+---
+
+## 4️⃣ 校验清单
+
+| 检查项 | 期望值 / 规则 | 结果 (PASS/FAIL) |
+|--------|---------------|------------------|
+| 文件存在 | 三件套 ( neutral_keypoints.json / angles.csv / result.json ) 齐全 | |
+| JSON 结构 | 符合 Schema 字段 & 类型 | |
+| 帧时间戳 | 单调递增 且 首帧 = 0 ms | |
+| 帧数量 | ≈ duration / (1000 / effectiveFps) ± 1 帧 | |
+| 可用帧比例 | ≥ 70 % PASS | |
+| 低置信帧比例 | ≤ 10 % PASS | |
+| 单帧推理耗时 | ≤ 35 ms | |
+| 性能报告存在 | logs/perf.json  存在且 字段完整 | |
+| 目录结构 | 符合规范 | |
+| 错误日志 | logs/run.log  无 FATAL 级别 错误 | |
+
+---
+
+## 5️⃣ 备注
+- 目录规范、Schema 和 校验清单是 Milestone B 阶段的验收基准。  
+- 校验脚本可用 Python 或 Dart 解析 JSON 后按清单逐项核对。  
+- 若与 Python baseline 比对，应确保时间戳与帧索引一致。  
 
