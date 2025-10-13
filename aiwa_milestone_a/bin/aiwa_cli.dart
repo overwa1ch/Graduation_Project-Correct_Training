@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:args/args.dart';
+import 'package:path/path.dart' as p;
 
 import 'package:aiwa_milestone_a/core/io.dart'; // 提供 jsonPretty
 import 'package:aiwa_milestone_a/spec/rule_parser.dart';
@@ -21,7 +22,9 @@ void main(List<String> args) async {
     ..addOption('strictness',
         defaultsTo: 'relaxed', allowed: ['relaxed', 'strict'])
     ..addOption('out',
-        abbr: 'o', help: 'Output dir', defaultsTo: 'build/offline_out');
+        abbr: 'o', help: 'Output dir', defaultsTo: 'build/offline_out')
+    ..addOption('video',
+        help: 'Path to original video (used for naming outputs)');
   final opts = p.parse(args);
 
   try {
@@ -35,7 +38,12 @@ void main(List<String> args) async {
 
     final out = await pipeline.run(kp);
 
-    final outDir = Directory(opts['out'])..createSync(recursive: true);
+    final baseName = opts['video'] != null
+        ? p.basenameWithoutExtension(opts['video'])
+        : p.basenameWithoutExtension(opts['keypoints']);
+
+    final outDir = Directory(p.join(opts['out'], baseName))
+      ..createSync(recursive: true);
     await File('${outDir.path}/angles.csv').writeAsString(out.anglesCsv);
     await File('${outDir.path}/result.json')
       .writeAsString(jsonPretty(out.resultJson));

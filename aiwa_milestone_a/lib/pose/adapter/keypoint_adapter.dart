@@ -76,8 +76,6 @@ List<NeutralKeypoint> adaptMlKitPose({
   required bool returnEmptyWhenLow,
 }) {
   final List<NeutralKeypoint> out = [];
-  const double defaultScore = 1.0; // 新版 ML Kit 无 inFrameLikelihood，统一置 1.0
-
   final int w = (width <= 0) ? 1 : width;
   final int h = (height <= 0) ? 1 : height;
 
@@ -86,7 +84,7 @@ List<NeutralKeypoint> adaptMlKitPose({
     if (neutralName == null) return;
 
     // 统一默认置信度
-    final double s = defaultScore;
+    final double s = landmark.likelihood.clamp(0.0, 1.0).toDouble();
     if (s < minScore) return;
 
     out.add(NeutralKeypoint(
@@ -112,7 +110,7 @@ List<NeutralKeypoint> adaptMlKitPose({
         x: (landmark.x / w).clamp(0.0, 1.0),
         y: (landmark.y / h).clamp(0.0, 1.0),
         z: keepZ ? landmark.z : null,
-        score: defaultScore,
+        score: landmark.likelihood.clamp(0.0, 1.0).toDouble(),
       ));
     });
   }
