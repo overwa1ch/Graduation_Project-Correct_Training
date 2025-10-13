@@ -63,6 +63,58 @@ const Map<PoseLandmarkType, String> _mlkitTypeToNeutralName = {
   PoseLandmarkType.rightFootIndex: 'rightFootIndex',
 };
 
+const List<PoseLandmarkType> _mlkitLandmarkOrder = [
+  PoseLandmarkType.nose,
+  PoseLandmarkType.leftEyeInner,
+  PoseLandmarkType.leftEye,
+  PoseLandmarkType.leftEyeOuter,
+  PoseLandmarkType.rightEyeInner,
+  PoseLandmarkType.rightEye,
+  PoseLandmarkType.rightEyeOuter,
+  PoseLandmarkType.leftEar,
+  PoseLandmarkType.rightEar,
+  PoseLandmarkType.leftMouth,
+  PoseLandmarkType.rightMouth,
+  PoseLandmarkType.leftShoulder,
+  PoseLandmarkType.rightShoulder,
+  PoseLandmarkType.leftElbow,
+  PoseLandmarkType.rightElbow,
+  PoseLandmarkType.leftWrist,
+  PoseLandmarkType.rightWrist,
+  PoseLandmarkType.leftPinky,
+  PoseLandmarkType.rightPinky,
+  PoseLandmarkType.leftIndex,
+  PoseLandmarkType.rightIndex,
+  PoseLandmarkType.leftThumb,
+  PoseLandmarkType.rightThumb,
+  PoseLandmarkType.leftHip,
+  PoseLandmarkType.rightHip,
+  PoseLandmarkType.leftKnee,
+  PoseLandmarkType.rightKnee,
+  PoseLandmarkType.leftAnkle,
+  PoseLandmarkType.rightAnkle,
+  PoseLandmarkType.leftHeel,
+  PoseLandmarkType.rightHeel,
+  PoseLandmarkType.leftFootIndex,
+  PoseLandmarkType.rightFootIndex,
+];
+
+const int kMlKitNeutralKeypointCount = _mlkitLandmarkOrder.length;
+
+double? _extractLikelihood(PoseLandmark landmark) {
+  final dynamic dynamicLandmark = landmark;
+  try {
+    final value = dynamicLandmark.likelihood;
+    if (value is num) {
+      return value.toDouble();
+    }
+  } catch (_) {
+    // google_mlkit_pose_detection 0.14.0 移除了公开的 inFrameLikelihood，
+    // 通过 dynamic 访问以兼容不同版本；若不存在则返回 null。
+  }
+  return null;
+}
+
 /// 将 ML Kit 的 Pose → List<NeutralKeypoint>
 /// - 会做坐标归一化（x/width, y/height）
 /// - 可选筛除低置信度点
@@ -76,18 +128,20 @@ List<NeutralKeypoint> adaptMlKitPose({
   required bool returnEmptyWhenLow,
 }) {
   final List<NeutralKeypoint> out = [];
-  const double defaultScore = 1.0; // 新版 ML Kit 无 inFrameLikelihood，统一置 1.0
-
   final int w = (width <= 0) ? 1 : width;
   final int h = (height <= 0) ? 1 : height;
 
-  void emit(PoseLandmarkType type, PoseLandmark landmark) {
-    final neutralName = _mlkitTypeToNeutralName[type];
-    if (neutralName == null) return;
+  for (final type in _mlkitLandmarkOrder) {
+    final landmark = pose.landmarks[type];
+    if (landmark == null) continue;
 
-    // 统一默认置信度
-    final double s = defaultScore;
-    if (s < minScore) return;
+    final neutralName = _mlkitTypeToNeutralName[type];
+    if (neutralName == null) continue;
+
+    final double s = (_extractLikelihood(landmark) ?? 1.0).clamp(0.0, 1.0);
+    if (s < minScore) {
+      continue;
+    }
 
     out.add(NeutralKeypoint(
       name: neutralName,
@@ -98,23 +152,22 @@ List<NeutralKeypoint> adaptMlKitPose({
     ));
   }
 
-  // 第一轮：按 minScore 过滤（虽然默认 1.0 基本不过滤，但保留接口一致性）
-  pose.landmarks.forEach(emit);
-
-  // 可选 fail-soft：若被过滤为空且不允许空，放宽返回全部点（score 仍为 1.0）
   if (out.isEmpty && !returnEmptyWhenLow) {
-    pose.landmarks.forEach((type, landmark) {
+    for (final type in _mlkitLandmarkOrder) {
+      final landmark = pose.landmarks[type];
+      if (landmark == null) continue;
+
       final neutralName = _mlkitTypeToNeutralName[type];
-      if (neutralName == null) return;
+      if (neutralName == null) continue;
 
       out.add(NeutralKeypoint(
         name: neutralName,
         x: (landmark.x / w).clamp(0.0, 1.0),
         y: (landmark.y / h).clamp(0.0, 1.0),
         z: keepZ ? landmark.z : null,
-        score: defaultScore,
+        score: (_extractLikelihood(landmark) ?? 1.0).clamp(0.0, 1.0),
       ));
-    });
+    }
   }
 
   return out;
