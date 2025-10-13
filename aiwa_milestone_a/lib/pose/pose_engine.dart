@@ -51,7 +51,7 @@ class NeutralKeypoint {
 /// 单帧中立关键点及其时间/尺寸信息（便于导出与离线管线使用）
 class NeutralFrame {
   final int frameIndex; // 序号（从 0 递增）
-  final int timestampMs; // 该帧时间戳（毫秒）
+  final double timestampMs; // 该帧时间戳（毫秒）
   final int width; // 原始帧宽（像素）
   final int height; // 原始帧高（像素）
   final List<NeutralKeypoint> keypoints;
@@ -70,7 +70,7 @@ class NeutralFrame {
 
   Map<String, dynamic> toJson() => {
         'frameIndex': frameIndex,
-        'timestampMs': timestampMs,
+        'timestampMs': timestampMs.round(),
         'lowConfidence': lowConfidence,
         'mirrorApplied': mirrorApplied,
         'keypoints': keypoints.map((e) => e.toJson()).toList(),
@@ -101,7 +101,7 @@ class PoseEngineInput {
   final int height;
   final int rotationDeg; // 图像旋转角（如相机传感器方向）
   final int frameIndex;
-  final int timestampMs;
+  final double timestampMs;
   final bool mirrorHorizontally;
 
   PoseEngineInput({

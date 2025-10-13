@@ -46,7 +46,6 @@ class FrameStreamResult {
   final int width;
   final int height;
   final double frameIntervalMs;
-  final int durationMs;
 
   const FrameStreamResult({
     required this.config,
@@ -54,8 +53,10 @@ class FrameStreamResult {
     required this.width,
     required this.height,
     required this.frameIntervalMs,
-    required this.durationMs,
   });
+
+  int get durationMs =>
+      frames.isEmpty ? 0 : frames.last.timestampMs.round();
 
   Map<String, dynamic> toNeutralKeypointsJson() => {
         'version': 'vB1.1',
@@ -100,7 +101,6 @@ class FrameStreamer {
     var processedIndex = 0;
     var sourceIndex = 0;
     final frameIntervalMs = 1000.0 * _config.stride / _config.fps;
-    var timestampAccumulatorMs = 0.0;
 
     try {
       await for (final raw in frameStream) {
@@ -114,26 +114,22 @@ class FrameStreamer {
           continue;
         }
 
-        final frameTimestampMs = timestampAccumulatorMs.round();
         final frame = await _engine.infer(PoseEngineInput(
           imageBytes: raw.bytes,
           width: raw.width,
           height: raw.height,
           rotationDeg: raw.rotationDeg,
           frameIndex: processedIndex,
-          timestampMs: frameTimestampMs,
+          timestampMs: processedIndex * frameIntervalMs,
           mirrorHorizontally: _config.mirror,
         ));
 
         outputs.add(frame);
         processedIndex++;
-        timestampAccumulatorMs += frameIntervalMs;
       }
     } finally {
       await _engine.close();
     }
-
-    final totalDurationMs = outputs.isEmpty ? 0 : timestampAccumulatorMs.round();
 
     return FrameStreamResult(
       config: _config,
@@ -141,7 +137,6 @@ class FrameStreamer {
       width: firstWidth ?? 0,
       height: firstHeight ?? 0,
       frameIntervalMs: frameIntervalMs,
-      durationMs: totalDurationMs,
     );
   }
 }

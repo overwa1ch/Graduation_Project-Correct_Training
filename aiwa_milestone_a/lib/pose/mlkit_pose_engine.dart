@@ -104,17 +104,17 @@ class MlKitPoseEngine implements PoseEngine {
             .map((kp) =>
                 kp.copyWith(x: (1.0 - kp.x).clamp(0.0, 1.0).toDouble()))
             .toList(growable: false)
-        : List<NeutralKeypoint>.from(keypoints, growable: false);
+        : keypoints;
 
-    final filtered =
-        processed.where((kp) => kp.score >= 0.3).toList(growable: false);
+    final totalCount = processed.length;
     final highConfidenceCount =
         processed.where((kp) => kp.score >= 0.5).length;
-    final highConfidenceRatio = kMlKitNeutralKeypointCount == 0
-        ? 0.0
-        : highConfidenceCount / kMlKitNeutralKeypointCount;
-    final bool lowConfidence =
-        processed.isEmpty || highConfidenceRatio < 0.7;
+    final filtered =
+        processed.where((kp) => kp.score >= 0.3).toList(growable: false);
+
+    final bool lowConfidence = totalCount == 0
+        ? true
+        : (highConfidenceCount / totalCount) < 0.7;
 
     return NeutralFrame(
       frameIndex: input.frameIndex,

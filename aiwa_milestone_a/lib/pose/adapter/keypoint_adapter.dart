@@ -124,10 +124,9 @@ List<NeutralKeypoint> adaptMlKitPose({
     final neutralName = _mlkitTypeToNeutralName[type];
     if (neutralName == null) continue;
 
+    // 统一默认置信度
     final double s = landmark.likelihood.clamp(0.0, 1.0).toDouble();
-    if (s < minScore) {
-      continue;
-    }
+    if (s < minScore) return;
 
     out.add(NeutralKeypoint(
       name: neutralName,
