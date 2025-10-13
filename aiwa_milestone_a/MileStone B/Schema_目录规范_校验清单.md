@@ -1,12 +1,13 @@
-# AIWA Milestone B 输出规范文档（vB1）
+# AIWA Milestone B 输出规范文档（vB1.1）
+
 ---
 
-## 1️⃣ neutral_keypoints.json Schema（vB1）
+## 1️⃣ neutral_keypoints.json Schema（vB1.1）
 
 ### 顶层结构
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| version | string | 固定 `"vB1"` |
+| version | string | 固定 `"vB1.1"` |
 | video | object | 视频信息 |
 | engine | object | 推理引擎信息 |
 | sampling | object | 采样参数 |
@@ -38,6 +39,7 @@
 | frameIndex | int | 帧序号 |
 | timestampMs | int | 相对首帧 0 ms |
 | lowConfidence | bool | 帧是否低置信 |
+| mirrorApplied | bool | 是否在适配层执行了左右翻转（前置摄像头为 true） |
 | keypoints | array<Keypoint> | 当前帧关键点 |
 
 ### Keypoint
@@ -52,7 +54,8 @@
 - 单点阈值：score < 0.3 → 剔除。  
 - 可用帧阈值：≥ 70 % 关键点 score ≥ 0.5 → 可用。  
 - 否则 Frame.lowConfidence = true。  
-- 时间戳单调递增，间隔 ≈ 66.67 ms (30 fps 抽 2 帧)。
+- 时间戳单调递增，间隔 ≈ 66.67 ms (30 fps 抽 2 帧)。  
+- 前置摄像头输入需镜像翻转：`x' = 1 - x`，并在 `mirrorApplied` 标记为 true。
 
 ---
 
@@ -68,19 +71,26 @@
 ---
 
 ## 3️⃣ 输出目录规范
+```
 build/offline_out/
 └── <video_basename>/
-├── neutral_keypoints.json # 新增输出
-├── angles.csv # 角度结果
-├── result.json # 汇总结果
-└── logs/
-├── run.log
-└── perf.json
+    ├── neutral_keypoints.json     # 新增输出
+    ├── angles.csv                 # 角度结果
+    ├── result.json                # 汇总结果
+    ├── overlay.mp4                # 骨架叠加回放（可选）
+    └── logs/
+        ├── run.log
+        └── perf.json
+```
 
 说明：  
 - `<video_basename>` 为输入视频文件名（无扩展名）。  
 - 日志目录保存运行参数与性能统计。  
-- 若启用多批次，可追加 `_vB1` 后缀区分。
+- 若启用多批次，可追加 `_vB1.1` 后缀区分。  
+- `overlay.mp4` 为可选验证产物，用于可视化关键点与滤波结果；  
+  推荐 15 fps 导出以减少体积；  
+  主要用于人工核查动作计数、翻转是否正确，不计入性能指标；  
+  若存在则校验脚本可记录 `hasOverlay = true`。
 
 ---
 
@@ -95,14 +105,17 @@ build/offline_out/
 | 可用帧比例 | ≥ 70 % PASS | |
 | 低置信帧比例 | ≤ 10 % PASS | |
 | 单帧推理耗时 | ≤ 35 ms | |
-| 性能报告存在 | logs/perf.json  存在且 字段完整 | |
+| 性能报告存在 | logs/perf.json 存在且 字段完整 | |
 | 目录结构 | 符合规范 | |
-| 错误日志 | logs/run.log  无 FATAL 级别 错误 | |
+| 错误日志 | logs/run.log 无 FATAL 级别 错误 | |
+| mirrorApplied 字段 | 前置摄像头帧 = true，后置 = false | |
+| overlay 视频 | overlay.mp4 存在 且 时长≈duration ± 1 s （可选） | |
 
 ---
 
 ## 5️⃣ 备注
 - 目录规范、Schema 和 校验清单是 Milestone B 阶段的验收基准。  
+- 适配层负责坐标归一化与镜像修正。  
+- 骨架回放视频可作为可视化验证结果的附加输出。  
 - 校验脚本可用 Python 或 Dart 解析 JSON 后按清单逐项核对。  
-- 若与 Python baseline 比对，应确保时间戳与帧索引一致。  
-
+- 若与 Python baseline 比对，应确保时间戳与帧索引一致。
