@@ -115,54 +115,15 @@ double? _extractLikelihood(PoseLandmark landmark) {
   return null;
 }
 
-Map<PoseLandmarkType, PoseLandmark> _landmarksByType(Pose pose) {
+Iterable<PoseLandmark> _iterableLandmarks(Pose pose) {
   final dynamic rawLandmarks = pose.landmarks;
-  if (rawLandmarks is Map<PoseLandmarkType, PoseLandmark>) {
+  if (rawLandmarks is Iterable<PoseLandmark>) {
     return rawLandmarks;
   }
-
-  if (rawLandmarks is Map) {
-    final result = <PoseLandmarkType, PoseLandmark>{};
-    for (final entry in rawLandmarks.entries) {
-      final dynamic key = entry.key;
-      final dynamic value = entry.value;
-
-      PoseLandmark? landmark;
-      if (value is PoseLandmark) {
-        landmark = value;
-      } else if (key is PoseLandmark) {
-        landmark = key;
-      }
-
-      if (landmark == null) {
-        continue;
-      }
-
-      final PoseLandmarkType? type =
-          key is PoseLandmarkType ? key : landmark.type;
-      if (type != null) {
-        result[type] = landmark;
-      }
-    }
-    if (result.isNotEmpty) {
-      return result;
-    }
+  if (rawLandmarks is Map<Object?, PoseLandmark>) {
+    return rawLandmarks.values;
   }
-
-  if (rawLandmarks is Iterable<PoseLandmark>) {
-    return {
-      for (final landmark in rawLandmarks) landmark.type: landmark,
-    };
-  }
-
-  if (rawLandmarks is Iterable) {
-    return {
-      for (final item in rawLandmarks)
-        if (item is PoseLandmark) item.type: item,
-    };
-  }
-
-  return <PoseLandmarkType, PoseLandmark>{};
+  return const <PoseLandmark>[];
 }
 
 double _clampUnit(num value) => value.clamp(0.0, 1.0).toDouble();
@@ -183,8 +144,9 @@ List<NeutralKeypoint> adaptMlKitPose({
   final int w = (width <= 0) ? 1 : width;
   final int h = (height <= 0) ? 1 : height;
 
-  final Map<PoseLandmarkType, PoseLandmark> landmarksByType =
-      _landmarksByType(pose);
+  final Map<PoseLandmarkType, PoseLandmark> landmarksByType = {
+    for (final landmark in pose.landmarks) landmark.type: landmark,
+  };
 
   for (final type in _mlkitLandmarkOrder) {
     final landmark = landmarksByType[type];
