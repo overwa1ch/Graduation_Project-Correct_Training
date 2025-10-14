@@ -1,5 +1,6 @@
 // kp_models.dart
 import 'dart:convert';
+
 import '../core/errors.dart';
 
 class KPFrame {
@@ -107,11 +108,13 @@ KeypointSeries parseKeypointSeries(String jsonStr) {
     throw InputKpInvalid('Invalid JSON: $e');
   }
 
-  // fps
+  return parseKeypointSeriesFromMap(m);
+}
+
+KeypointSeries parseKeypointSeriesFromMap(Map<String, dynamic> m) {
   final fps = _asDouble(m['fps'], 'fps');
   if (fps <= 0) throw InputKpInvalid('fps must be > 0');
 
-  // frames
   final framesRaw = m['frames'];
   if (framesRaw is! List) {
     throw InputKpInvalid('frames must be a List, got ${framesRaw.runtimeType}');
@@ -137,9 +140,9 @@ KeypointSeries parseKeypointSeries(String jsonStr) {
 
     final pts = _normalizePts(f['pts'], 'frames[$i].pts');
 
-    // A阶段：必须为 MoveNet17（17 点）
     if (pts.length != 17) {
-      throw ModelAdapterMissing('Milestone A requires 17 keypoints (MoveNet17), got ${pts.length} at frames[$i].pts');
+      throw ModelAdapterMissing(
+          'Milestone A requires 17 keypoints (MoveNet17), got ${pts.length} at frames[$i].pts');
     }
 
     frames.add(KPFrame(tMs, pts));

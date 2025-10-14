@@ -1,0 +1,30 @@
+{
+  "KneeFlex": {
+    "points": ["leftHip", "leftKnee", "leftAnkle"],
+    "mirrorPoints": ["rightHip", "rightKnee", "rightAnkle"],
+    "downDeg": 90,
+    "upDeg": 150,
+    "phase": "primary"
+  },
+  "HipFlex": {
+    "points": ["leftShoulder", "leftHip", "leftKnee"],
+    "mirrorPoints": ["rightShoulder", "rightHip", "rightKnee"],
+    "downDeg": 70,
+    "upDeg": 140
+  },
+  "AnkleDorsiFlex": {
+    "points": ["leftKnee", "leftAnkle", "leftFootIndex"],
+    "mirrorPoints": ["rightKnee", "rightAnkle", "rightFootIndex"],
+    "scoreThreshold": 0.5
+  },
+  "TorsoPitch": {
+    "points": ["midShoulder", "midHip"],
+    "reference": "vertical",
+    "warnDeg": 60
+  },
+  "KneeValgus": {
+    "points": ["leftHip", "leftKnee", "leftAnkle"],
+    "mirrorPoints": ["rightHip", "rightKnee", "rightAnkle"],
+    "plane": "horizontal"
+  }
+}

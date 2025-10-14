@@ -4,8 +4,8 @@ import '../core/errors.dart';
 import '../core/rounding.dart';
 import '../math/angles.dart';
 import '../math/one_euro.dart';
-import '../pose/kp_models.dart';
-import '../pose/movenet17_adapter.dart';
+import '../pose/keypoint_names.dart';
+import 'pose_series.dart';
 import '../result/csv_export.dart';
 import '../spec/rule_models.dart';
 
@@ -19,11 +19,11 @@ class OfflinePipeline {
   OfflinePipeline(this.rules, this.strictness);
 
   Future<({String anglesCsv, Map<String, dynamic> resultJson})> run(
-      KeypointSeries kp) async {
-    final frames = kp.frames;
-    final tMs = frames.map((f) => f.tMs).toList(growable: false);
+      PoseSeries series) async {
+    final frames = series.frames;
+    final tMs = frames.map((f) => f.timestampMs).toList(growable: false);
 
-    final filteredPts = _filterKeypoints(frames);
+    final filteredPts = _filterKeypoints(series);
     final rawAngles = _computeAngles(filteredPts);
 
     final hasAnyKnee = rawAngles.kneeL.any((v) => v != null) ||
@@ -37,12 +37,12 @@ class OfflinePipeline {
       throw AngleComputeFailed('No valid trunk angles available for analysis.');
     }
 
-    final angles = _smoothAngles(kp.fps, rawAngles);
+    final angles = _smoothAngles(series.fps, rawAngles);
 
     final rows = <List<num?>>[];
     for (var i = 0; i < frames.length; i++) {
       rows.add([
-        frames[i].tMs,
+        frames[i].timestampMs,
         angles.kneeL[i],
         angles.kneeR[i],
         angles.trunk[i],
@@ -83,8 +83,7 @@ class OfflinePipeline {
       minValleyKneeAngle: minValley,
     );
 
-    final quality = computeQualityFromKeypoints(
-        frames.map((f) => f.pts.map((e) => e.cast<num>()).toList()).toList());
+    final quality = computeQualityFromKeypoints(frames);
 
     final metrics = rules.metrics;
     final depthSpec = (metrics['depth'] as Map)['kneeAngleMin'] as Map;
@@ -221,9 +220,16 @@ class OfflinePipeline {
     final resultJson = <String, dynamic>{
       'meta': {
         'template': rules.template,
-        'fps': kp.fps,
+        'fps': series.fps,
         'ruleVersion': rules.version,
         'strictness': strictness.value,
+        if (series.metadata.engine != null) 'engine': series.metadata.engine,
+        if (series.metadata.engineVersion != null)
+          'engineVersion': series.metadata.engineVersion,
+        if (series.metadata.inputResolution != null)
+          'inputResolution': series.metadata.inputResolution,
+        if (series.metadata.samplingStride != null)
+          'samplingStride': series.metadata.samplingStride,
       },
       'quality': {
         'coverage': quality.coverage,
@@ -325,7 +331,7 @@ List<_RepMetrics> _collectRepMetrics({
   required List<double?> mainKnee,
   required List<Rep> reps,
   required List<double?> trunk,
-  required List<List<List<double>>> filteredPts,
+  required List<Map<String, _PoseCoord?>> filteredPts,
   required int valgusWindowMs,
 }) {
   final indexByTime = <int, int>{};
@@ -370,8 +376,8 @@ List<_RepMetrics> _collectRepMetrics({
 
     for (final idx in valgusIndices) {
       final pts = filteredPts[idx];
-      final left = _kneeOutAngle(pts, L_HIP, L_KNEE, L_ANKLE);
-      final right = _kneeOutAngle(pts, R_HIP, R_KNEE, R_ANKLE);
+      final left = _kneeOutAngle(pts, kLeftHip, kLeftKnee, kLeftAnkle);
+      final right = _kneeOutAngle(pts, kRightHip, kRightKnee, kRightAnkle);
       final candidates = <double>[];
       if (left != null) candidates.add(left);
       if (right != null) candidates.add(right);
@@ -652,39 +658,55 @@ double _average(List<double> values) {
 }
 
 ({List<double?> kneeL, List<double?> kneeR, List<double?> trunk}) _computeAngles(
-    List<List<List<double>>> filteredPts) {
+    List<Map<String, _PoseCoord?>> filteredPts) {
   final kneeL = <double?>[];
   final kneeR = <double?>[];
   final trunk = <double?>[];
 
   for (final pts in filteredPts) {
-    kneeL.add(_kneeAngle(pts, L_HIP, L_KNEE, L_ANKLE));
-    kneeR.add(_kneeAngle(pts, R_HIP, R_KNEE, R_ANKLE));
+    kneeL.add(_kneeAngle(pts, kLeftHip, kLeftKnee, kLeftAnkle));
+    kneeR.add(_kneeAngle(pts, kRightHip, kRightKnee, kRightAnkle));
     trunk.add(_trunkAngle(pts));
   }
 
   return (kneeL: kneeL, kneeR: kneeR, trunk: trunk);
 }
 
-double? _kneeAngle(List<List<double>> pts, int hipIdx, int kneeIdx, int ankleIdx) {
+class _PoseCoord {
+  final double x;
+  final double y;
+  const _PoseCoord(this.x, this.y);
+}
+
+double? _kneeAngle(Map<String, _PoseCoord?> pts, String hip, String knee,
+    String ankle) {
   try {
-    final hip = V2(pts[hipIdx][0], pts[hipIdx][1]);
-    final knee = V2(pts[kneeIdx][0], pts[kneeIdx][1]);
-    final ankle = V2(pts[ankleIdx][0], pts[ankleIdx][1]);
-    return angleABC(hip, knee, ankle);
+    final hipPt = pts[hip];
+    final kneePt = pts[knee];
+    final anklePt = pts[ankle];
+    if (hipPt == null || kneePt == null || anklePt == null) {
+      return null;
+    }
+    final hipV = V2(hipPt.x, hipPt.y);
+    final kneeV = V2(kneePt.x, kneePt.y);
+    final ankleV = V2(anklePt.x, anklePt.y);
+    return angleABC(hipV, kneeV, ankleV);
   } catch (_) {
     return null;
   }
 }
 
-double? _kneeOutAngle(
-    List<List<double>> pts, int hipIdx, int kneeIdx, int ankleIdx) {
+double? _kneeOutAngle(Map<String, _PoseCoord?> pts, String hip, String knee,
+    String ankle) {
   try {
-    final hip = V2(pts[hipIdx][0], pts[hipIdx][1]);
-    final knee = V2(pts[kneeIdx][0], pts[kneeIdx][1]);
-    final ankle = V2(pts[ankleIdx][0], pts[ankleIdx][1]);
-    final thigh = V2(knee.x - hip.x, knee.y - hip.y);
-    final shank = V2(ankle.x - knee.x, ankle.y - knee.y);
+    final hipPt = pts[hip];
+    final kneePt = pts[knee];
+    final anklePt = pts[ankle];
+    if (hipPt == null || kneePt == null || anklePt == null) {
+      return null;
+    }
+    final thigh = V2(kneePt.x - hipPt.x, kneePt.y - hipPt.y);
+    final shank = V2(anklePt.x - kneePt.x, anklePt.y - kneePt.y);
     final thighDeg = _angleFromVertical(thigh);
     final shankDeg = _angleFromVertical(shank);
     return (thighDeg + shankDeg) / 2.0;
@@ -693,15 +715,23 @@ double? _kneeOutAngle(
   }
 }
 
-double? _trunkAngle(List<List<double>> pts) {
+double? _trunkAngle(Map<String, _PoseCoord?> pts) {
   try {
+    final leftShoulder = pts[kLeftShoulder];
+    final rightShoulder = pts[kRightShoulder];
+    final leftHip = pts[kLeftHip];
+    final rightHip = pts[kRightHip];
+    if (leftShoulder == null || rightShoulder == null || leftHip == null ||
+        rightHip == null) {
+      return null;
+    }
     final shoulder = V2(
-      (pts[L_SHOULDER][0] + pts[R_SHOULDER][0]) / 2.0,
-      (pts[L_SHOULDER][1] + pts[R_SHOULDER][1]) / 2.0,
+      (leftShoulder.x + rightShoulder.x) / 2.0,
+      (leftShoulder.y + rightShoulder.y) / 2.0,
     );
     final hip = V2(
-      (pts[L_HIP_IDX][0] + pts[R_HIP_IDX][0]) / 2.0,
-      (pts[L_HIP_IDX][1] + pts[R_HIP_IDX][1]) / 2.0,
+      (leftHip.x + rightHip.x) / 2.0,
+      (leftHip.y + rightHip.y) / 2.0,
     );
     return trunkAngle(shoulder, hip);
   } catch (_) {
@@ -717,22 +747,128 @@ double _angleFromVertical(V2 v) {
   return deg <= 90 ? deg : 180 - deg;
 }
 
-List<List<List<double>>> _filterKeypoints(List<KPFrame> frames) {
-  const kpCount = 17;
-  final copied = <List<List<double>>>[];
-  for (final frame in frames) {
-    final pts = <List<double>>[];
-    for (var i = 0; i < kpCount; i++) {
-      final raw = frame.pts[i];
-      pts.add([
-        raw[0].toDouble(),
-        raw[1].toDouble(),
-        raw[2].toDouble(),
-      ]);
+List<Map<String, _PoseCoord?>> _filterKeypoints(PoseSeries series) {
+  final frameCount = series.frames.length;
+  final trackedNames = {
+    ...kPoseSeriesRequiredJoints,
+  };
+
+  final rawTracks = {
+    for (final name in trackedNames) name: <_PoseCoord?>[],
+  };
+
+  for (final frame in series.frames) {
+    for (final entry in rawTracks.entries) {
+      final name = entry.key;
+      final kp = frame.keypoints[name];
+      if (kp != null && kp.isReliable) {
+        entry.value.add(_PoseCoord(kp.x, kp.y));
+      } else {
+        entry.value.add(null);
+      }
     }
-    copied.add(pts);
   }
-  return copied;
+
+  final interpolated = {
+    for (final entry in rawTracks.entries)
+      entry.key: _interpolateCoords(entry.value, maxGap: 3),
+  };
+
+  final filteredTracks = {
+    for (final entry in interpolated.entries)
+      entry.key: _applyOneEuro(entry.value, series.fps),
+  };
+
+  final frames = List.generate(
+    frameCount,
+    (_) => <String, _PoseCoord?>{},
+    growable: false,
+  );
+
+  for (final entry in filteredTracks.entries) {
+    final name = entry.key;
+    final track = entry.value;
+    for (var i = 0; i < track.length; i++) {
+      frames[i][name] = track[i];
+    }
+  }
+
+  return frames;
+}
+
+List<_PoseCoord?> _interpolateCoords(List<_PoseCoord?> values,
+    {required int maxGap}) {
+  final result = List<_PoseCoord?>.from(values);
+  var index = 0;
+  while (index < result.length) {
+    if (result[index] != null) {
+      index++;
+      continue;
+    }
+
+    final gapStart = index;
+    while (index < result.length && result[index] == null) {
+      index++;
+    }
+    final gapEnd = index - 1;
+    final gapLength = gapEnd - gapStart + 1;
+
+    int? prevIdx = gapStart - 1;
+    while (prevIdx != null && prevIdx >= 0 && result[prevIdx] == null) {
+      prevIdx--;
+    }
+    if (prevIdx != null && prevIdx < 0) {
+      prevIdx = null;
+    }
+
+    int? nextIdx = index;
+    while (nextIdx != null && nextIdx < result.length && result[nextIdx] == null) {
+      nextIdx++;
+    }
+    if (nextIdx != null && nextIdx >= result.length) {
+      nextIdx = null;
+    }
+
+    if (prevIdx == null || nextIdx == null || gapLength > maxGap) {
+      continue;
+    }
+
+    final start = result[prevIdx]!;
+    final end = result[nextIdx]!;
+    final span = nextIdx - prevIdx;
+    for (var offset = 1; offset <= gapLength; offset++) {
+      final ratio = offset / span;
+      final x = start.x + (end.x - start.x) * ratio;
+      final y = start.y + (end.y - start.y) * ratio;
+      result[gapStart + offset - 1] = _PoseCoord(x, y);
+    }
+  }
+
+  return result;
+}
+
+List<_PoseCoord?> _applyOneEuro(List<_PoseCoord?> values, double fps) {
+  if (fps <= 0) {
+    return List<_PoseCoord?>.from(values);
+  }
+
+  final filterX = OneEuroFilter(minCutoff: 1.0, beta: 0.01, dCutoff: 1.0);
+  final filterY = OneEuroFilter(minCutoff: 1.0, beta: 0.01, dCutoff: 1.0);
+  final result = List<_PoseCoord?>.from(values);
+
+  for (var i = 0; i < values.length; i++) {
+    final sample = values[i];
+    if (sample == null) {
+      result[i] = null;
+      continue;
+    }
+    final t = i / fps;
+    final fx = filterX.filter(t, sample.x);
+    final fy = filterY.filter(t, sample.y);
+    result[i] = _PoseCoord(fx, fy);
+  }
+
+  return result;
 }
 
 double? _angleAt(List<double?> angles, List<int> tMs, int targetMs) {
