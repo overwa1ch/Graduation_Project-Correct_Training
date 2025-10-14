@@ -131,8 +131,12 @@ List<NeutralKeypoint> adaptMlKitPose({
   final int w = (width <= 0) ? 1 : width;
   final int h = (height <= 0) ? 1 : height;
 
+  final Map<PoseLandmarkType, PoseLandmark> landmarksByType = {
+    for (final landmark in pose.landmarks) landmark.type: landmark,
+  };
+
   for (final type in _mlkitLandmarkOrder) {
-    final landmark = pose.landmarks[type];
+    final landmark = landmarksByType[type];
     if (landmark == null) continue;
 
     final neutralName = _mlkitTypeToNeutralName[type];
@@ -154,7 +158,7 @@ List<NeutralKeypoint> adaptMlKitPose({
 
   if (out.isEmpty && !returnEmptyWhenLow) {
     for (final type in _mlkitLandmarkOrder) {
-      final landmark = pose.landmarks[type];
+      final landmark = landmarksByType[type];
       if (landmark == null) continue;
 
       final neutralName = _mlkitTypeToNeutralName[type];
