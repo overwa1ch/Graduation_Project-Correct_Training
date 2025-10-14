@@ -60,6 +60,7 @@ class FrameStreamResult {
   Map<String, dynamic> toNeutralKeypointsJson() => {
         'version': 'vB1.1',
         'video': {
+          'basename': config.videoBasename,
           'fpsIntended': config.fps,
           'width': width,
           'height': height,

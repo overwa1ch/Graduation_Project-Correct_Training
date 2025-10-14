@@ -3,12 +3,14 @@ import 'dart:convert';
 import 'keypoint_names.dart';
 
 class NeutralVideoInfo {
+  final String basename;
   final double fpsIntended;
   final int width;
   final int height;
   final int durationMs;
 
   const NeutralVideoInfo({
+    required this.basename,
     required this.fpsIntended,
     required this.width,
     required this.height,
@@ -150,7 +152,11 @@ NeutralKeypointSeries parseNeutralKeypointSeriesFromMap(
   }
 
   final videoMap = _asMap(root['video'], 'video');
+  final basename = videoMap.containsKey('basename')
+      ? _asString(videoMap['basename'], 'video.basename')
+      : '';
   final video = NeutralVideoInfo(
+    basename: basename,
     fpsIntended: _asDouble(videoMap['fpsIntended'], 'video.fpsIntended'),
     width: _asInt(videoMap['width'], 'video.width'),
     height: _asInt(videoMap['height'], 'video.height'),
@@ -256,3 +262,40 @@ NeutralKeypointSeries parseNeutralKeypointSeriesFromMap(
     frames: frames,
   );
 }
+
+Map<String, dynamic> neutralKeypointSeriesToJson(NeutralKeypointSeries series) => {
+      'version': series.version,
+      'video': {
+        'basename': series.video.basename,
+        'fpsIntended': series.video.fpsIntended,
+        'width': series.video.width,
+        'height': series.video.height,
+        'durationMs': series.video.durationMs,
+      },
+      'engine': {
+        'name': series.engine.name,
+        'model': series.engine.model,
+        'sdkVersion': series.engine.sdkVersion,
+      },
+      'sampling': {
+        'stride': series.sampling.stride,
+        'effectiveFps': series.sampling.effectiveFps,
+      },
+      'frames': series.frames
+          .map((frame) => {
+                'frameIndex': frame.frameIndex,
+                'timestampMs': frame.timestampMs,
+                'lowConfidence': frame.lowConfidence,
+                'mirrorApplied': frame.mirrorApplied,
+                'keypoints': frame.keypoints
+                    .map((kp) => {
+                          'name': kp.name,
+                          'x': kp.x,
+                          'y': kp.y,
+                          if (kp.z != null) 'z': kp.z,
+                          'score': kp.score,
+                        })
+                    .toList(),
+              })
+          .toList(),
+    };
