@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:aiwa_milestone_a/pipeline/offline_pipeline.dart';
+import 'package:aiwa_milestone_a/pipeline/pose_input_converter.dart';
 import 'package:aiwa_milestone_a/pose/kp_models.dart';
 import 'package:aiwa_milestone_a/spec/rule_models.dart';
 import 'package:aiwa_milestone_a/spec/rule_parser.dart';
@@ -17,9 +18,10 @@ void main() {
     final rulePath = p.join(root, 'test', 'fixtures', 'squat.v1.json');
 
     final kp = parseKeypointSeries(await File(kpPath).readAsString());
+    final poseSeries = poseSeriesFromLegacy(kp);
     final rs = parseRuleSet(await File(rulePath).readAsString());
     final pipe = OfflinePipeline(rs, Strictness.relaxed);
-    final out = await pipe.run(kp);
+    final out = await pipe.run(poseSeries);
 
     final tmpDir = await Directory.systemTemp.createTemp('aiwa_baseline_');
     try {
