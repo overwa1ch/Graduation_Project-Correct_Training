@@ -115,6 +115,19 @@ double? _extractLikelihood(PoseLandmark landmark) {
   return null;
 }
 
+Iterable<PoseLandmark> _iterableLandmarks(Pose pose) {
+  final dynamic rawLandmarks = pose.landmarks;
+  if (rawLandmarks is Iterable<PoseLandmark>) {
+    return rawLandmarks;
+  }
+  if (rawLandmarks is Map<Object?, PoseLandmark>) {
+    return rawLandmarks.values;
+  }
+  return const <PoseLandmark>[];
+}
+
+double _clampUnit(num value) => value.clamp(0.0, 1.0).toDouble();
+
 /// 将 ML Kit 的 Pose → List<NeutralKeypoint>
 /// - 会做坐标归一化（x/width, y/height）
 /// - 可选筛除低置信度点
@@ -131,22 +144,26 @@ List<NeutralKeypoint> adaptMlKitPose({
   final int w = (width <= 0) ? 1 : width;
   final int h = (height <= 0) ? 1 : height;
 
+  final Map<PoseLandmarkType, PoseLandmark> landmarksByType = {
+    for (final landmark in _iterableLandmarks(pose)) landmark.type: landmark,
+  };
+
   for (final type in _mlkitLandmarkOrder) {
-    final landmark = pose.landmarks[type];
+    final landmark = landmarksByType[type];
     if (landmark == null) continue;
 
     final neutralName = _mlkitTypeToNeutralName[type];
     if (neutralName == null) continue;
 
-    final double s = (_extractLikelihood(landmark) ?? 1.0).clamp(0.0, 1.0);
+    final double s = _clampUnit(_extractLikelihood(landmark) ?? 1.0);
     if (s < minScore) {
       continue;
     }
 
     out.add(NeutralKeypoint(
       name: neutralName,
-      x: (landmark.x / w).clamp(0.0, 1.0),
-      y: (landmark.y / h).clamp(0.0, 1.0),
+      x: _clampUnit(landmark.x / w),
+      y: _clampUnit(landmark.y / h),
       z: keepZ ? landmark.z : null,
       score: s,
     ));
@@ -154,7 +171,7 @@ List<NeutralKeypoint> adaptMlKitPose({
 
   if (out.isEmpty && !returnEmptyWhenLow) {
     for (final type in _mlkitLandmarkOrder) {
-      final landmark = pose.landmarks[type];
+      final landmark = landmarksByType[type];
       if (landmark == null) continue;
 
       final neutralName = _mlkitTypeToNeutralName[type];
@@ -162,10 +179,10 @@ List<NeutralKeypoint> adaptMlKitPose({
 
       out.add(NeutralKeypoint(
         name: neutralName,
-        x: (landmark.x / w).clamp(0.0, 1.0),
-        y: (landmark.y / h).clamp(0.0, 1.0),
+        x: _clampUnit(landmark.x / w),
+        y: _clampUnit(landmark.y / h),
         z: keepZ ? landmark.z : null,
-        score: (_extractLikelihood(landmark) ?? 1.0).clamp(0.0, 1.0),
+        score: _clampUnit(_extractLikelihood(landmark) ?? 1.0),
       ));
     }
   }
