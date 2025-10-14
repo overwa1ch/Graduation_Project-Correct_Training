@@ -99,7 +99,7 @@ const List<PoseLandmarkType> _mlkitLandmarkOrder = [
   PoseLandmarkType.rightFootIndex,
 ];
 
-const int kMlKitNeutralKeypointCount = _mlkitLandmarkOrder.length;
+const int kMlKitNeutralKeypointCount = 33;
 
 double? _extractLikelihood(PoseLandmark landmark) {
   final dynamic dynamicLandmark = landmark;
