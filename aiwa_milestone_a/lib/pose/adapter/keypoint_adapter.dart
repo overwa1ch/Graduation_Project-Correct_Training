@@ -145,7 +145,7 @@ List<NeutralKeypoint> adaptMlKitPose({
   final int h = (height <= 0) ? 1 : height;
 
   final Map<PoseLandmarkType, PoseLandmark> landmarksByType = {
-    for (final landmark in _iterableLandmarks(pose)) landmark.type: landmark,
+    for (final landmark in pose.landmarks) landmark.type: landmark,
   };
 
   for (final type in _mlkitLandmarkOrder) {
