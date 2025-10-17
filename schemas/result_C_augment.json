@@ -1,0 +1,35 @@
+{
+  "hybrid": {
+    "type": "object",
+    "properties": {
+      "triggered": {"type": "boolean"},
+      "reason": {"type": "array", "items": {"type": "string"}},
+      "cloudEnhanced": {"type": "boolean"},
+      "mergeStrategy": {"type": "string"},
+      "delta": {
+        "type": "object",
+        "properties": {
+          "countLocal": {"type": "integer"},
+          "countCloud": {"type": "integer"},
+          "countFinal": {"type": "integer"}
+        }
+      },
+      "reconcileNote": {"type": "string"}
+    },
+    "required": ["triggered", "cloudEnhanced"]
+  },
+  "evidence": {
+    "type": "array",
+    "items": {
+      "type": "object",
+      "properties": {
+        "type": {"type": "string"},
+        "timestampMs": {"type": "number"},
+        "cues": {"type": "array", "items": {"type": "string"}},
+        "angles": {"type": "object"},
+        "thresholds": {"type": "object"},
+        "snapshotPath": {"type": "string"}
+      }
+    }
+  }
+}

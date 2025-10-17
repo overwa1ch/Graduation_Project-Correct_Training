@@ -1,0 +1,16 @@
+{
+  "version": "C1",
+  "videoId": "sample_001",
+  "engine": "mlkit_33",
+  "device": {"model": "Pixel5", "soc": "sd765", "os": "14"},
+  "slice": {"startMs": 4233, "endMs": 7233},
+  "privacy": "keypoints_only",
+  "keypoints": {
+    "fps": 30,
+    "points": [{"t": 0, "id": 0, "x": 0.23, "y": 0.45, "conf": 0.93}]
+  },
+  "optional": {
+    "video": "payload_segment.mp4",
+    "angles": "payload_angles.csv"
+  }
+}
