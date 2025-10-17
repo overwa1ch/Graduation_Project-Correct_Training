@@ -160,7 +160,6 @@ Future<void> main(List<String> args) async {
 
   try {
     _validateOptions(opts);
-
     final rulePath = opts['rule'] as String;
     final ruleStr = await _readFile(rulePath, 'rule definition');
     final ruleSet = parseRuleSet(ruleStr);
@@ -175,19 +174,16 @@ Future<void> main(List<String> args) async {
       await _runFileMode(opts, ruleSet, strictness);
     }
     exit(_exitOk);
-  } on _CliException catch (e) {
+  } on NeutralKeypointParseError catch (e) {   // 先抓具体解析错误
+    stderr.writeln('[ERROR] ${e.message}');
+    exit(_exitSchemaError);
+  } on _CliException catch (e) {               // 再抓 CLI 的统一错误
     stderr.writeln('[ERROR] ${e.message}');
     if (e.showUsage) {
       stdout.write(_usage(parser));
     }
     exit(e.exitCode);
-  } on NeutralKeypointParseError catch (e) {
-    stderr.writeln('[ERROR] ${e.message}');
-    exit(_exitSchemaError);
-  } on PoseParsingError catch (e) {
-    stderr.writeln('[ERROR] ${e.message}');
-    exit(_exitSchemaError);
-  } catch (e, stack) {
+  } catch (e, stack) {                         // 最后兜底
     stderr.writeln('[FATAL] $e');
     stderr.writeln(stack);
     exit(1);
