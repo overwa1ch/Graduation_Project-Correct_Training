@@ -359,6 +359,19 @@ Future<void> _runFileMode(
     log: log,
   );
 
+  _validateHybridArtifacts(
+    logsDir: logsDir,
+    outcome: hybridOutcome,
+    log: log,
+  );
+  _validateEvidenceArtifacts(
+    outDir: outDir,
+    logsDir: logsDir,
+    resultJson: resultJson,
+    outcome: evidenceOutcome,
+    log: log,
+  );
+
   final resultFile = File(path.join(outDir.path, 'result.json'));
   try {
     await resultFile.writeAsString(jsonPretty(resultJson));
@@ -665,6 +678,19 @@ Future<void> _runEngineMode(
     log: log,
   );
 
+  _validateHybridArtifacts(
+    logsDir: logsDir,
+    outcome: hybridOutcome,
+    log: log,
+  );
+  _validateEvidenceArtifacts(
+    outDir: outDir,
+    logsDir: logsDir,
+    resultJson: resultJson,
+    outcome: evidenceOutcome,
+    log: log,
+  );
+
   final resultWriteStopwatch = Stopwatch()..start();
   try {
     await resultFile.writeAsString(jsonPretty(resultJson));
@@ -821,6 +847,87 @@ String? _buildHybridSummary(
     return null;
   }
   return parts.join(' | ');
+}
+
+void _validateHybridArtifacts({
+  required Directory logsDir,
+  required _HybridOutcome outcome,
+  required _LogFn log,
+}) {
+  if (!outcome.enabled && !outcome.hadCloudMock) {
+    return;
+  }
+  if (outcome.enabled && outcome.triggered) {
+    final triggerFile = File(path.join(logsDir.path, 'hybrid_trigger.json'));
+    if (!triggerFile.existsSync()) {
+      log('WARN', 'Hybrid triggered but logs/hybrid_trigger.json is missing.');
+    }
+    final payloadFile = File(path.join(logsDir.path, 'cloud_payload.json'));
+    if (!payloadFile.existsSync()) {
+      log('WARN', 'Hybrid triggered but logs/cloud_payload.json is missing.');
+    }
+    final auditFile = File(path.join(logsDir.path, 'payload_audit.json'));
+    if (!auditFile.existsSync()) {
+      log('WARN', 'Hybrid triggered but logs/payload_audit.json is missing.');
+    }
+    if (outcome.hadCloudMock) {
+      final diffFile = File(path.join(logsDir.path, 'hybrid_diff.json'));
+      if (!diffFile.existsSync()) {
+        log('WARN', 'Hybrid triggered with cloud mock but logs/hybrid_diff.json is missing.');
+      }
+    }
+  } else if (outcome.hadCloudMock) {
+    final diffFile = File(path.join(logsDir.path, 'hybrid_diff.json'));
+    if (!diffFile.existsSync()) {
+      log('WARN', 'Cloud mock provided but logs/hybrid_diff.json was not written.');
+    }
+  }
+}
+
+void _validateEvidenceArtifacts({
+  required Directory outDir,
+  required Directory logsDir,
+  required Map<String, dynamic> resultJson,
+  required _EvidenceOutcome outcome,
+  required _LogFn log,
+}) {
+  if (!outcome.enabled) {
+    return;
+  }
+  final evidenceFile = File(path.join(outDir.path, 'evidence.json'));
+  if (!evidenceFile.existsSync()) {
+    log('WARN', 'Evidence enabled but evidence.json is missing.');
+  }
+  final perfFile = File(path.join(logsDir.path, 'perf.json.evidence'));
+  if (!perfFile.existsSync()) {
+    log('WARN', 'Evidence enabled but logs/perf.json.evidence is missing.');
+  }
+  final evidenceItems = (resultJson['evidence'] as List<dynamic>? ?? [])
+      .whereType<Map<String, dynamic>>()
+      .toList(growable: false);
+  for (var i = 0; i < evidenceItems.length; i++) {
+    final item = evidenceItems[i];
+    final ts = item['timestampMs'];
+    if (ts is! num) {
+      log('WARN', 'Evidence item #$i missing numeric timestampMs.');
+    }
+    final cues = item['cues'];
+    if (cues is! List || cues.isEmpty) {
+      log('WARN', 'Evidence item #$i missing cues[].');
+    }
+  }
+  if (outcome.overlayGenerated) {
+    final overlayFile = File(path.join(outDir.path, 'overlay.mp4'));
+    if (!overlayFile.existsSync()) {
+      log('WARN', 'Evidence overlay flagged as generated but overlay.mp4 is missing.');
+    }
+    for (var i = 0; i < evidenceItems.length; i++) {
+      final item = evidenceItems[i];
+      if (!item.containsKey('snapshotPath')) {
+        log('WARN', 'Evidence item #$i missing snapshotPath while overlay is enabled.');
+      }
+    }
+  }
 }
 
 Map<String, double> _buildHybridMetrics(
