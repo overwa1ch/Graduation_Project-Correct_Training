@@ -3,13 +3,13 @@ import 'dart:io';
 
 import 'package:csv/csv.dart';
 import 'package:path/path.dart' as p;
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 
-import 'package:aiwa_milestone_a/pipeline/offline_pipeline.dart';
-import 'package:aiwa_milestone_a/pipeline/pose_input_converter.dart';
-import 'package:aiwa_milestone_a/pose/kp_models.dart';
-import 'package:aiwa_milestone_a/spec/rule_models.dart';
-import 'package:aiwa_milestone_a/spec/rule_parser.dart';
+import 'package:aiwa_core/pipeline/offline_pipeline.dart';
+import 'package:aiwa_core/pipeline/pose_input_converter.dart';
+import 'package:aiwa_core/pose/kp_models.dart';
+import 'package:aiwa_core/spec/rule_models.dart';
+import 'package:aiwa_core/spec/rule_parser.dart';
 
 void main() {
   test('golden alignment', () async {

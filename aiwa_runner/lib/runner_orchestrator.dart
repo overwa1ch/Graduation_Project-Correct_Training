@@ -23,12 +23,12 @@ import 'package:path_provider/path_provider.dart';
 // 以别名引入，避免与工程内类型冲突
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart' as ml;
 
-import 'package:aiwa_milestone_a/spec/rule_parser.dart';
-import 'package:aiwa_milestone_a/spec/rule_models.dart';
-import 'package:aiwa_milestone_a/pipeline/offline_pipeline.dart';
-import 'package:aiwa_milestone_a/pipeline/pose_series.dart';
-import 'package:aiwa_milestone_a/pose/neutral_keypoint_series.dart';
-import 'package:aiwa_milestone_a/pipeline/pose_input_converter.dart';
+import 'package:aiwa_core/spec/rule_parser.dart';
+import 'package:aiwa_core/spec/rule_models.dart';
+import 'package:aiwa_core/pipeline/offline_pipeline.dart';
+import 'package:aiwa_core/pipeline/pose_series.dart';
+import 'package:aiwa_core/pose/neutral_keypoint_series.dart';
+import 'package:aiwa_core/pipeline/pose_input_converter.dart';
 
 const String kDefaultPackageName = 'com.example.aiwa_runner';
 

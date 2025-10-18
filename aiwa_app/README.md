@@ -1,4 +1,4 @@
-# aiwa_milestone_a
+# aiwa_app
 
 A new Flutter project.
 
