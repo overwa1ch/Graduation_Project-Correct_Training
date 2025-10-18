@@ -1,0 +1,17 @@
+{
+  "depth_insufficient": {
+    "severity": "major",
+    "advice": "下蹲深度不足，请加大髋关节屈曲角度",
+    "relatedAngles": ["hipFlexion"]
+  },
+  "knee_inward": {
+    "severity": "moderate",
+    "advice": "膝盖内扣，请注意双膝方向与脚尖保持一致",
+    "relatedAngles": ["leftKnee", "rightKnee"]
+  },
+  "asymmetry": {
+    "severity": "minor",
+    "advice": "左右姿态不对称，请保持平衡",
+    "relatedAngles": ["leftKnee", "rightKnee"]
+  }
+}
