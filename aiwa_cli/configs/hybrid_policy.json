@@ -1,34 +1,25 @@
 {
-  "version": "C-augment",
-  "engine": "any",
-  "uploadPolicy": "keypoints_only",
-  "rules": [
-    {
-      "name": "low_coverage",
-      "metric": "coverage",
-      "op": "<",
-      "threshold": 0.85,
-      "weight": 1.0
-    },
-    {
-      "name": "low_conf_pct",
-      "metric": "lowConfPct",
-      "op": ">",
-      "threshold": 0.15,
-      "weight": 1.0
-    },
-    {
-      "name": "fps_instability",
-      "metric": "jitterPx",
-      "op": ">",
-      "threshold": 5.0,
-      "weight": 0.5
-    }
-  ],
-  "trigger": {
-    "mode": "weighted_sum",
-    "weighted_sum_threshold": 1.0
+  "version": "C1",
+  "global": {
+    "confThreshold": 0.5,
+    "minCoveragePct": 0.7,
+    "maxLowConfPct": 0.25,
+    "maxJitterPx": 8.0,
+    "minFps": 22
   },
+  "byEngine": {
+    "mlkit_33": {"minCoveragePct": 0.75, "maxJitterPx": 7.0},
+    "movenet_17": {"minCoveragePct": 0.65, "maxJitterPx": 9.0}
+  },
+  "weights": {"coverage": 0.4, "lowConf": 0.25, "jitter": 0.2, "fps": 0.15},
+  "triggerRules": [
+    "coverage < minCoveragePct",
+    "lowConfPct > maxLowConfPct",
+    "jitterPx > maxJitterPx",
+    "fps < minFps"
+  ],
+  "fireIfAnyRuleTrue": true,
   "sliceMsBefore": 1500,
-  "sliceMsAfter": 1500
+  "sliceMsAfter": 1500,
+  "privacy": "keypoints_only"
 }

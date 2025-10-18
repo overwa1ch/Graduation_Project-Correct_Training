@@ -1,8 +1,23 @@
 {
-  "description": "Evidence generation is configured via --evidence key=value pairs. This sample documents default values.",
-  "defaults": {
-    "topK": 6,
-    "windowMs": 1200,
-    "exportOverlay": false
+  "version": "C1",
+  "topK": 10,
+  "windowMs": 1200,
+  "types": ["frame", "segment"],
+  "selectors": {
+    "worstPosture": {"metric": "angleError", "threshold": 15},
+    "phaseBoundary": {"metric": "phaseChange", "threshold": 0.5},
+    "lowScore": {"metric": "repScore", "threshold": 70}
+  },
+  "export": {
+    "overlay": true,
+    "fps": 15,
+    "resolution": 480,
+    "drawSkeleton": true,
+    "highlightCues": true
+  },
+  "angles": ["leftKnee", "rightKnee", "hipFlexion"],
+  "thresholds": {
+    "leftKnee_maxValgus": 160,
+    "depth_minHipAngle": 70
   }
 }

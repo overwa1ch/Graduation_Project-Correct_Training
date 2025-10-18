@@ -27,27 +27,10 @@
   dart run bin/aiwa_cli.dart \
     --keypoints ../aiwa_core/test/fixtures/kp_sample.json \
     --rule ../aiwa_core/test/fixtures/squat.v1.json \
-    --out-dir build/offline_out \
-    --log-level info \
-    --evidence topK=8 windowMs=1500
+    --strictness relaxed \
+    --out build/offline_out
   ```
-- **云端增强示例**：仓库附带 `aiwa_cli/mocks/cloud_result.json`，可直接作为 `--cloud-mock` 的输入进行合并演示。
-- **关键参数速查**：
-  - `--hybrid`：启用混合触发；默认关闭。若打开需同时提供 `--hybrid-policy`（默认 `./configs/hybrid_policy.json`）。
-  - `--cloud-mock <path>`：引入云端增强模拟 JSON，可与 `--hybrid` 独立使用，用于验证合并流程。
-  - `--evidence [key=value]`：开启证据化并传入参数，支持 `topK`（默认 6）、`windowMs`（默认 1200）、`exportOverlay`（默认 false，可自动降级）。
-  - `--dry-run`：仅做参数/配置校验，不执行推理与导出。
-  - `--strict` / `--fail-on-warn`：严格模式，校验失败返回退出码 3；可选将 WARN 视为失败。
-  - `--log-level`：`trace|debug|info|warn|error`，默认 `info`。
-  - `--output-format`：校验汇总输出格式 `human|json|junit|all`，默认 `human`。
-  - `--out-dir`：覆盖输出根目录，默认 `./offline_out`。
-  - `--version` / `--help`：查看版本、帮助信息。
-- **互斥/依赖提醒**：
-  - CLI 仅支持 `--keypoints` 文件输入；`--video` 会直接报错提醒使用 Flutter 构建。
-  - `--hybrid` 打开时必须能读取 `--hybrid-policy`，且 JSON 需符合 `configs/hybrid_policy.json` 的 C-augment 结构。
-  - `--cloud-mock` 会进入合并路径，即使未打开 `--hybrid` 亦可演示云端增强。
-  - 当 `--evidence exportOverlay=true` 且本地缺失 `ffmpeg` 时会自动降级为 `false` 并给出 WARN。
-- **退出码语义**：`0` 成功；`1` 参数/配置错误；`2` 运行时错误；`3` 校验失败（严格模式下）。
+  > 纯 Dart CLI 当前仅支持 `--keypoints` 文件模式；视频推理请使用 Flutter 工程。
 - **构建本地可执行文件**：
   ```bash
   cd aiwa_cli

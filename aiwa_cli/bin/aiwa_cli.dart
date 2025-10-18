@@ -20,12 +20,12 @@ import 'package:aiwa_core/spec/rule_models.dart';
 import 'package:aiwa_core/spec/rule_parser.dart';
 
 const _exitOk = 0;
-const _exitParamError = 1;
-const _exitRuntimeError = 2;
-const _exitValidationError = 3;
-
-const _cliVersion = 'vB1.1-C-augment';
-const _schemaVersion = 'vB1.1';
+const _exitParamError = 2;
+const _exitDecodeError = 3;
+const _exitEngineInitError = 4;
+const _exitInferenceError = 5;
+const _exitOutputError = 6;
+const _exitSchemaError = 7;
 
 const _defaultOutDir = 'build/offline_out';
 const _defaultEngine = 'mlkit';
@@ -35,18 +35,6 @@ const _defaultFps = 30.0;
 
 const JsonEncoder _prettyJsonEncoder = JsonEncoder.withIndent('  ');
 
-const Map<String, int> _logLevelPriority = {
-  'trace': 10,
-  'debug': 20,
-  'info': 30,
-  'warn': 40,
-  'error': 50,
-};
-
-const Set<String> _allowedHybridOps = {'<', '<=', '>', '>=', '==', '!='};
-
-bool? _ffmpegAvailableCache;
-
 typedef _LogFn = void Function(String level, String message);
 
 final Map<String, int> _neutralNameToIndex = {
@@ -54,217 +42,76 @@ final Map<String, int> _neutralNameToIndex = {
     kNeutralKeypointNames[i]: i,
 };
 
-class _EvidenceCliSpec {
-  final bool enabled;
-  final List<String> tokens;
-
-  const _EvidenceCliSpec({
-    required this.enabled,
-    required this.tokens,
-  });
-}
-
-class _PreparseResult {
-  final List<String> normalizedArgs;
-  final _EvidenceCliSpec evidence;
-
-  const _PreparseResult({
-    required this.normalizedArgs,
-    required this.evidence,
-  });
-}
-
-_PreparseResult _preparseArgs(List<String> rawArgs) {
-  final normalized = <String>[];
-  final evidenceTokens = <String>[];
-  var evidenceFlag = false;
-  var evidenceAdded = false;
-
-  for (var i = 0; i < rawArgs.length; i++) {
-    final token = rawArgs[i];
-    if (token == '--evidence') {
-      evidenceFlag = true;
-      if (!evidenceAdded) {
-        normalized.add('--evidence');
-        evidenceAdded = true;
-      }
-      while (i + 1 < rawArgs.length && !rawArgs[i + 1].startsWith('-')) {
-        evidenceTokens.add(rawArgs[++i]);
-      }
-    } else if (token.startsWith('--evidence=')) {
-      evidenceFlag = true;
-      final value = token.substring('--evidence='.length);
-      if (!evidenceAdded) {
-        normalized.add('--evidence');
-        evidenceAdded = true;
-      }
-      if (value.isNotEmpty) {
-        evidenceTokens.add(value);
-      }
-    } else {
-      normalized.add(token);
-    }
-  }
-
-  return _PreparseResult(
-    normalizedArgs: normalized,
-    evidence: _EvidenceCliSpec(
-      enabled: evidenceFlag,
-      tokens: evidenceTokens,
-    ),
-  );
-}
-
-Map<String, dynamic> _resolveEvidenceOptions(_EvidenceCliSpec spec) {
-  var topK = 6;
-  var windowMs = 1200;
-  var exportOverlay = false;
-  final extras = <String, String>{};
-
-  for (final token in spec.tokens) {
-    final eqIndex = token.indexOf('=');
-    if (eqIndex <= 0 || eqIndex == token.length - 1) {
-      throw _CliException(
-        'Invalid --evidence option "$token". Use key=value form.',
-        _exitParamError,
-      );
-    }
-    final key = token.substring(0, eqIndex).trim();
-    final value = token.substring(eqIndex + 1).trim();
-    switch (key) {
-      case 'topK':
-        final parsed = int.tryParse(value);
-        if (parsed == null || parsed <= 0) {
-          throw _CliException(
-            '--evidence topK must be a positive integer (got "$value").',
-            _exitParamError,
-          );
-        }
-        topK = parsed;
-        break;
-      case 'windowMs':
-        final parsed = int.tryParse(value);
-        if (parsed == null || parsed <= 0) {
-          throw _CliException(
-            '--evidence windowMs must be a positive integer (got "$value").',
-            _exitParamError,
-          );
-        }
-        windowMs = parsed;
-        break;
-      case 'exportOverlay':
-        final lowered = value.toLowerCase();
-        if (lowered == 'true' || lowered == '1') {
-          exportOverlay = true;
-        } else if (lowered == 'false' || lowered == '0') {
-          exportOverlay = false;
-        } else {
-          throw _CliException(
-            '--evidence exportOverlay expects true|false (got "$value").',
-            _exitParamError,
-          );
-        }
-        break;
-      default:
-        extras[key] = value;
-        break;
-    }
-  }
-
-  return {
-    'topK': topK,
-    'windowMs': windowMs,
-    'exportOverlay': exportOverlay,
-    if (extras.isNotEmpty) 'extras': extras,
-  };
-}
-
 ArgParser _buildParser() {
   return ArgParser()
     ..addFlag('help',
-        abbr: 'h', negatable: false, help: '显示帮助信息并退出。')
-    ..addFlag('version',
-        negatable: false, help: '显示 CLI 与 schema 版本并退出。')
+        abbr: 'h', negatable: false, help: 'Show usage information.')
     ..addOption('keypoints',
-        abbr: 'k', valueHelp: 'path', help: '关键点 JSON 路径（必填，文件模式）。')
-    ..addOption('video',
-        valueHelp: 'path',
-        help: '视频路径（仅做占位提醒，Flutter 版本才支持引擎模式）。')
+        abbr: 'k', help: 'Path to keypoints JSON file (file mode).')
+    ..addOption('video', help: 'Path to source video file (engine mode).')
     ..addOption('rule',
-        abbr: 'r', valueHelp: 'path', help: '规则 JSON 路径（必填）。')
-    ..addOption('out-dir',
+        abbr: 'r', help: 'Path to squat rule JSON file (required).')
+    ..addOption('strictness',
+        defaultsTo: 'relaxed', allowed: ['relaxed', 'strict'])
+    ..addOption('out',
         abbr: 'o',
-        valueHelp: 'dir',
         defaultsTo: _defaultOutDir,
-        help: '输出目录（默认：$_defaultOutDir）。')
-    ..addFlag('dry-run',
-        negatable: false,
-        help: '仅解析/校验配置，不执行推理与导出。')
-    ..addFlag('strict',
-        negatable: false,
-        help: '严格模式：校验失败即返回非零。')
-    ..addFlag('fail-on-warn',
-        negatable: false,
-        help: '严格模式下遇到 WARN 也视为失败。')
-    ..addOption('log-level',
-        defaultsTo: 'info',
-        allowed: _logLevelPriority.keys,
-        help: '日志级别（trace|debug|info|warn|error）。')
-    ..addOption('output-format',
-        defaultsTo: 'human',
-        allowed: ['human', 'json', 'junit', 'all'],
-        help: '校验汇总输出格式（human|json|junit|all）。')
-    ..addFlag('hybrid',
-        negatable: false, help: '启用混合触发与云端合并逻辑。')
-    ..addOption('hybrid-policy',
-        valueHelp: 'path',
-        defaultsTo: 'configs/hybrid_policy.json',
-        help: '混合触发策略 JSON 路径。')
-    ..addOption('cloud-mock',
-        valueHelp: 'path',
-        help: '云端增强结果的本地模拟输入（JSON）。')
-    ..addFlag('evidence',
-        negatable: false,
-        help:
-            '启用证据化输出，可跟随多个 key=value 参数（topK/windowMs/exportOverlay）。')
+        help: 'Output directory root (default: $_defaultOutDir).')
     ..addOption('engine',
         defaultsTo: _defaultEngine,
         allowed: ['mlkit', 'movenet'],
-        help: '记录使用的引擎标签，便于日志归档。')
-    ..addOption('strictness',
-        defaultsTo: 'relaxed',
-        allowed: ['relaxed', 'strict'],
-        hide: true)
-    ..addOption('out',
-        defaultsTo: _defaultOutDir,
-        hide: true);
+        help: 'Engine mode inference backend (default: $_defaultEngine).')
+    ..addOption('sampling-stride',
+        defaultsTo: _defaultSamplingStride.toString(),
+        help:
+            'Frame sampling stride when decoding video (default: $_defaultSamplingStride).')
+    ..addOption('input-resolution',
+        defaultsTo: _defaultInputResolution,
+        allowed: ['720p', '540p'],
+        help:
+            'Input resolution for the inference engine (default: $_defaultInputResolution).')
+    ..addOption('mirror-applied',
+        defaultsTo: 'auto',
+        allowed: ['auto', 'true', 'false'],
+        help:
+            'Whether to mirror keypoints horizontally in engine mode. "auto" keeps the video orientation.')
+    ..addFlag('overlay',
+        negatable: false, help: 'Export overlay video in engine mode (optional).')
+    ..addFlag('hybrid',
+        negatable: false, help: 'Enable hybrid escalation and cloud merge flow.')
+    ..addOption('hybrid-policy',
+        help: 'Path to hybrid policy JSON.',
+        defaultsTo: 'configs/hybrid_policy.json')
+    ..addOption('cloud-mock',
+        help: 'Optional cloud mock JSON for merge simulation (hybrid mode).')
+    ..addFlag('evidence',
+        negatable: false, help: 'Enable evidence export and enrichment.')
+    ..addOption('evidence-config',
+        help: 'Path to evidence configuration JSON.',
+        defaultsTo: 'configs/evidence_config.json')
+    ..addFlag('cloud-video-fragment',
+        negatable: false,
+        help: 'Export placeholder cloud video fragment when hybrid payload fires.');
 }
 
 String _usage(ArgParser parser) => '''
-AIWA CLI — Offline Squat Pipeline (schema=$_schemaVersion / cli=$_cliVersion)
+AIWA CLI — Offline Squat Pipeline
 
 Usage:
   dart run bin/aiwa_cli.dart --keypoints <kp.json> --rule <rule.json> [options]
+  dart run bin/aiwa_cli.dart --video <video.mp4> --rule <rule.json> [engine options]
+
+Examples:
+  # File mode (existing keypoints JSON)
+  dart run bin/aiwa_cli.dart \
+    --keypoints ../aiwa_core/test/fixtures/kp_sample.json \
+    --rule ../aiwa_core/test/fixtures/squat.v1.json \
+    --out build/offline_out
+
+  # Engine mode（视频→ML Kit）请使用 Flutter 工程 aiwa_app
 
 Options:
 ${parser.usage}
-
-示例:
-  # 本地关键点/视频 → 端侧分析 → 触发 Hybrid → 证据化（不导出 overlay）
-  dart run bin/aiwa_cli.dart --engine mlkit --hybrid \
-    --hybrid-policy ./configs/hybrid_policy.json \
-    --evidence topK=8 windowMs=1500
-
-  # 使用 cloud-mock 演示端侧/云端合并与证据定位，并导出 overlay.mp4
-  dart run bin/aiwa_cli.dart --engine mlkit \
-    --cloud-mock ./mocks/cloud_result.json \
-    --evidence topK=10 exportOverlay=true
-
-退出码:
-  0: 成功（全部校验通过或严格模式下无失败）
-  1: 参数/配置错误（文件缺失、JSON 解析失败、schema 不合规）
-  2: 运行时错误（推理、合并或导出异常）
-  3: 校验失败（仅在 --strict 或 CI 模式下）
 ''';
 
 class _CliException implements Exception {
@@ -313,11 +160,10 @@ class _VideoDecodeResult {
 }
 
 Future<void> main(List<String> args) async {
-  final pre = _preparseArgs(args);
   final parser = _buildParser();
   late final ArgResults opts;
   try {
-    opts = parser.parse(pre.normalizedArgs);
+    opts = parser.parse(args);
   } on FormatException catch (e) {
     stderr.writeln('[ERROR] ${e.message}');
     stdout.writeln(_usage(parser));
@@ -329,45 +175,25 @@ Future<void> main(List<String> args) async {
     exit(_exitOk);
   }
 
-  if (opts['version'] == true) {
-    stdout.writeln('AIWA CLI $_cliVersion (schema $_schemaVersion)');
-    exit(_exitOk);
-  }
-
   try {
-    _validateOptions(opts, pre.evidence);
+    _validateOptions(opts);
     final rulePath = opts['rule'] as String;
     final ruleStr = await _readFile(rulePath, 'rule definition');
     final ruleSet = parseRuleSet(ruleStr);
 
-    final evidenceEnabled = (opts['evidence'] == true) || pre.evidence.enabled;
-    final evidenceOptions = evidenceEnabled
-        ? _resolveEvidenceOptions(_EvidenceCliSpec(
-            enabled: true,
-            tokens: pre.evidence.tokens,
-          ))
-        : const <String, dynamic>{};
-
-    final strictnessOpt = opts['strictness'] as String?;
-    final strictness = (opts['strict'] == true || strictnessOpt == 'strict')
+    final strictness = (opts['strictness'] as String) == 'strict'
         ? Strictness.strict
         : Strictness.relaxed;
 
     if (opts['video'] != null) {
       await _runEngineMode(opts, ruleSet, strictness);
     } else {
-      await _runFileMode(
-        opts,
-        ruleSet,
-        strictness,
-        evidenceEnabled: evidenceEnabled,
-        evidenceOptions: evidenceOptions,
-      );
+      await _runFileMode(opts, ruleSet, strictness);
     }
     exit(_exitOk);
   } on NeutralKeypointParseError catch (e) {   // 先抓具体解析错误
     stderr.writeln('[ERROR] ${e.message}');
-    exit(_exitParamError);
+    exit(_exitSchemaError);
   } on _CliException catch (e) {               // 再抓 CLI 的统一错误
     stderr.writeln('[ERROR] ${e.message}');
     if (e.showUsage) {
@@ -377,36 +203,23 @@ Future<void> main(List<String> args) async {
   } catch (e, stack) {                         // 最后兜底
     stderr.writeln('[FATAL] $e');
     stderr.writeln(stack);
-    exit(_exitRuntimeError);
+    exit(1);
   }
 }
 
-void _validateOptions(ArgResults opts, _EvidenceCliSpec evidenceSpec) {
-  final keypointsPath = (opts['keypoints'] as String?)?.trim();
-  final videoProvided = (opts['video'] as String?)?.isNotEmpty ?? false;
-  if (videoProvided) {
+void _validateOptions(ArgResults opts) {
+  final keypointsProvided = opts['keypoints'] != null;
+  final videoProvided = opts['video'] != null;
+
+  if (keypointsProvided == videoProvided) {
     throw _CliException(
-      'Engine mode (--video) is only available in the Flutter build. '
-      '本 CLI 仅支持 --keypoints 文件模式。',
+      'Provide exactly one of --keypoints or --video.',
       _exitParamError,
       showUsage: true,
-    );
-  }
-  if (keypointsPath == null || keypointsPath.isEmpty) {
-    throw _CliException(
-      '--keypoints is required and must point to a JSON file.',
-      _exitParamError,
-      showUsage: true,
-    );
-  }
-  if (!File(keypointsPath).existsSync()) {
-    throw _CliException(
-      'Keypoints file "$keypointsPath" does not exist.',
-      _exitParamError,
     );
   }
 
-  final rulePath = (opts['rule'] as String?)?.trim();
+  final rulePath = opts['rule'] as String?;
   if (rulePath == null || rulePath.isEmpty) {
     throw _CliException(
       '--rule is required and must point to a rule JSON file.',
@@ -414,64 +227,23 @@ void _validateOptions(ArgResults opts, _EvidenceCliSpec evidenceSpec) {
       showUsage: true,
     );
   }
-  if (!File(rulePath).existsSync()) {
+
+  final strideStr = opts['sampling-stride'] as String?;
+  final stride = int.tryParse(strideStr ?? '');
+  if (opts['video'] != null && (stride == null || stride <= 0)) {
     throw _CliException(
-      'Rule file "$rulePath" does not exist.',
+      '--sampling-stride must be a positive integer.',
       _exitParamError,
+      showUsage: true,
     );
   }
 
-  final outDir = (opts['out-dir'] as String?)?.trim().isNotEmpty == true
-      ? (opts['out-dir'] as String).trim()
-      : ((opts['out'] as String?) ?? _defaultOutDir);
-  if (outDir.isEmpty) {
+  final mirrorOpt = opts['mirror-applied'] as String? ?? 'auto';
+  if (!['auto', 'true', 'false'].contains(mirrorOpt)) {
     throw _CliException(
-      '--out-dir must not be empty.',
+      '--mirror-applied must be one of auto|true|false.',
       _exitParamError,
-    );
-  }
-
-  final hybridEnabled = opts['hybrid'] == true;
-  final hybridPolicyPath = (opts['hybrid-policy'] as String?)?.trim() ??
-      'configs/hybrid_policy.json';
-  if (hybridEnabled) {
-    if (hybridPolicyPath.isEmpty) {
-      throw _CliException(
-        '--hybrid-policy must be provided when --hybrid is enabled.',
-        _exitParamError,
-      );
-    }
-    if (!File(hybridPolicyPath).existsSync()) {
-      throw _CliException(
-        'Hybrid policy "$hybridPolicyPath" not found.',
-        _exitParamError,
-      );
-    }
-  }
-
-  final cloudMockPath = (opts['cloud-mock'] as String?)?.trim();
-  if (cloudMockPath != null && cloudMockPath.isNotEmpty) {
-    if (!File(cloudMockPath).existsSync()) {
-      throw _CliException(
-        'Cloud mock "$cloudMockPath" not found.',
-        _exitParamError,
-      );
-    }
-  }
-
-  final logLevel = (opts['log-level'] as String?) ?? 'info';
-  if (!_logLevelPriority.containsKey(logLevel)) {
-    throw _CliException(
-      'Unsupported --log-level "$logLevel". Allowed: ${_logLevelPriority.keys.join(', ')}.',
-      _exitParamError,
-    );
-  }
-
-  final evidenceEnabled = (opts['evidence'] == true) || evidenceSpec.enabled;
-  if (!evidenceEnabled && evidenceSpec.tokens.isNotEmpty) {
-    throw _CliException(
-      '--evidence parameters provided without enabling the flag.',
-      _exitParamError,
+      showUsage: true,
     );
   }
 }
@@ -479,56 +251,21 @@ void _validateOptions(ArgResults opts, _EvidenceCliSpec evidenceSpec) {
 Future<void> _runFileMode(
   ArgResults opts,
   RuleSet ruleSet,
-  Strictness strictness, {
-  required bool evidenceEnabled,
-  required Map<String, dynamic> evidenceOptions,
-}) async {
+  Strictness strictness,
+) async {
   final keypointsPath = opts['keypoints'] as String;
-  final outRootPath =
-      (opts['out-dir'] as String?) ?? (opts['out'] as String?) ?? _defaultOutDir;
-  final hybridEnabled = opts['hybrid'] == true;
-  final hybridPolicyPath =
-      (opts['hybrid-policy'] as String?) ?? 'configs/hybrid_policy.json';
-  final cloudMockPath = opts['cloud-mock'] as String?;
-  final dryRun = opts['dry-run'] == true;
-  final failOnWarn = opts['fail-on-warn'] == true;
-  final outputFormat = (opts['output-format'] as String?) ?? 'human';
-  final logLevelName = (opts['log-level'] as String?) ?? 'info';
-  final logThreshold =
-      _logLevelPriority[logLevelName] ?? _logLevelPriority['info']!;
-
-  final logLines = <String>[];
-  void log(String level, String message) {
-    final ts = DateTime.now().toIso8601String();
-    final upper = level.toUpperCase();
-    final normalized = level.toLowerCase();
-    final severity = _logLevelPriority[normalized] ?? _logLevelPriority['info']!;
-    final line = '[$ts][$upper] $message';
-    logLines.add(line);
-    if (severity >= logThreshold || normalized == 'error') {
-      if (normalized == 'error') {
-        stderr.writeln(line);
-      } else {
-        stdout.writeln(line);
-      }
-    }
-  }
-
-  log('info',
-      'File mode start → keypoints=$keypointsPath outDir=$outRootPath dryRun=$dryRun');
-
   final kpStr = await _readFile(keypointsPath, 'keypoints JSON');
   final dynamic kpRoot = jsonDecode(kpStr);
   if (kpRoot is! Map<String, dynamic>) {
     throw _CliException(
       'Keypoints JSON must be an object.',
-      _exitParamError,
+      _exitSchemaError,
     );
   }
 
   NeutralKeypointSeries? neutralSeries;
   late final PoseSeries poseSeries;
-  if ((kpRoot['version'] as Object?) == _schemaVersion) {
+  if ((kpRoot['version'] as Object?) == 'vB1.1') {
     neutralSeries = parseNeutralKeypointSeriesFromMap(kpRoot);
     poseSeries = poseSeriesFromNeutral(neutralSeries);
   } else {
@@ -536,38 +273,43 @@ Future<void> _runFileMode(
     poseSeries = poseSeriesFromLegacy(legacySeries);
   }
 
-  if (dryRun) {
-    if (hybridEnabled) {
-      await _loadHybridPolicy(hybridPolicyPath, log);
-    }
-    if (cloudMockPath != null) {
-      await _readCloudMock(cloudMockPath, log, validateOnly: true);
-    }
-    if (evidenceEnabled) {
-      final topK = evidenceOptions['topK'];
-      final windowMs = evidenceOptions['windowMs'];
-      final exportOverlay = evidenceOptions['exportOverlay'];
-      log('info',
-          'Evidence dry-run settings → topK=$topK windowMs=$windowMs exportOverlay=$exportOverlay');
-    }
-    log('info', 'Dry-run完成：配置解析与校验通过，未执行推理。');
-    return;
-  }
-
   final pipeline = OfflinePipeline(ruleSet, strictness);
   late final ({String anglesCsv, Map<String, dynamic> resultJson}) out;
   try {
     out = await pipeline.run(poseSeries);
   } catch (e) {
-    throw _CliException('Offline pipeline failed: $e', _exitRuntimeError);
+    throw _CliException('Offline pipeline failed: $e', _exitInferenceError);
   }
 
-  final outRoot = Directory(outRootPath);
+  final outRoot = Directory(opts['out'] as String? ?? _defaultOutDir);
   final baseName = path.basenameWithoutExtension(keypointsPath);
   final outDir = Directory(path.join(outRoot.path, baseName))
     ..createSync(recursive: true);
   final logsDir = Directory(path.join(outDir.path, 'logs'))
     ..createSync(recursive: true);
+
+  final logLines = <String>[];
+  void log(String level, String message) {
+    final line = '[${DateTime.now().toIso8601String()}][$level] $message';
+    logLines.add(line);
+    if (level == 'ERROR') {
+      stderr.writeln(line);
+    } else {
+      stdout.writeln(line);
+    }
+  }
+
+  log('INFO', 'File mode start → keypoints=$keypointsPath');
+
+  final hybridEnabled = opts['hybrid'] == true;
+  final hybridPolicyPath =
+      (opts['hybrid-policy'] as String?) ?? 'configs/hybrid_policy.json';
+  final cloudMockPath = opts['cloud-mock'] as String?;
+  final exportCloudFragment = opts['cloud-video-fragment'] == true;
+  final evidenceEnabled = opts['evidence'] == true;
+  final evidenceConfigPath =
+      (opts['evidence-config'] as String?) ?? 'configs/evidence_config.json';
+  final overlayRequested = opts['overlay'] == true;
 
   final resultJson = Map<String, dynamic>.from(out.resultJson);
   final reps = (resultJson['reps'] as List<dynamic>? ?? [])
@@ -583,14 +325,14 @@ Future<void> _runFileMode(
   try {
     await anglesFile.writeAsString(out.anglesCsv);
   } on IOException catch (e) {
-    throw _CliException('Failed to write angles.csv: $e', _exitRuntimeError);
+    throw _CliException('Failed to write angles.csv: $e', _exitOutputError);
   }
 
   final hybridOutcome = await _processHybrid(
     enabled: hybridEnabled,
     policyPath: hybridPolicyPath,
     cloudMockPath: cloudMockPath,
-    exportCloudFragment: false,
+    exportCloudFragment: exportCloudFragment,
     logsDir: logsDir,
     resultJson: resultJson,
     perfData: null,
@@ -601,64 +343,45 @@ Future<void> _runFileMode(
 
   final evidenceOutcome = await _processEvidence(
     enabled: evidenceEnabled,
-    options: evidenceOptions,
+    configPath: evidenceConfigPath,
     outDir: outDir,
     logsDir: logsDir,
     resultJson: resultJson,
-    ruleSet: ruleSet,
-    strictness: strictness,
+    overlayRequested: overlayRequested,
     log: log,
-  );
-
-  final validation = _ValidationContext(
-    outDir: outDir,
-    logsDir: logsDir,
-    log: log,
-    outputFormat: outputFormat,
   );
 
   _validateHybridArtifacts(
     logsDir: logsDir,
     outcome: hybridOutcome,
-    resultJson: resultJson,
-    validation: validation,
+    log: log,
   );
   _validateEvidenceArtifacts(
     outDir: outDir,
     logsDir: logsDir,
     resultJson: resultJson,
     outcome: evidenceOutcome,
-    validation: validation,
+    log: log,
   );
-
-  await validation.writeReports();
-
-  if (validation.shouldFail(strict: opts['strict'] == true ||
-      (opts['strictness'] as String?) == 'strict', failOnWarn: failOnWarn)) {
-    throw _CliException(
-      'Validation failed → errors=${validation.errorCount} warnings=${validation.warningCount}.',
-      _exitValidationError,
-    );
-  }
 
   final resultFile = File(path.join(outDir.path, 'result.json'));
   try {
     await resultFile.writeAsString(jsonPretty(resultJson));
   } on IOException catch (e) {
-    throw _CliException('Failed to write result.json: $e', _exitRuntimeError);
+    throw _CliException('Failed to write result.json: $e', _exitOutputError);
   }
 
   final runLogFile = File(path.join(logsDir.path, 'run.log'));
   await runLogFile.writeAsString(logLines.join('\n'));
 
-  log('done', 'Outputs written:');
-  log('done', '  - ${anglesFile.path}');
-  log('done', '  - ${resultFile.path}');
-  log('done', '  - ${runLogFile.path}');
+  log('DONE', 'Outputs written:');
+  log('DONE', '  - ${anglesFile.path}');
+  log('DONE', '  - ${resultFile.path}');
+  log('DONE', '  - ${runLogFile.path}');
 
   final summary = _buildHybridSummary(hybridOutcome, evidenceOutcome);
   if (summary != null) {
-    log('info', summary);
+    log('INFO', summary);
   }
 }
 
@@ -670,75 +393,13 @@ Future<void> _runEngineMode(
   throw _CliException(
     'Engine mode (--video) is only available in the Flutter build. '
     'This standalone CLI package supports --keypoints file mode only.',
-    _exitParamError,
+    _exitEngineInitError,
   );
-}
-
-class _HybridRuleSpec {
-  final String name;
-  final String metric;
-  final String op;
-  final double threshold;
-  final double weight;
-
-  const _HybridRuleSpec({
-    required this.name,
-    required this.metric,
-    required this.op,
-    required this.threshold,
-    required this.weight,
-  });
-}
-
-class _HybridTriggerSpec {
-  final String mode;
-  final double weightedSumThreshold;
-
-  const _HybridTriggerSpec({
-    required this.mode,
-    required this.weightedSumThreshold,
-  });
-}
-
-class _HybridPolicy {
-  final String? version;
-  final String engine;
-  final String uploadPolicy;
-  final List<_HybridRuleSpec> rules;
-  final _HybridTriggerSpec trigger;
-  final Map<String, dynamic> raw;
-
-  const _HybridPolicy({
-    required this.version,
-    required this.engine,
-    required this.uploadPolicy,
-    required this.rules,
-    required this.trigger,
-    required this.raw,
-  });
-}
-
-class _HybridEvaluationResult {
-  final bool triggered;
-  final List<String> reasons;
-  final String? primaryReason;
-  final double matchedWeight;
-  final List<Map<String, dynamic>> diagnostics;
-
-  const _HybridEvaluationResult({
-    required this.triggered,
-    required this.reasons,
-    required this.primaryReason,
-    required this.matchedWeight,
-    required this.diagnostics,
-  });
 }
 
 class _HybridOutcome {
   final bool enabled;
   final bool triggered;
-  final String uploadPolicy;
-  final String? reason;
   final List<String> reasons;
   final bool hadCloudMock;
   final bool cloudEnhanced;
@@ -748,49 +409,33 @@ class _HybridOutcome {
   final String? mergeStrategy;
   final String? reconcileNote;
   final String? policyVersion;
-  final Map<String, double> metrics;
-  final Map<String, dynamic>? triggerSummary;
-  final Map<String, dynamic>? slice;
 
   const _HybridOutcome({
     required this.enabled,
     required this.triggered,
-    required this.uploadPolicy,
-    required this.reason,
     required this.reasons,
     required this.hadCloudMock,
     required this.cloudEnhanced,
-    required this.metrics,
     this.countLocal,
     this.countCloud,
     this.countFinal,
     this.mergeStrategy,
     this.reconcileNote,
     this.policyVersion,
-    this.triggerSummary,
-    this.slice,
   });
 }
 
 class _EvidenceOutcome {
   final bool enabled;
   final int topK;
-  final int windowMs;
   final int generatedCount;
-  final bool exportOverlayRequested;
   final bool overlayGenerated;
-  final bool overlayDowngraded;
-  final List<Map<String, dynamic>> generatedItems;
 
   const _EvidenceOutcome({
     required this.enabled,
     required this.topK,
-    required this.windowMs,
     required this.generatedCount,
-    required this.exportOverlayRequested,
     required this.overlayGenerated,
-    required this.overlayDowngraded,
-    required this.generatedItems,
   });
 }
 
@@ -818,114 +463,15 @@ class _CloudMergeOutcome {
   });
 }
 
-class _ValidationItem {
-  final String level;
-  final String rule;
-  final String detail;
-  final String? hint;
+class _HybridRuleEvaluation {
+  final bool triggered;
+  final List<String> reasons;
 
-  const _ValidationItem({
-    required this.level,
-    required this.rule,
-    required this.detail,
-    this.hint,
+  const _HybridRuleEvaluation({
+    required this.triggered,
+    required this.reasons,
   });
-
-  Map<String, dynamic> toJson() => {
-        'level': level,
-        'rule': rule,
-        'detail': detail,
-        if (hint != null) 'hint': hint,
-      };
 }
-
-class _ValidationContext {
-  final Directory outDir;
-  final Directory logsDir;
-  final _LogFn log;
-  final String outputFormat;
-  final List<_ValidationItem> _items = [];
-
-  _ValidationContext({
-    required this.outDir,
-    required this.logsDir,
-    required this.log,
-    required this.outputFormat,
-  });
-
-  int get errorCount =>
-      _items.where((item) => item.level == 'ERROR').length;
-  int get warningCount =>
-      _items.where((item) => item.level == 'WARN').length;
-
-  void error(String rule, String detail, {String? hint}) {
-    _items.add(_ValidationItem(level: 'ERROR', rule: rule, detail: detail, hint: hint));
-    log('ERROR', '$rule → $detail');
-  }
-
-  void warn(String rule, String detail, {String? hint}) {
-    _items.add(_ValidationItem(level: 'WARN', rule: rule, detail: detail, hint: hint));
-    log('WARN', '$rule → $detail');
-  }
-
-  Map<String, dynamic> _summaryJson() => {
-        'summary': {'errors': errorCount, 'warnings': warningCount},
-        'items': _items.map((e) => e.toJson()).toList(),
-      };
-
-  Future<void> writeReports() async {
-    final reportFile =
-        File(path.join(logsDir.path, 'validation_report.json'));
-    await reportFile
-        .writeAsString(_prettyJsonEncoder.convert(_summaryJson()));
-
-    final junitFile =
-        File(path.join(logsDir.path, 'validation_junit.xml'));
-    final junitBuffer = StringBuffer()
-      ..writeln('<?xml version="1.0" encoding="UTF-8"?>')
-      ..writeln('<testsuite name="aiwa_cli_validation" tests="${_items.length}" failures="$errorCount" warnings="$warningCount">');
-    for (final item in _items) {
-      junitBuffer.writeln('  <testcase name="${item.rule}">');
-      if (item.level == 'ERROR') {
-        junitBuffer.writeln('    <failure message="${_escapeXml(item.detail)}"/>');
-      } else if (item.level == 'WARN') {
-        junitBuffer.writeln('    <system-out>${_escapeXml(item.detail)}</system-out>');
-      }
-      junitBuffer.writeln('  </testcase>');
-    }
-    junitBuffer.writeln('</testsuite>');
-    await junitFile.writeAsString(junitBuffer.toString());
-
-    log('INFO', 'Validation summary → errors=$errorCount warnings=$warningCount');
-
-    if (outputFormat == 'json' || outputFormat == 'all') {
-      stdout.writeln(_prettyJsonEncoder.convert(_summaryJson()));
-    }
-    if (outputFormat == 'junit' || outputFormat == 'all') {
-      stdout.writeln(junitBuffer.toString());
-    }
-  }
-
-  bool shouldFail({required bool strict, required bool failOnWarn}) {
-    if (!strict) {
-      return false;
-    }
-    if (errorCount > 0) {
-      return true;
-    }
-    if (failOnWarn && warningCount > 0) {
-      return true;
-    }
-    return false;
-  }
-}
-
-String _escapeXml(String input) => input
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&apos;');
 
 double _roundDouble(double value, int fractionDigits) =>
     double.parse(value.toStringAsFixed(fractionDigits));
@@ -940,10 +486,9 @@ String? _buildHybridSummary(
         ? 'HYBRID ${hybrid.triggered ? 'on' : 'off'}'
         : 'HYBRID off';
     parts.add(status);
-    if (hybrid.reason != null) {
-      parts.add('reason=${hybrid.reason}');
+    if (hybrid.triggered && hybrid.reasons.isNotEmpty) {
+      parts.add('reasons=[${hybrid.reasons.join(',')}]');
     }
-    parts.add('policy=${hybrid.uploadPolicy}');
     if (hybrid.hadCloudMock) {
       parts.add(hybrid.cloudEnhanced ? 'cloudEnhanced' : 'cloudStatic');
       final local = hybrid.countLocal != null ? hybrid.countLocal.toString() : '-';
@@ -971,63 +516,34 @@ String? _buildHybridSummary(
 void _validateHybridArtifacts({
   required Directory logsDir,
   required _HybridOutcome outcome,
-  required Map<String, dynamic> resultJson,
-  required _ValidationContext validation,
+  required _LogFn log,
 }) {
-  final hybrid = resultJson['hybrid'] as Map<String, dynamic>?;
-  if (hybrid == null) {
-    if (outcome.enabled || outcome.hadCloudMock) {
-      validation.error('hybrid.missing', 'result.json 缺少 hybrid 节点');
-    }
+  if (!outcome.enabled && !outcome.hadCloudMock) {
     return;
   }
-  if (resultJson['version'] == null) {
-    validation.error('result.version', 'result.json 缺少 version 字段');
-  }
-  if (outcome.triggered) {
-    if (hybrid['reason'] == null || (hybrid['reason'] as String).isEmpty) {
-      validation.error('hybrid.reason', '混合触发但缺少 reason 字段');
-    }
-    if (hybrid['uploadPolicy'] == null) {
-      validation.error('hybrid.upload_policy', '混合触发但缺少 uploadPolicy');
-    }
+  if (outcome.enabled && outcome.triggered) {
     final triggerFile = File(path.join(logsDir.path, 'hybrid_trigger.json'));
     if (!triggerFile.existsSync()) {
-      validation.warn('hybrid.trigger_log', '缺少 logs/hybrid_trigger.json');
+      log('WARN', 'Hybrid triggered but logs/hybrid_trigger.json is missing.');
     }
-  }
-  if (outcome.hadCloudMock) {
+    final payloadFile = File(path.join(logsDir.path, 'cloud_payload.json'));
+    if (!payloadFile.existsSync()) {
+      log('WARN', 'Hybrid triggered but logs/cloud_payload.json is missing.');
+    }
+    final auditFile = File(path.join(logsDir.path, 'payload_audit.json'));
+    if (!auditFile.existsSync()) {
+      log('WARN', 'Hybrid triggered but logs/payload_audit.json is missing.');
+    }
+    if (outcome.hadCloudMock) {
+      final diffFile = File(path.join(logsDir.path, 'hybrid_diff.json'));
+      if (!diffFile.existsSync()) {
+        log('WARN', 'Hybrid triggered with cloud mock but logs/hybrid_diff.json is missing.');
+      }
+    }
+  } else if (outcome.hadCloudMock) {
     final diffFile = File(path.join(logsDir.path, 'hybrid_diff.json'));
     if (!diffFile.existsSync()) {
-      validation.warn('hybrid.diff_log', '提供 cloud-mock 但缺少 logs/hybrid_diff.json');
-    }
-  }
-
-  final metrics = hybrid['metrics'] as Map<String, dynamic>? ?? {};
-  final coverage = (metrics['coverage'] as num?)?.toDouble();
-  if (coverage != null && (coverage < 0 || coverage > 1)) {
-    validation.error('metrics.coverage_range', 'coverage=$coverage 超出 [0,1]');
-  }
-  final lowConf = (metrics['lowConfPct'] as num?)?.toDouble();
-  if (lowConf != null && (lowConf < 0 || lowConf > 1)) {
-    validation.error('metrics.low_conf_range', 'lowConfPct=$lowConf 超出 [0,1]');
-  }
-  if (!outcome.triggered && coverage != null && coverage < 0.6) {
-    validation.warn('hybrid.low_coverage_untriggered',
-        'coverage=$coverage 低于 0.6 但未触发混合策略');
-  }
-
-  if (hybrid['cloudEnhanced'] == true) {
-    final delta = hybrid['delta'] as Map<String, dynamic>?;
-    final local = (delta?['countLocal'] as num?)?.toInt();
-    final finalCount = (delta?['countFinal'] as num?)?.toInt();
-    final cloud = (delta?['countCloud'] as num?)?.toInt();
-    if (local != null && finalCount != null && cloud != null) {
-      if ((cloud - local).abs() > 2 &&
-          (hybrid['reconcileNote'] as String?)?.isEmpty != false) {
-        validation.warn('hybrid.missing_reconcile_note',
-            'cloud=$cloud, local=$local, diff=${cloud - local} 未提供 reconcileNote');
-      }
+      log('WARN', 'Cloud mock provided but logs/hybrid_diff.json was not written.');
     }
   }
 }
@@ -1037,57 +553,43 @@ void _validateEvidenceArtifacts({
   required Directory logsDir,
   required Map<String, dynamic> resultJson,
   required _EvidenceOutcome outcome,
-  required _ValidationContext validation,
+  required _LogFn log,
 }) {
   if (!outcome.enabled) {
     return;
   }
-  final evidenceList =
-      (resultJson['evidence'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
-  if (evidenceList.isEmpty) {
-    validation.error('evidence.empty', '已启用证据化但 evidence[] 为空');
-  }
-  for (var i = 0; i < evidenceList.length; i++) {
-    final item = evidenceList[i];
-    if (item['timestampMs'] is! num) {
-      validation.error('evidence.timestamp', 'evidence[$i] 缺少 timestampMs');
-    }
-    final type = item['type'];
-    if (type is! String || type.isEmpty) {
-      validation.error('evidence.type', 'evidence[$i] 缺少 type');
-    }
-    final angles = item['angles'];
-    if (angles is Map<String, dynamic>) {
-      for (final entry in angles.entries) {
-        final value = entry.value;
-        if (value is num && (value.isNaN || value.isInfinite)) {
-          validation.error('evidence.angle_nan',
-              'evidence[$i].angles.${entry.key} 存在非法数值');
-        }
-      }
-    }
-  }
-
   final evidenceFile = File(path.join(outDir.path, 'evidence.json'));
   if (!evidenceFile.existsSync()) {
-    validation.warn('evidence.file_missing', '缺少 evidence.json');
+    log('WARN', 'Evidence enabled but evidence.json is missing.');
   }
-  final perfFile = File(path.join(logsDir.path, 'perf.json'));
+  final perfFile = File(path.join(logsDir.path, 'perf.json.evidence'));
   if (!perfFile.existsSync()) {
-    validation.warn('evidence.perf_missing', '缺少 logs/perf.json');
+    log('WARN', 'Evidence enabled but logs/perf.json.evidence is missing.');
   }
-
-  final overlayFile = File(path.join(outDir.path, 'overlay.mp4'));
+  final evidenceItems = (resultJson['evidence'] as List<dynamic>? ?? [])
+      .whereType<Map<String, dynamic>>()
+      .toList(growable: false);
+  for (var i = 0; i < evidenceItems.length; i++) {
+    final item = evidenceItems[i];
+    final ts = item['timestampMs'];
+    if (ts is! num) {
+      log('WARN', 'Evidence item #$i missing numeric timestampMs.');
+    }
+    final cues = item['cues'];
+    if (cues is! List || cues.isEmpty) {
+      log('WARN', 'Evidence item #$i missing cues[].');
+    }
+  }
   if (outcome.overlayGenerated) {
+    final overlayFile = File(path.join(outDir.path, 'overlay.mp4'));
     if (!overlayFile.existsSync()) {
-      validation.error('overlay.missing', '期望导出 overlay.mp4 但文件不存在');
-    } else {
-      _validateOverlayTimestamps(
-        overlayFile: overlayFile,
-        evidenceList: evidenceList,
-        validation: validation,
-        resultJson: resultJson,
-      );
+      log('WARN', 'Evidence overlay flagged as generated but overlay.mp4 is missing.');
+    }
+    for (var i = 0; i < evidenceItems.length; i++) {
+      final item = evidenceItems[i];
+      if (!item.containsKey('snapshotPath')) {
+        log('WARN', 'Evidence item #$i missing snapshotPath while overlay is enabled.');
+      }
     }
   }
 }
@@ -1117,6 +619,52 @@ Map<String, double> _buildHybridMetrics(
   };
 }
 
+Map<String, double> _extractPolicyThresholds(
+  Map<String, dynamic> policy,
+  Map<String, dynamic> resultJson,
+) {
+  final thresholds = <String, double>{};
+  final global = policy['global'] as Map<String, dynamic>? ?? {};
+  for (final entry in global.entries) {
+    final value = entry.value;
+    if (value is num) {
+      thresholds[entry.key] = value.toDouble();
+    }
+  }
+
+  final byEngine = policy['byEngine'] as Map<String, dynamic>?;
+  if (byEngine != null) {
+    final engineName =
+        (resultJson['engine'] ?? (resultJson['meta'] as Map<String, dynamic>? ?? {})['engine'])
+            as String?;
+    final engineVersion = (resultJson['engineVersion'] ??
+            (resultJson['meta'] as Map<String, dynamic>? ?? {})['engineVersion'])
+        as String?;
+    if (engineName != null && engineVersion != null) {
+      final versionDigits = engineVersion.replaceAll(RegExp(r'[^0-9]'), '');
+      final candidates = <String>[
+        if (versionDigits.isNotEmpty) '${engineName}_$versionDigits',
+        '${engineName}_$engineVersion',
+        engineName,
+      ];
+      for (final candidate in candidates) {
+        final override = byEngine[candidate];
+        if (override is Map<String, dynamic>) {
+          for (final entry in override.entries) {
+            final value = entry.value;
+            if (value is num) {
+              thresholds[entry.key] = value.toDouble();
+            }
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  return thresholds;
+}
+
 bool _compareHybridMetric(double metric, double threshold, String op) {
   switch (op) {
     case '<':
@@ -1134,6 +682,43 @@ bool _compareHybridMetric(double metric, double threshold, String op) {
     default:
       return false;
   }
+}
+
+_HybridRuleEvaluation _evaluateHybridRules(
+  Map<String, dynamic> policy,
+  Map<String, double> metrics,
+  Map<String, double> thresholds,
+) {
+  final rules = (policy['triggerRules'] as List<dynamic>? ?? [])
+      .whereType<String>()
+      .toList(growable: false);
+  final fireAny = policy['fireIfAnyRuleTrue'] == true;
+  final reasons = <String>[];
+
+  for (final rule in rules) {
+    final tokens = rule.split(RegExp(r'\s+')).where((e) => e.isNotEmpty).toList();
+    if (tokens.length != 3) {
+      continue;
+    }
+    final metricKey = tokens[0];
+    final op = tokens[1];
+    final thresholdKey = tokens[2];
+    final metricValue = metrics[metricKey];
+    final thresholdValue = thresholds[thresholdKey];
+    if (metricValue == null || thresholdValue == null) {
+      continue;
+    }
+    if (_compareHybridMetric(metricValue, thresholdValue, op)) {
+      reasons.add(
+          '$metricKey$op$thresholdKey(${_roundDouble(metricValue, 3)} vs ${_roundDouble(thresholdValue, 3)})');
+    }
+  }
+
+  final triggered = fireAny
+      ? reasons.isNotEmpty
+      : (rules.isNotEmpty && reasons.length == rules.length);
+
+  return _HybridRuleEvaluation(triggered: triggered, reasons: reasons);
 }
 
 Map<String, dynamic>? _computeHybridSlice(
@@ -1181,8 +766,7 @@ Map<String, dynamic>? _computeHybridSlice(
   required String baseName,
   required bool exportCloudFragment,
 }) {
-  final privacy =
-      (policy['uploadPolicy'] as String?) ?? (policy['privacy'] as String?) ?? 'keypoints_only';
+  final privacy = policy['privacy'] as String? ?? 'keypoints_only';
   final startMs = (slice?['startMs'] as num?)?.toInt() ?? 0;
   final endMs = (slice?['endMs'] as num?)?.toInt() ?? neutralSeries.video.durationMs;
   final points = <Map<String, dynamic>>[];
@@ -1327,22 +911,23 @@ int _repCenter(Map<String, dynamic> rep) {
 }
 
 Future<_CloudMergeOutcome?> _mergeCloudMock({
-  required Map<String, dynamic> cloudData,
+  required String cloudMockPath,
   required Map<String, dynamic> resultJson,
   required Directory logsDir,
   required _LogFn log,
 }) async {
-  final cloudCounts = cloudData['counts'] as int?;
-  final cloudSegments =
-      (cloudData['segments'] as List<dynamic>? ?? [])
-          .whereType<Map<String, dynamic>>()
-          .toList(growable: false);
-  if (cloudSegments.isEmpty) {
-    log('WARN', 'Cloud mock缺少 segments 列表，跳过云端合并。');
+  final mockStr = await _readFile(cloudMockPath, 'cloud mock');
+  final decoded = jsonDecode(mockStr);
+  if (decoded is! Map<String, dynamic>) {
+    log('WARN', 'Cloud mock "$cloudMockPath" is not an object. Skipping merge.');
     return null;
   }
-  final quality = cloudData['quality'] as Map<String, dynamic>? ?? const {};
-  final notes = cloudData['notes'];
+
+  final cloudCounts = (decoded['counts'] as num?)?.toInt();
+  final cloudReps = (decoded['reps'] as List<dynamic>? ?? [])
+      .whereType<Map<String, dynamic>>()
+      .toList(growable: false);
+  final notes = decoded['notes'];
 
   final toleranceMs = 200;
   final localReps = (resultJson['reps'] as List<dynamic>)
@@ -1354,25 +939,19 @@ Future<_CloudMergeOutcome?> _mergeCloudMock({
   var matchedCount = 0;
   final evidenceAdditions = <Map<String, dynamic>>[];
 
-  for (final segment in cloudSegments) {
-    final cloudRep = {
-      'startMs': segment['startMs'],
-      'endMs': segment['endMs'],
-      'idx': segment['repIndex'] ?? segment['index'],
-    };
+  for (final cloudRep in cloudReps) {
     final matched = _matchCloudToLocal(localReps, cloudRep, used, toleranceMs);
     if (matched == null) {
-      unmatchedCloud.add(segment);
+      unmatchedCloud.add(cloudRep);
       continue;
     }
     matchedCount++;
     final localStart = (matched['startMs'] as num?)?.toInt();
     final localEnd = (matched['endMs'] as num?)?.toInt();
-    final cloudStart = (segment['startMs'] as num?)?.toInt();
-    final cloudEnd = (segment['endMs'] as num?)?.toInt();
+    final cloudStart = (cloudRep['startMs'] as num?)?.toInt();
+    final cloudEnd = (cloudRep['endMs'] as num?)?.toInt();
     final entry = <String, dynamic>{
-      'index': (matched['index'] as num?)?.toInt() ??
-          (segment['repIndex'] as num?)?.toInt(),
+      'index': (matched['index'] as num?)?.toInt() ?? (cloudRep['idx'] as num?)?.toInt(),
       'local': {'startMs': localStart, 'endMs': localEnd},
       'cloud': {'startMs': cloudStart, 'endMs': cloudEnd},
     };
@@ -1399,17 +978,20 @@ Future<_CloudMergeOutcome?> _mergeCloudMock({
       boundariesAdopted++;
     }
 
-    final cues = quality.entries
-        .map((e) => 'cloud:${e.key}:${e.value}')
-        .toList(growable: false);
-    if (cues.isNotEmpty) {
-      evidenceAdditions.add({
-        'type': 'segment',
-        'timestampMs': _repCenter(matched),
-        'repIndex': (matched['index'] as num?)?.toInt(),
-        'frameIndex': (matched['index'] as num?)?.toInt(),
-        'cues': cues,
-      });
+    final quality = cloudRep['quality'];
+    if (quality is Map<String, dynamic> && quality.isNotEmpty) {
+      final cues = quality.entries
+          .map((e) => 'cloud:${e.key}:${e.value}')
+          .toList(growable: false);
+      if (cues.isNotEmpty) {
+        evidenceAdditions.add({
+          'type': 'segment',
+          'timestampMs': _repCenter(matched),
+          'repIndex': (matched['index'] as num?)?.toInt(),
+          'frameIndex': (matched['index'] as num?)?.toInt(),
+          'cues': cues,
+        });
+      }
     }
 
     matches.add(entry);
@@ -1490,308 +1072,6 @@ Future<_CloudMergeOutcome?> _mergeCloudMock({
   );
 }
 
-Future<_HybridPolicy> _loadHybridPolicy(String path, _LogFn log) async {
-  final policyStr = await _readFile(path, 'hybrid policy');
-  final decoded = jsonDecode(policyStr);
-  if (decoded is! Map<String, dynamic>) {
-    throw _CliException(
-      'Hybrid policy must be a JSON object.',
-      _exitParamError,
-    );
-  }
-
-  final version = decoded['version'] as String?;
-  final engine = (decoded['engine'] as String? ?? 'any').toLowerCase();
-  if (!['any', 'mlkit', 'movenet'].contains(engine)) {
-    throw _CliException(
-      'Unsupported hybrid policy engine "$engine".',
-      _exitParamError,
-    );
-  }
-
-  final uploadPolicy =
-      (decoded['uploadPolicy'] as String? ?? 'keypoints_only');
-  if (!{'keypoints_only', 'keypoints_plus_video'}.contains(uploadPolicy)) {
-    throw _CliException(
-      'Unsupported uploadPolicy "$uploadPolicy" in hybrid policy.',
-      _exitParamError,
-    );
-  }
-
-  final rulesRaw = (decoded['rules'] as List<dynamic>? ?? []);
-  final rules = <_HybridRuleSpec>[];
-  for (final entry in rulesRaw) {
-    if (entry is! Map<String, dynamic>) {
-      continue;
-    }
-    final name = entry['name'] as String?;
-    final metric = entry['metric'] as String?;
-    final op = entry['op'] as String?;
-    final threshold = (entry['threshold'] as num?)?.toDouble();
-    final weight = (entry['weight'] as num?)?.toDouble() ?? 1.0;
-    if (name == null || metric == null || op == null || threshold == null) {
-      throw _CliException(
-        'Hybrid rule entries must include name/metric/op/threshold.',
-        _exitParamError,
-      );
-    }
-    if (!_allowedHybridOps.contains(op)) {
-      throw _CliException(
-        'Hybrid rule "$name" uses unsupported op "$op".',
-        _exitParamError,
-      );
-    }
-    rules.add(_HybridRuleSpec(
-      name: name,
-      metric: metric,
-      op: op,
-      threshold: threshold,
-      weight: weight,
-    ));
-  }
-  if (rules.isEmpty) {
-    log('WARN', 'Hybrid policy contains no trigger rules; hybrid will never fire.');
-  }
-
-  final triggerMap = decoded['trigger'] as Map<String, dynamic>? ?? const {};
-  final triggerMode = (triggerMap['mode'] as String? ?? 'any');
-  if (!{'any', 'all', 'weighted_sum'}.contains(triggerMode)) {
-    throw _CliException(
-      'Unsupported trigger.mode "$triggerMode" in hybrid policy.',
-      _exitParamError,
-    );
-  }
-  final weightedThreshold =
-      (triggerMap['weighted_sum_threshold'] as num?)?.toDouble() ?? 1.0;
-
-  return _HybridPolicy(
-    version: version,
-    engine: engine,
-    uploadPolicy: uploadPolicy,
-    rules: rules,
-    trigger: _HybridTriggerSpec(
-      mode: triggerMode,
-      weightedSumThreshold: weightedThreshold,
-    ),
-    raw: decoded,
-  );
-}
-
-_HybridEvaluationResult _evaluateHybridPolicy(
-  _HybridPolicy policy,
-  Map<String, double> metrics,
-) {
-  final diagnostics = <Map<String, dynamic>>[];
-  final reasons = <String>[];
-  var matchedWeight = 0.0;
-
-  for (final rule in policy.rules) {
-    final metricValue = metrics[rule.metric];
-    final matched = metricValue != null &&
-        _compareHybridMetric(metricValue, rule.threshold, rule.op);
-    diagnostics.add({
-      'name': rule.name,
-      'metric': rule.metric,
-      'value': metricValue,
-      'op': rule.op,
-      'threshold': rule.threshold,
-      'weight': rule.weight,
-      'matched': matched,
-    });
-    if (matched) {
-      matchedWeight += rule.weight;
-      reasons.add(rule.name);
-    }
-  }
-
-  bool triggered;
-  switch (policy.trigger.mode) {
-    case 'all':
-      triggered = policy.rules.isNotEmpty &&
-          reasons.length == policy.rules.length;
-      break;
-    case 'weighted_sum':
-      triggered = matchedWeight >= policy.trigger.weightedSumThreshold;
-      break;
-    case 'any':
-    default:
-      triggered = reasons.isNotEmpty;
-      break;
-  }
-
-  return _HybridEvaluationResult(
-    triggered: triggered,
-    reasons: reasons,
-    primaryReason: reasons.isEmpty ? null : reasons.first,
-    matchedWeight: matchedWeight,
-    diagnostics: diagnostics,
-  );
-}
-
-Future<Map<String, dynamic>> _readCloudMock(
-  String pathStr,
-  _LogFn log,
-) async {
-  final mockStr = await _readFile(pathStr, 'cloud mock');
-  final decoded = jsonDecode(mockStr);
-  if (decoded is! Map<String, dynamic>) {
-    throw _CliException(
-      'Cloud mock must be a JSON object.',
-      _exitParamError,
-    );
-  }
-  final segments = (decoded['segments'] as List<dynamic>? ?? [])
-      .whereType<Map<String, dynamic>>()
-      .map((segment) => Map<String, dynamic>.from(segment))
-      .toList();
-  if (segments.isEmpty) {
-    final legacy = (decoded['reps'] as List<dynamic>? ?? [])
-        .whereType<Map<String, dynamic>>()
-        .map((segment) => Map<String, dynamic>.from(segment))
-        .toList();
-    if (legacy.isNotEmpty) {
-      log('WARN', 'cloud mock uses legacy "reps" field; treating as segments.');
-      segments.addAll(legacy);
-    }
-  }
-
-  return {
-    'raw': decoded,
-    'source': decoded['source'] as String? ?? 'mock',
-    'counts': (decoded['counts'] as num?)?.toInt(),
-    'segments': segments,
-    'quality': decoded['quality'] as Map<String, dynamic>? ?? const {},
-    'notes': decoded['notes'] as String?,
-  };
-}
-
-double? _estimateResultDurationSeconds(Map<String, dynamic> resultJson) {
-  final meta = resultJson['meta'] as Map<String, dynamic>?;
-  final durationMs = (meta?['durationMs'] as num?)?.toDouble();
-  if (durationMs != null) {
-    return durationMs / 1000.0;
-  }
-  final reps = (resultJson['reps'] as List<dynamic>? ?? [])
-      .whereType<Map<String, dynamic>>();
-  if (reps.isEmpty) {
-    return null;
-  }
-  var minStart = double.infinity;
-  var maxEnd = 0.0;
-  for (final rep in reps) {
-    final start = (rep['startMs'] as num?)?.toDouble();
-    final end = (rep['endMs'] as num?)?.toDouble();
-    final valley = (rep['valleyMs'] as num?)?.toDouble();
-    if (start != null) {
-      minStart = math.min(minStart, start);
-      maxEnd = math.max(maxEnd, start);
-    }
-    if (end != null) {
-      minStart = math.min(minStart, end);
-      maxEnd = math.max(maxEnd, end);
-    }
-    if (valley != null) {
-      minStart = math.min(minStart, valley);
-      maxEnd = math.max(maxEnd, valley);
-    }
-  }
-  if (minStart == double.infinity) {
-    return null;
-  }
-  return (maxEnd - minStart).abs() / 1000.0;
-}
-
-Future<void> _validateOverlayTimestamps({
-  required File overlayFile,
-  required List<Map<String, dynamic>> evidenceList,
-  required _ValidationContext validation,
-  required Map<String, dynamic> resultJson,
-}) async {
-  try {
-    final probe = await _probeVideo(overlayFile.path);
-    final durationSec = probe.durationMs / 1000.0;
-    final expectedSec = _estimateResultDurationSeconds(resultJson);
-    if (expectedSec != null) {
-      final diff = (durationSec - expectedSec).abs();
-      if (diff > 1.0) {
-        validation.error(
-          'overlay.duration_mismatch',
-          'overlay.mp4=${durationSec.toStringAsFixed(2)}s vs result=${expectedSec.toStringAsFixed(2)}s; diff=${diff.toStringAsFixed(2)}s > 1.0s',
-          hint: '请重新导出 overlay.mp4 或校准 result.json 时间区间',
-        );
-      }
-    }
-    for (final item in evidenceList) {
-      final ref = item['snapshotRef'] as String?;
-      if (ref == null) {
-        continue;
-      }
-      final hashIndex = ref.indexOf('#t=');
-      if (hashIndex == -1) {
-        continue;
-      }
-      final tStr = ref.substring(hashIndex + 3);
-      final timestamp = double.tryParse(tStr);
-      if (timestamp != null && (timestamp < -0.01 || timestamp > durationSec + 0.01)) {
-        validation.error(
-          'overlay.snapshot_out_of_range',
-          'snapshotRef=$ref 超出 overlay.mp4 时长 ${durationSec.toStringAsFixed(2)}s',
-        );
-      }
-    }
-  } on _CliException {
-    rethrow;
-  } catch (e) {
-    validation.warn('overlay.probe_failed', '无法解析 overlay.mp4: $e');
-  }
-}
-
-Future<bool> _isFfmpegAvailable() async {
-  if (_ffmpegAvailableCache != null) {
-    return _ffmpegAvailableCache!;
-  }
-  try {
-    final result = await Process.run('ffmpeg', ['-version']);
-    _ffmpegAvailableCache = result.exitCode == 0;
-  } on ProcessException {
-    _ffmpegAvailableCache = false;
-  }
-  return _ffmpegAvailableCache!;
-}
-
-Map<String, double> _buildEvidenceThresholds(
-  RuleSet ruleSet,
-  Strictness strictness,
-) {
-  final thresholds = <String, double>{};
-  final strictKey = strictness == Strictness.strict ? 'strict' : 'relaxed';
-  final metrics = ruleSet.metrics;
-
-  final depth = metrics['depth'] as Map<String, dynamic>?;
-  final depthMap = depth?['kneeAngleMin'] as Map<String, dynamic>?;
-  final depthValue = (depthMap?[strictKey] as num?)?.toDouble();
-  if (depthValue != null) {
-    thresholds['depth_minHipAngle'] = depthValue;
-  }
-
-  final valgus = metrics['valgus'] as Map<String, dynamic>?;
-  final kneeOut = valgus?['kneeOutAngleMin'] as Map<String, dynamic>?;
-  final valgusValue = (kneeOut?[strictKey] as num?)?.toDouble();
-  if (valgusValue != null) {
-    thresholds['leftKnee_maxValgus'] = valgusValue;
-    thresholds['rightKnee_maxValgus'] = valgusValue;
-  }
-
-  final trunk = metrics['trunk'] as Map<String, dynamic>?;
-  final forwardLean = trunk?['maxForwardLean'] as Map<String, dynamic>?;
-  final trunkValue = (forwardLean?[strictKey] as num?)?.toDouble();
-  if (trunkValue != null) {
-    thresholds['trunk_maxForwardLean'] = trunkValue;
-  }
-
-  return thresholds;
-}
-
 Future<_HybridOutcome> _processHybrid({
   required bool enabled,
   required String policyPath,
@@ -1807,32 +1087,43 @@ Future<_HybridOutcome> _processHybrid({
   final metrics = _buildHybridMetrics(resultJson, perfData, neutralSeries);
   final hadCloudMock = cloudMockPath != null;
 
-  _HybridPolicy? policy;
-  _HybridEvaluationResult? evaluation;
+  var triggered = false;
+  var reasons = <String>[];
   Map<String, dynamic>? slice;
-  Map<String, dynamic>? triggerPayload;
+  String? policyVersion;
+  Map<String, double> thresholds = const {};
 
   if (enabled) {
-    policy = await _loadHybridPolicy(policyPath, log);
-    evaluation = _evaluateHybridPolicy(policy, metrics);
-    slice = _computeHybridSlice(resultJson, policy.raw);
-    triggerPayload = {
-      if (policy.version != null) 'version': policy.version,
-      'triggered': evaluation.triggered,
+    final policyStr = await _readFile(policyPath, 'hybrid policy');
+    final decoded = jsonDecode(policyStr);
+    if (decoded is! Map<String, dynamic>) {
+      throw _CliException(
+        'Hybrid policy must be a JSON object.',
+        _exitParamError,
+      );
+    }
+    policyVersion = decoded['version'] as String?;
+    thresholds = _extractPolicyThresholds(decoded, resultJson);
+    final evaluation = _evaluateHybridRules(decoded, metrics, thresholds);
+    triggered = evaluation.triggered;
+    reasons = evaluation.reasons;
+    slice = _computeHybridSlice(resultJson, decoded);
+
+    final triggerPayload = <String, dynamic>{
+      if (policyVersion != null) 'version': policyVersion,
+      'triggered': triggered,
       'metrics': metrics,
-      'mode': policy.trigger.mode,
-      'matchedWeight': evaluation.matchedWeight,
-      'threshold': policy.trigger.weightedSumThreshold,
-      'diagnostics': evaluation.diagnostics,
+      'reasons': reasons,
       if (slice != null) 'slice': slice,
+      if (thresholds.isNotEmpty) 'thresholds': thresholds,
     };
     final triggerFile = File(path.join(logsDir.path, 'hybrid_trigger.json'));
     await triggerFile.writeAsString(_prettyJsonEncoder.convert(triggerPayload));
 
-    if (evaluation.triggered) {
+    if (triggered) {
       if (neutralSeries != null) {
         final payloadArtifacts = _buildCloudPayload(
-          policy: policy.raw,
+          policy: decoded,
           neutralSeries: neutralSeries,
           slice: slice,
           baseName: baseName,
@@ -1854,15 +1145,10 @@ Future<_HybridOutcome> _processHybrid({
     }
   }
 
-  Map<String, dynamic>? cloudData;
-  if (hadCloudMock && cloudMockPath != null) {
-    cloudData = await _readCloudMock(cloudMockPath, log);
-  }
-
   _CloudMergeOutcome? cloudOutcome;
-  if (cloudData != null) {
+  if (cloudMockPath != null) {
     cloudOutcome = await _mergeCloudMock(
-      cloudData: cloudData,
+      cloudMockPath: cloudMockPath,
       resultJson: resultJson,
       logsDir: logsDir,
       log: log,
@@ -1876,18 +1162,13 @@ Future<_HybridOutcome> _processHybrid({
     }
   }
 
-  final uploadPolicy = policy?.uploadPolicy ?? 'keypoints_only';
   final hybridSummary = <String, dynamic>{
-    'triggered': evaluation?.triggered ?? false,
-    'uploadPolicy': uploadPolicy,
+    'triggered': triggered,
     'metrics': metrics,
-    'cloudEnhanced': cloudOutcome?.cloudEnhanced ?? false,
-    if (evaluation?.primaryReason != null) 'reason': evaluation!.primaryReason,
-    if (evaluation != null && evaluation.reasons.isNotEmpty)
-      'reasons': evaluation.reasons,
-    if (policy?.version != null) 'policyVersion': policy!.version,
-    if (triggerPayload != null) 'trigger': triggerPayload,
+    'reasons': reasons,
     if (slice != null) 'slice': slice,
+    if (policyVersion != null) 'policyVersion': policyVersion,
+    'cloudEnhanced': cloudOutcome?.cloudEnhanced ?? false,
     if (cloudOutcome != null) 'mergeStrategy': cloudOutcome.mergeStrategy,
     if (cloudOutcome != null)
       'delta': {
@@ -1898,75 +1179,71 @@ Future<_HybridOutcome> _processHybrid({
     if (cloudOutcome != null) 'sourceOfTruth': cloudOutcome.sourceOfTruth,
     if (cloudOutcome?.reconcileNote != null)
       'reconcileNote': cloudOutcome!.reconcileNote,
-    if (cloudData != null) 'cloudMockSource': cloudData['source'],
   };
   resultJson['hybrid'] = hybridSummary;
 
   return _HybridOutcome(
     enabled: enabled,
-    triggered: evaluation?.triggered ?? false,
-    uploadPolicy: uploadPolicy,
-    reason: evaluation?.primaryReason,
-    reasons: evaluation?.reasons ?? const [],
+    triggered: triggered,
+    reasons: reasons,
     hadCloudMock: hadCloudMock,
     cloudEnhanced: cloudOutcome?.cloudEnhanced ?? false,
-    metrics: metrics,
     countLocal: cloudOutcome?.countLocal,
     countCloud: cloudOutcome?.countCloud,
     countFinal: cloudOutcome?.countFinal,
     mergeStrategy: cloudOutcome?.mergeStrategy,
     reconcileNote: cloudOutcome?.reconcileNote,
-    policyVersion: policy?.version,
-    triggerSummary: triggerPayload,
-    slice: slice,
+    policyVersion: policyVersion,
   );
 }
 
 Future<_EvidenceOutcome> _processEvidence({
   required bool enabled,
-  required Map<String, dynamic> options,
+  required String configPath,
   required Directory outDir,
   required Directory logsDir,
   required Map<String, dynamic> resultJson,
-  required RuleSet ruleSet,
-  required Strictness strictness,
+  required bool overlayRequested,
   required _LogFn log,
 }) async {
   if (!enabled) {
     return const _EvidenceOutcome(
       enabled: false,
       topK: 0,
-      windowMs: 0,
       generatedCount: 0,
-      exportOverlayRequested: false,
       overlayGenerated: false,
-      overlayDowngraded: false,
-      generatedItems: const [],
     );
   }
 
-  final topK = (options['topK'] as int?) ?? 6;
-  final windowMs = (options['windowMs'] as int?) ?? 1200;
-  final exportOverlayRequested = options['exportOverlay'] == true;
-  final extras = options['extras'] as Map<String, String>?;
-  if (extras != null && extras.isNotEmpty) {
-    log('WARN',
-        '忽略未知的 --evidence 参数: ${extras.keys.join(', ')}');
-  }
-  final overlaySupported = exportOverlayRequested && await _isFfmpegAvailable();
-  final overlayDowngraded = exportOverlayRequested && !overlaySupported;
-  if (overlayDowngraded) {
-    log('WARN', 'exportOverlay=true 但未检测到 ffmpeg，自动降级为 false');
+  final configStr = await _readFile(configPath, 'evidence config');
+  final decoded = jsonDecode(configStr);
+  if (decoded is! Map<String, dynamic>) {
+    throw _CliException(
+      'Evidence config must be a JSON object.',
+      _exitParamError,
+    );
   }
 
-  final thresholds = _buildEvidenceThresholds(ruleSet, strictness);
+  final topK = (decoded['topK'] as num?)?.toInt() ?? 5;
+  final windowMs = (decoded['windowMs'] as num?)?.toInt() ?? 1000;
+  final thresholds = Map<String, dynamic>.from(
+      decoded['thresholds'] as Map<String, dynamic>? ?? const {});
+  final exportCfg = decoded['export'] as Map<String, dynamic>?;
+  final overlayEnabled = overlayRequested || (exportCfg?['overlay'] == true);
+  if (overlayEnabled) {
+    log('WARN', 'Evidence overlay export requested but not implemented. Skipping overlay.');
+  }
+
   final reps = (resultJson['reps'] as List<dynamic>)
       .cast<Map<String, dynamic>>();
   final evidenceList =
       (resultJson['evidence'] as List<dynamic>).cast<Map<String, dynamic>>();
+  final baselineEvidence = evidenceList
+      .map((item) => Map<String, dynamic>.from(item))
+      .toList(growable: false);
 
   final issuesByFrame = <int, List<String>>{};
-  for (final item in evidenceList) {
+  for (final item in baselineEvidence) {
     if (item['type'] == 'issue') {
       final frameMs = (item['frameMs'] as num?)?.toInt();
       final code = item['code'] as String?;
@@ -1976,22 +1253,20 @@ Future<_EvidenceOutcome> _processEvidence({
     }
   }
 
-  final selectWatch = Stopwatch()..start();
   final repCandidates = reps
       .map((rep) {
         final valley = (rep['valleyMs'] as num?)?.toInt() ?? _repCenter(rep);
-        final severity = (rep['kneeValleyAngle'] as num?)?.toDouble() ?? 0.0;
-        final cues = List<String>.from(issuesByFrame[valley] ?? const []);
+        final depth = (rep['kneeValleyAngle'] as num?)?.toDouble() ?? 0.0;
+        final issues = issuesByFrame[valley] ?? const [];
         return (
           rep: rep,
           timestamp: valley,
-          severity: severity,
-          cues: cues,
+          severity: depth,
+          cues: issues.map((e) => 'issue:$e').toList(),
         );
       })
-      .toList()
-    ..sort((a, b) => b.severity.compareTo(a.severity));
-  selectWatch.stop();
+      .toList();
+  repCandidates.sort((a, b) => b.severity.compareTo(a.severity));
 
   final generated = <Map<String, dynamic>>[];
   for (var i = 0; i < repCandidates.length && i < topK; i++) {
@@ -1999,34 +1274,31 @@ Future<_EvidenceOutcome> _processEvidence({
     final rep = candidate.rep;
     final timestamp = candidate.timestamp;
     final cues = List<String>.from(candidate.cues);
-    final repIndex = (rep['index'] as num?)?.toInt();
     if (cues.isEmpty) {
-      cues.add('rep:${repIndex ?? i}');
+      cues.add('rep:${rep['index']}');
     }
-
-    final angles = <String, double>{};
-    final valleyAngle = (rep['kneeValleyAngle'] as num?)?.toDouble();
-    if (valleyAngle != null) {
-      angles['leftKnee'] = _roundDouble(valleyAngle, 1);
-    }
-    final forwardLean = (rep['maxForwardLean'] as num?)?.toDouble();
-    if (forwardLean != null) {
-      angles['hipFlexion'] = _roundDouble(forwardLean, 1);
-    }
-
+    final angles = <String, dynamic>{
+      'kneeValleyAngle': rep['kneeValleyAngle'],
+      'minKneeOutAngle': rep['minKneeOutAngle'],
+      'maxForwardLean': rep['maxForwardLean'],
+    }..removeWhere((key, value) => value == null);
     final entry = <String, dynamic>{
       'type': 'segment',
       'timestampMs': timestamp,
-      'frameIndex': repIndex,
-      'repIndex': repIndex,
-      'phase': 'bottom',
+      'frameIndex': (rep['index'] as num?)?.toInt(),
+      'repIndex': (rep['index'] as num?)?.toInt(),
       'cues': cues,
       'angles': angles,
       'thresholds': thresholds,
+      'window': {
+        'startMs': math.max(0, timestamp - windowMs ~/ 2),
+        'endMs': timestamp + windowMs ~/ 2,
+      },
     };
-    if (overlaySupported) {
-      entry['snapshotRef'] =
-          'overlay.mp4#t=${(timestamp / 1000.0).toStringAsFixed(2)}';
+    final depthThreshold = (thresholds['depth_minHipAngle'] as num?)?.toDouble();
+    final depth = (rep['kneeValleyAngle'] as num?)?.toDouble();
+    if (depthThreshold != null && depth != null) {
+      entry['scoreImpact'] = _roundDouble(depthThreshold - depth, 2);
     }
     generated.add(entry);
   }
@@ -2036,28 +1308,20 @@ Future<_EvidenceOutcome> _processEvidence({
   final evidenceFile = File(path.join(outDir.path, 'evidence.json'));
   await evidenceFile.writeAsString(_prettyJsonEncoder.convert(generated));
 
-  final perfFile = File(path.join(logsDir.path, 'perf.json'));
+  final perfFile = File(path.join(logsDir.path, 'perf.json.evidence'));
   await perfFile.writeAsString(_prettyJsonEncoder.convert({
     'generatedCount': generated.length,
     'topK': topK,
     'windowMs': windowMs,
-    'overlayRequested': exportOverlayRequested,
-    'overlayGenerated': false,
-    'overlayDowngraded': overlayDowngraded,
-    'evidence_select_ms': selectWatch.elapsedMilliseconds,
-    'overlay_render_ms': 0,
+    'overlayRequested': overlayEnabled,
     'timestamp': DateTime.now().toIso8601String(),
   }));
 
   return _EvidenceOutcome(
     enabled: true,
     topK: topK,
-    windowMs: windowMs,
     generatedCount: generated.length,
-    exportOverlayRequested: exportOverlayRequested,
     overlayGenerated: false,
-    overlayDowngraded: overlayDowngraded,
-    generatedItems: generated,
   );
 }
 
@@ -2088,7 +1352,7 @@ Future<_VideoProbeResult> _probeVideo(String videoPath) async {
     if (result.exitCode != 0) {
       throw _CliException(
         'ffprobe failed (${result.exitCode}): ${result.stderr}',
-        _exitRuntimeError,
+        _exitDecodeError,
       );
     }
 
@@ -2097,7 +1361,7 @@ Future<_VideoProbeResult> _probeVideo(String videoPath) async {
     if (streams == null || streams.isEmpty) {
       throw _CliException(
         'ffprobe could not find a video stream in "$videoPath".',
-        _exitRuntimeError,
+        _exitDecodeError,
       );
     }
     final stream = streams.first as Map<String, dynamic>;
@@ -2121,7 +1385,7 @@ Future<_VideoProbeResult> _probeVideo(String videoPath) async {
   } on ProcessException catch (e) {
     throw _CliException(
       'ffprobe not available or failed to start: $e',
-      _exitRuntimeError,
+      _exitDecodeError,
     );
   }
 }
@@ -2153,7 +1417,7 @@ Future<_VideoDecodeResult> _decodeVideo({
       'pipe:1',
     ]);
   } on ProcessException catch (e) {
-    throw _CliException('ffmpeg not available: $e', _exitRuntimeError);
+    throw _CliException('ffmpeg not available: $e', _exitDecodeError);
   }
 
   final stderrFuture = process.stderr.transform(utf8.decoder).join();
@@ -2186,7 +1450,7 @@ Future<_VideoDecodeResult> _decodeVideo({
   if (exitCode != 0) {
     throw _CliException(
       'ffmpeg decode failed ($exitCode): $stderrText',
-      _exitRuntimeError,
+      _exitDecodeError,
     );
   }
 
