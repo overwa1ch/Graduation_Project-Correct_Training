@@ -7,18 +7,17 @@ import 'dart:typed_data';
 import 'package:args/args.dart';
 import 'package:path/path.dart' as path;
 
-import 'package:aiwa_milestone_a/core/io.dart';
-import 'package:aiwa_milestone_a/pipeline/offline_pipeline.dart';
-import 'package:aiwa_milestone_a/pipeline/pose_input_converter.dart';
-import 'package:aiwa_milestone_a/pipeline/pose_series.dart';
-import 'package:aiwa_milestone_a/pose/frame_streamer.dart';
-import 'package:aiwa_milestone_a/pose/kp_models.dart';
-import 'package:aiwa_milestone_a/pose/keypoint_names.dart';
-import 'package:aiwa_milestone_a/pose/mlkit_pose_engine.dart';
-import 'package:aiwa_milestone_a/pose/neutral_keypoint_series.dart';
-import 'package:aiwa_milestone_a/pose/pose_engine.dart';
-import 'package:aiwa_milestone_a/spec/rule_models.dart';
-import 'package:aiwa_milestone_a/spec/rule_parser.dart';
+import 'package:aiwa_core/core/io.dart';
+import 'package:aiwa_core/pipeline/offline_pipeline.dart';
+import 'package:aiwa_core/pipeline/pose_input_converter.dart';
+import 'package:aiwa_core/pipeline/pose_series.dart';
+import 'package:aiwa_core/pose/frame_streamer.dart';
+import 'package:aiwa_core/pose/kp_models.dart';
+import 'package:aiwa_core/pose/keypoint_names.dart';
+import 'package:aiwa_core/pose/neutral_keypoint_series.dart';
+import 'package:aiwa_core/pose/pose_engine.dart';
+import 'package:aiwa_core/spec/rule_models.dart';
+import 'package:aiwa_core/spec/rule_parser.dart';
 
 const _exitOk = 0;
 const _exitParamError = 2;
@@ -105,18 +104,11 @@ Usage:
 Examples:
   # File mode (existing keypoints JSON)
   dart run bin/aiwa_cli.dart \
-    --keypoints test/fixtures/kp_sample.json \
-    --rule test/fixtures/squat.v1.json \
+    --keypoints ../aiwa_core/test/fixtures/kp_sample.json \
+    --rule ../aiwa_core/test/fixtures/squat.v1.json \
     --out build/offline_out
 
-  # Engine mode (video → ML Kit → neutral keypoints → pipeline)
-  dart run bin/aiwa_cli.dart \
-    --video assets/demo.mp4 \
-    --rule configs/squat.v1.json \
-    --engine mlkit \
-    --sampling-stride 2 \
-    --input-resolution 720p \
-    --out build/offline_out
+  # Engine mode（视频→ML Kit）请使用 Flutter 工程 aiwa_app
 
 Options:
 ${parser.usage}
@@ -398,339 +390,11 @@ Future<void> _runEngineMode(
   RuleSet ruleSet,
   Strictness strictness,
 ) async {
-  final videoPath = opts['video'] as String;
-  final engineName = (opts['engine'] as String?) ?? _defaultEngine;
-  if (engineName != 'mlkit') {
-    throw _CliException(
-      'Engine "$engineName" is not supported in this CLI build.',
-      _exitEngineInitError,
-    );
-  }
-
-  final stride = int.parse(opts['sampling-stride'] as String);
-  final resolution = (opts['input-resolution'] as String?) ?? _defaultInputResolution;
-  final mirrorOpt = (opts['mirror-applied'] as String?) ?? 'auto';
-  final overlayRequested = opts['overlay'] == true;
-  final hybridEnabled = opts['hybrid'] == true;
-  final hybridPolicyPath =
-      (opts['hybrid-policy'] as String?) ?? 'configs/hybrid_policy.json';
-  final cloudMockPath = opts['cloud-mock'] as String?;
-  final exportCloudFragment = opts['cloud-video-fragment'] == true;
-  final evidenceEnabled = opts['evidence'] == true;
-  final evidenceConfigPath =
-      (opts['evidence-config'] as String?) ?? 'configs/evidence_config.json';
-
-  final shouldMirror = switch (mirrorOpt) {
-    'true' => true,
-    'false' => false,
-    _ => false,
-  };
-
-  final mirrorSource = mirrorOpt == 'auto' ? 'auto→false' : mirrorOpt;
-
-  final outRoot = Directory(opts['out'] as String? ?? _defaultOutDir);
-  final baseName = path.basenameWithoutExtension(videoPath);
-  final outDir = Directory(path.join(outRoot.path, baseName))
-    ..createSync(recursive: true);
-  final logsDir = Directory(path.join(outDir.path, 'logs'))
-    ..createSync(recursive: true);
-
-  final runLog = <String>[];
-  void log(String level, String message) {
-    final line = '[${DateTime.now().toIso8601String()}][$level] $message';
-    runLog.add(line);
-    if (level == 'ERROR') {
-      stderr.writeln(line);
-    } else {
-      stdout.writeln(line);
-    }
-  }
-
-  log('INFO', 'Engine mode start → engine=$engineName, stride=$stride, resolution=$resolution');
-  log('INFO', 'Video source: $videoPath');
-  log('INFO', 'Mirror setting: $mirrorSource');
-  log('INFO', 'Output directory: ${outDir.path}');
-
-  if (overlayRequested) {
-    log('WARN', 'Overlay export requested but not implemented in CLI mode. Skipping.');
-  }
-
-  final probe = await _probeVideo(videoPath);
-  final targetHeight = resolution == '540p' ? 540 : 720;
-  final targetWidth = _computeTargetWidth(probe, targetHeight);
-
-  final decodeResult = await _decodeVideo(
-    videoPath: videoPath,
-    targetWidth: targetWidth,
-    targetHeight: targetHeight,
-    targetFps: _defaultFps,
+  throw _CliException(
+    'Engine mode (--video) is only available in the Flutter build. '
+    'This standalone CLI package supports --keypoints file mode only.',
+    _exitEngineInitError,
   );
-
-  log('INFO', 'Decoded ${decodeResult.frameCount} frames at ${decodeResult.width}x${decodeResult.height} (${decodeResult.decodeMs} ms).');
-
-  final engine = MlKitPoseEngine();
-  try {
-    await engine.init(const PoseEngineConfig(
-      preferAccurate: true,
-      outputZ: true,
-      minScore: 0.0,
-      returnEmptyWhenLow: false,
-    ));
-  } catch (e) {
-    throw _CliException('Failed to initialize ML Kit engine: $e', _exitEngineInitError);
-  }
-
-  final fpsIntended = _defaultFps;
-  final frameIntervalMs = 1000.0 * stride / fpsIntended;
-
-  final inferenceTimes = <int>[];
-  final frames = <NeutralFrame>[];
-  var processedIndex = 0;
-  var timestampMs = 0.0;
-  var lowConfidenceFrames = 0;
-  final progressTimer = Stopwatch()..start();
-
-  try {
-    for (var sourceIndex = 0;
-        sourceIndex < decodeResult.frames.length;
-        sourceIndex++) {
-      if (sourceIndex % stride != 0) {
-        continue;
-      }
-
-      final raw = decodeResult.frames[sourceIndex];
-      final stopwatch = Stopwatch()..start();
-      NeutralFrame frame;
-      try {
-        frame = await engine.infer(PoseEngineInput(
-          imageBytes: raw.bytes,
-          width: raw.width,
-          height: raw.height,
-          rotationDeg: raw.rotationDeg,
-          frameIndex: processedIndex,
-          timestampMs: timestampMs.round(),
-          mirrorHorizontally: shouldMirror,
-        ));
-      } catch (e) {
-        throw _CliException(
-          'Pose inference failed at frame $sourceIndex: $e',
-          _exitInferenceError,
-        );
-      }
-      stopwatch.stop();
-      inferenceTimes.add(stopwatch.elapsedMicroseconds ~/ 1000);
-
-      final filteredKeypoints = frame.keypoints
-          .where((kp) => kp.score >= 0.3)
-          .toList(growable: false);
-      final lowConfidence = frame.lowConfidence;
-      if (lowConfidence) {
-        lowConfidenceFrames++;
-      }
-
-      frames.add(NeutralFrame(
-        frameIndex: processedIndex,
-        timestampMs: timestampMs.round(),
-        width: raw.width,
-        height: raw.height,
-        keypoints: filteredKeypoints,
-        lowConfidence: lowConfidence,
-        mirrorApplied: frame.mirrorApplied,
-      ));
-
-      processedIndex++;
-      timestampMs += frameIntervalMs;
-
-      if (progressTimer.elapsedMilliseconds >= 2000) {
-        final avgMs = _average(inferenceTimes);
-        final usableRatio = processedIndex == 0
-            ? 0.0
-            : (processedIndex - lowConfidenceFrames) / processedIndex;
-        final lowRatio = processedIndex == 0
-            ? 0.0
-            : lowConfidenceFrames / processedIndex;
-        log(
-          'PROG',
-          'frames $processedIndex/${decodeResult.frameCount} | avg ${avgMs.toStringAsFixed(1)} ms | usable ${(usableRatio * 100).toStringAsFixed(1)}% | lowConf ${(lowRatio * 100).toStringAsFixed(1)}%',
-        );
-        progressTimer..reset()..start();
-      }
-    }
-  } finally {
-    await engine.close();
-  }
-
-  final durationMs = probe.durationMs > 0
-      ? probe.durationMs
-      : (decodeResult.durationMs > 0
-          ? decodeResult.durationMs
-          : (frames.isEmpty ? 0 : ((frames.length - 1) * frameIntervalMs).round()));
-
-  final neutralSeries = NeutralKeypointSeries(
-    version: 'vB1.1',
-    video: NeutralVideoInfo(
-      basename: baseName,
-      fpsIntended: fpsIntended,
-      width: decodeResult.width,
-      height: decodeResult.height,
-      durationMs: durationMs,
-    ),
-    engine: const NeutralEngineInfo(
-      name: 'mlkit',
-      model: 'blazepose-full',
-      sdkVersion: '0.14.0',
-    ),
-    sampling: NeutralSamplingInfo(
-      stride: stride,
-      effectiveFps: fpsIntended / stride,
-    ),
-    frames: frames
-        .map((frame) => NeutralFrameData(
-              frameIndex: frame.frameIndex,
-              timestampMs: frame.timestampMs,
-              lowConfidence: frame.lowConfidence,
-              mirrorApplied: frame.mirrorApplied,
-              keypoints: frame.keypoints
-                  .map((kp) => NeutralKeypointValue(
-                        name: kp.name,
-                        x: kp.x,
-                        y: kp.y,
-                        z: kp.z,
-                        score: kp.score,
-                      ))
-                  .toList(growable: false),
-            ))
-        .toList(growable: false),
-  );
-
-  final poseSeries = poseSeriesFromNeutral(neutralSeries);
-  final pipeline = OfflinePipeline(ruleSet, strictness);
-  late final ({String anglesCsv, Map<String, dynamic> resultJson}) pipelineOut;
-  try {
-    pipelineOut = await pipeline.run(poseSeries);
-  } catch (e) {
-    throw _CliException('Offline pipeline failed: $e', _exitInferenceError);
-  }
-
-  final resultJson = Map<String, dynamic>.from(pipelineOut.resultJson)
-    ..['engine'] = 'mlkit'
-    ..['engineVersion'] = '0.14.0'
-    ..['inputResolution'] = resolution
-    ..['samplingStride'] = stride;
-
-  final reps = (resultJson['reps'] as List<dynamic>? ?? [])
-      .map((e) => Map<String, dynamic>.from(e as Map<String, dynamic>))
-      .toList(growable: true);
-  resultJson['reps'] = reps;
-  final existingEvidence = (resultJson['evidence'] as List<dynamic>? ?? [])
-      .map((e) => Map<String, dynamic>.from(e as Map<String, dynamic>))
-      .toList(growable: true);
-  resultJson['evidence'] = existingEvidence;
-
-  final neutralJson = neutralKeypointSeriesToJson(neutralSeries);
-
-  final anglesFile = File(path.join(outDir.path, 'angles.csv'));
-  final resultFile = File(path.join(outDir.path, 'result.json'));
-  final neutralFile = File(path.join(outDir.path, 'neutral_keypoints.json'));
-  final perfFile = File(path.join(logsDir.path, 'perf.json'));
-
-  final writeStopwatch = Stopwatch()..start();
-  try {
-    await anglesFile.writeAsString(pipelineOut.anglesCsv);
-    await neutralFile.writeAsString(jsonPretty(neutralJson));
-  } on IOException catch (e) {
-    throw _CliException('Failed to write initial outputs: $e', _exitOutputError);
-  }
-  writeStopwatch.stop();
-  var writeOutMs = writeStopwatch.elapsedMilliseconds;
-
-  final perfData = _buildPerfMetrics(
-    decodeResult: decodeResult,
-    processedFrames: frames.length,
-    lowConfidenceFrames: lowConfidenceFrames,
-    inferenceTimes: inferenceTimes,
-    writeOutMs: writeOutMs,
-    stride: stride,
-    resolution: resolution,
-    durationMs: durationMs,
-  );
-
-  final hybridOutcome = await _processHybrid(
-    enabled: hybridEnabled,
-    policyPath: hybridPolicyPath,
-    cloudMockPath: cloudMockPath,
-    exportCloudFragment: exportCloudFragment,
-    logsDir: logsDir,
-    resultJson: resultJson,
-    perfData: perfData,
-    neutralSeries: neutralSeries,
-    baseName: baseName,
-    log: log,
-  );
-
-  final evidenceOutcome = await _processEvidence(
-    enabled: evidenceEnabled,
-    configPath: evidenceConfigPath,
-    outDir: outDir,
-    logsDir: logsDir,
-    resultJson: resultJson,
-    overlayRequested: overlayRequested,
-    log: log,
-  );
-
-  _validateHybridArtifacts(
-    logsDir: logsDir,
-    outcome: hybridOutcome,
-    log: log,
-  );
-  _validateEvidenceArtifacts(
-    outDir: outDir,
-    logsDir: logsDir,
-    resultJson: resultJson,
-    outcome: evidenceOutcome,
-    log: log,
-  );
-
-  final resultWriteStopwatch = Stopwatch()..start();
-  try {
-    await resultFile.writeAsString(jsonPretty(resultJson));
-  } on IOException catch (e) {
-    throw _CliException('Failed to write result.json: $e', _exitOutputError);
-  }
-  resultWriteStopwatch.stop();
-  writeOutMs += resultWriteStopwatch.elapsedMilliseconds;
-  perfData['writeOutMs'] = writeOutMs;
-
-  await perfFile.writeAsString(_prettyJsonEncoder.convert(perfData));
-
-  log('DONE', 'Outputs written:');
-  log('DONE', '  - ${anglesFile.path}');
-  log('DONE', '  - ${neutralFile.path}');
-  log('DONE', '  - ${resultFile.path}');
-  log('DONE', '  - ${perfFile.path}');
-  log('DONE', '  - ${path.join(logsDir.path, 'run.log')}');
-
-  final avgMs = perfData['avgInferenceMs'] as double;
-  final usableRatio = perfData['usableFrameRatio'] as double;
-  final lowRatio = perfData['lowConfidenceRatio'] as double;
-
-  if (avgMs > 35.0) {
-    log('WARN', 'Average inference time ${avgMs.toStringAsFixed(2)} ms exceeds target ≤ 35 ms.');
-  }
-  if (usableRatio < 0.70) {
-    log('WARN', 'Usable frame ratio ${(usableRatio * 100).toStringAsFixed(2)}% below target ≥ 70%.');
-  }
-  if (lowRatio > 0.10) {
-    log('WARN', 'Low confidence ratio ${(lowRatio * 100).toStringAsFixed(2)}% above target ≤ 10%.');
-  }
-
-  final summary = _buildHybridSummary(hybridOutcome, evidenceOutcome);
-  if (summary != null) {
-    log('INFO', summary);
-  }
-
-  final runLogFile = File(path.join(logsDir.path, 'run.log'));
-  await runLogFile.writeAsString(runLog.join('\n'));
 }
 
 class _HybridOutcome {
