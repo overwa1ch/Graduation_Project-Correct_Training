@@ -14,7 +14,8 @@ import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 // 如果你的工程里没有直接引用 commons，可以删掉下一行；保留也没问题。
 // import 'package:google_mlkit_commons/google_mlkit_commons.dart';
 
-import 'pose_engine.dart';
+import 'package:aiwa_core/pose/pose_engine.dart';
+
 import 'adapter/keypoint_adapter.dart';
 
 class MlKitPoseEngine implements PoseEngine {

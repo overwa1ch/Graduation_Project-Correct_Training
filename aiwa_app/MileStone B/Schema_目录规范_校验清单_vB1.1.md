@@ -119,3 +119,97 @@ build/offline_out/
 - 骨架回放视频可作为可视化验证结果的附加输出。  
 - 校验脚本可用 Python 或 Dart 解析 JSON 后按清单逐项核对。  
 - 若与 Python baseline 比对，应确保时间戳与帧索引一致。
+
+---
+
+## 6️⃣ C-augment 补充（Hybrid & Evidence）
+
+### 6.1 result.json 中的 C-augment 字段
+```json
+{
+  "version": "vB1.1",
+  "hybrid": {
+    "triggered": true,
+    "reason": "low_coverage",
+    "uploadPolicy": "keypoints_only",
+    "cloudEnhanced": true,
+    "mergeStrategy": "prefer-cloud-count-then-reconcile",
+    "reconcileNote": "cloud-count=12, device-count=11, diff=1",
+    "metrics": {
+      "coverage": 0.72,
+      "lowConfPct": 0.18,
+      "fps": 28.5,
+      "jitterPx": 6.2
+    },
+    "delta": {
+      "countLocal": 11,
+      "countCloud": 12,
+      "countFinal": 12
+    }
+  },
+  "evidence": [
+    {
+      "type": "segment",
+      "timestampMs": 4233,
+      "frameIndex": 64,
+      "repIndex": 2,
+      "phase": "bottom",
+      "cues": ["knee_inward", "depth_insufficient"],
+      "angles": {"leftKnee": 142.3, "hipFlexion": 78.5},
+      "thresholds": {
+        "leftKnee_maxValgus": 160,
+        "depth_minHipAngle": 70
+      },
+      "snapshotRef": "overlay.mp4#t=4.23"
+    }
+  ]
+}
+```
+> 若旧产物缺少 `hybrid`/`evidence` 节点仍视为向后兼容；校验脚本需容忍字段缺省。
+
+### 6.2 hybrid_policy.json（C-augment 结构）
+```json
+{
+  "version": "C-augment",
+  "engine": "mlkit|movenet|any",
+  "uploadPolicy": "keypoints_only|keypoints_plus_video",
+  "rules": [
+    { "name": "low_coverage", "metric": "coverage", "op": "<", "threshold": 0.85, "weight": 1.0 },
+    { "name": "low_conf_pct", "metric": "lowConfPct", "op": ">", "threshold": 0.15, "weight": 1.0 },
+    { "name": "fps_instability", "metric": "jitter", "op": ">", "threshold": 5.0, "weight": 0.5 }
+  ],
+  "trigger": {
+    "mode": "any|all|weighted_sum",
+    "weighted_sum_threshold": 1.0
+  }
+}
+```
+
+### 6.3 cloud_result.json（本地云端模拟）
+```json
+{
+  "source": "mock",
+  "counts": 12,
+  "segments": [
+    { "startMs": 300, "endMs": 1200 },
+    { "startMs": 1250, "endMs": 2200 }
+  ],
+  "quality": { "tempo": 0.92, "depth": 0.88 },
+  "notes": "simulated cloud enhancement vC"
+}
+```
+> 示例文件：`aiwa_cli/mocks/cloud_result.json` 可直接作为 `--cloud-mock` 参数使用。
+
+### 6.4 校验规则（C-augment）
+| 规则 ID | 严重级别 | 判据 / 提示 |
+| --- | --- | --- |
+| `hybrid.reason` | ERROR | `hybrid.triggered=true` 时必须包含 `reason`、`uploadPolicy`。|
+| `hybrid.coverage_range` | ERROR | `metrics.coverage`、`lowConfPct` 必须在 `[0,1]`。|
+| `hybrid.missing_reconcile_note` | WARN | `cloudEnhanced=true` 且 `|cloud-count - local-count| > 2` 时缺少 `reconcileNote`。|
+| `overlay.duration_mismatch` | ERROR | overlay.mp4 时长与 result 区间差异 > 1s。|
+| `overlay.snapshot_out_of_range` | ERROR | `snapshotRef` 时间戳不在 overlay 区间内。|
+| `evidence.timestamp` | ERROR | `evidence[].timestampMs` 缺失或非数值。|
+| `evidence.angle_nan` | ERROR | `angles` 内出现 NaN/Inf。|
+| `evidence.file_missing` | WARN | 启用证据化但缺少 `evidence.json`。|
+| `evidence.perf_missing` | WARN | 缺少 `logs/perf.json` 性能统计。|
+

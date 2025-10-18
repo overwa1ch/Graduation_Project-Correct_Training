@@ -7,7 +7,7 @@
 // 注意：名称采用驼峰风格，与离线管线一致（如 nose、leftEye、rightHip、leftFootIndex）。
 
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
-import '../pose_engine.dart';
+import 'package:aiwa_core/pose/pose_engine.dart';
 
 /// MLKit 33 点 → 中立语义名称映射
 /// 备注：ML Kit 的 PoseLandmarkType 包含 33 个点（鼻、眼、耳、口角、肩肘腕、髋膝踝、脚跟/脚指、拇指/食指/小指）。

@@ -1,0 +1,10 @@
+{
+  "source": "mock",
+  "counts": 12,
+  "segments": [
+    { "startMs": 300, "endMs": 1200 },
+    { "startMs": 1250, "endMs": 2200 }
+  ],
+  "quality": { "tempo": 0.92, "depth": 0.88 },
+  "notes": "simulated cloud enhancement vC"
+}

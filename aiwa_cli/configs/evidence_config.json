@@ -1,0 +1,8 @@
+{
+  "description": "Evidence generation is configured via --evidence key=value pairs. This sample documents default values.",
+  "defaults": {
+    "topK": 6,
+    "windowMs": 1200,
+    "exportOverlay": false
+  }
+}

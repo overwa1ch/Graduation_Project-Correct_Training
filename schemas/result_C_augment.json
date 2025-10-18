@@ -3,9 +3,16 @@
     "type": "object",
     "properties": {
       "triggered": {"type": "boolean"},
-      "reason": {"type": "array", "items": {"type": "string"}},
+      "reason": {"type": "string"},
+      "reasons": {"type": "array", "items": {"type": "string"}},
+      "uploadPolicy": {"type": "string"},
       "cloudEnhanced": {"type": "boolean"},
       "mergeStrategy": {"type": "string"},
+      "reconcileNote": {"type": "string"},
+      "metrics": {
+        "type": "object",
+        "additionalProperties": {"type": "number"}
+      },
       "delta": {
         "type": "object",
         "properties": {
@@ -13,10 +20,9 @@
           "countCloud": {"type": "integer"},
           "countFinal": {"type": "integer"}
         }
-      },
-      "reconcileNote": {"type": "string"}
+      }
     },
-    "required": ["triggered", "cloudEnhanced"]
+    "required": ["triggered", "uploadPolicy", "cloudEnhanced"]
   },
   "evidence": {
     "type": "array",
@@ -25,11 +31,15 @@
       "properties": {
         "type": {"type": "string"},
         "timestampMs": {"type": "number"},
+        "frameIndex": {"type": "integer"},
+        "repIndex": {"type": "integer"},
+        "phase": {"type": "string"},
         "cues": {"type": "array", "items": {"type": "string"}},
-        "angles": {"type": "object"},
-        "thresholds": {"type": "object"},
-        "snapshotPath": {"type": "string"}
-      }
+        "angles": {"type": "object", "additionalProperties": {"type": "number"}},
+        "thresholds": {"type": "object", "additionalProperties": {"type": "number"}},
+        "snapshotRef": {"type": "string"}
+      },
+      "required": ["type", "timestampMs"]
     }
   }
 }
