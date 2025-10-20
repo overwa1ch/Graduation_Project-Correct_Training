@@ -1,0 +1,16 @@
+{
+  "framesIncluded": 45,
+  "lowConfidenceFrames": 0,
+  "slice": {
+    "startMs": 3100,
+    "endMs": 6100
+  },
+  "pointCount": 1485,
+  "approxPayloadBytes": 205254,
+  "privacy": "keypoints_only",
+  "videoFragment": {
+    "requested": false,
+    "generated": false
+  },
+  "timestamp": "2025-10-20T08:35:08.972823"
+}

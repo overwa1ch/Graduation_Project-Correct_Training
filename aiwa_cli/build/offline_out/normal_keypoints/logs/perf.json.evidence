@@ -1,0 +1,7 @@
+{
+  "generatedCount": 5,
+  "topK": 10,
+  "windowMs": 1200,
+  "overlayRequested": true,
+  "timestamp": "2025-10-20T10:49:55.463899"
+}

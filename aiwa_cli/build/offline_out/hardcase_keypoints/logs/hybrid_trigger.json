@@ -1,0 +1,26 @@
+{
+  "version": "C1",
+  "triggered": true,
+  "metrics": {
+    "coverage": 0.824,
+    "lowConfPct": 0.0,
+    "fps": 15.0,
+    "jitterPx": 0.0
+  },
+  "reasons": [
+    "fps<minFps(15.0 vs 22.0)"
+  ],
+  "slice": {
+    "repIndex": 4,
+    "anchorMs": 10067,
+    "startMs": 8567,
+    "endMs": 11567
+  },
+  "thresholds": {
+    "confThreshold": 0.5,
+    "minCoveragePct": 0.7,
+    "maxLowConfPct": 0.25,
+    "maxJitterPx": 8.0,
+    "minFps": 22.0
+  }
+}

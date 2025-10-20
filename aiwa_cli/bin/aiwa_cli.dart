@@ -870,7 +870,7 @@ Map<String, dynamic>? _ensureSegmentEvidence(
   return normalized;
 }
 
-double? _flexibleToDouble(dynamic value) {
+double? _coerceToDouble(dynamic value) {
   if (value == null) {
     return null;
   }

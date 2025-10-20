@@ -1,0 +1,42 @@
+{
+  "toleranceMs": 200,
+  "counts": {
+    "local": 5,
+    "cloud": 10,
+    "final": 5
+  },
+  "matched": [
+    {
+      "index": 1,
+      "local": {
+        "startMs": 1200,
+        "endMs": 1467
+      },
+      "cloud": {
+        "startMs": 1200,
+        "endMs": 2100
+      },
+      "deltaStart": 0,
+      "deltaEnd": 633
+    }
+  ],
+  "unmatchedLocal": [
+    {
+      "index": 2,
+      "valleyMs": 2800
+    },
+    {
+      "index": 3,
+      "valleyMs": 4600
+    },
+    {
+      "index": 4,
+      "valleyMs": 10067
+    },
+    {
+      "index": 5,
+      "valleyMs": 10933
+    }
+  ],
+  "notes": "refine boundaries"
+}
