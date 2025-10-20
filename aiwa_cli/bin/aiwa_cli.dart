@@ -594,7 +594,7 @@ void _validateEvidenceArtifacts({
   }
 }
 
-double? _coerceToDouble(dynamic value) {
+double? _flexibleToDouble(dynamic value) {
   if (value == null) {
     return null;
   }
@@ -615,7 +615,7 @@ double? _coerceToDouble(dynamic value) {
 
 double _resolveResultFps(Map<String, dynamic> resultJson) {
   final meta = resultJson['meta'] as Map<String, dynamic>?;
-  final fps = _coerceToDouble(meta?['fps']) ?? _coerceToDouble(resultJson['fps']);
+  final fps = _flexibleToDouble(meta?['fps']) ?? _flexibleToDouble(resultJson['fps']);
   if (fps != null && fps > 0) {
     return fps;
   }
@@ -682,7 +682,7 @@ Map<String, dynamic> _mergeAngles(dynamic existingAngles, Map<String, dynamic>? 
   final angles = <String, dynamic>{};
   if (existingAngles is Map<String, dynamic>) {
     for (final entry in existingAngles.entries) {
-      final parsed = _coerceToDouble(entry.value);
+      final parsed = _flexibleToDouble(entry.value);
       if (parsed != null) {
         angles[entry.key] = _roundDouble(parsed, 2);
       }
@@ -693,7 +693,7 @@ Map<String, dynamic> _mergeAngles(dynamic existingAngles, Map<String, dynamic>? 
       if (angles.containsKey(key)) {
         return;
       }
-      final parsed = _coerceToDouble(value);
+      final parsed = _flexibleToDouble(value);
       if (parsed != null) {
         angles[key] = _roundDouble(parsed, 2);
       }
@@ -704,7 +704,7 @@ Map<String, dynamic> _mergeAngles(dynamic existingAngles, Map<String, dynamic>? 
     addAngle('maxForwardLean', rep['maxForwardLean']);
   }
   if (angles.isEmpty) {
-    final fallback = _coerceToDouble(rep?['kneeValleyAngle']) ?? 0.0;
+    final fallback = _flexibleToDouble(rep?['kneeValleyAngle']) ?? 0.0;
     angles['kneeValleyAngle'] = _roundDouble(fallback, 2);
   }
   return angles;
@@ -729,7 +729,7 @@ Map<String, dynamic> _thresholdsForAngles(
     final key = _thresholdKeyForAngle(angle);
     if (key != null) {
       final value = configThresholds[key];
-      final parsed = _coerceToDouble(value);
+      final parsed = _flexibleToDouble(value);
       if (parsed != null) {
         thresholds[key] = _roundDouble(parsed, 2);
       }
@@ -737,7 +737,7 @@ Map<String, dynamic> _thresholdsForAngles(
   }
   if (thresholds.isEmpty && configThresholds.isNotEmpty) {
     for (final entry in configThresholds.entries) {
-      final parsed = _coerceToDouble(entry.value);
+      final parsed = _flexibleToDouble(entry.value);
       if (parsed != null) {
         thresholds[entry.key] = _roundDouble(parsed, 2);
         break;
@@ -870,6 +870,25 @@ Map<String, dynamic>? _ensureSegmentEvidence(
   return normalized;
 }
 
+double? _flexibleToDouble(dynamic value) {
+  if (value == null) {
+    return null;
+  }
+  if (value is num) {
+    return value.toDouble();
+  }
+  if (value is bool) {
+    return value ? 1.0 : 0.0;
+  }
+  if (value is String) {
+    final parsed = double.tryParse(value.trim());
+    if (parsed != null) {
+      return parsed;
+    }
+  }
+  return null;
+}
+
 Map<String, double> _buildHybridMetrics(
   Map<String, dynamic> resultJson,
   Map<String, dynamic>? perfData,
@@ -878,16 +897,16 @@ Map<String, double> _buildHybridMetrics(
   final quality = resultJson['quality'] as Map<String, dynamic>?;
   final meta = resultJson['meta'] as Map<String, dynamic>?;
 
-  final coverage = _coerceToDouble(perfData?['usableFrameRatio']) ??
-      _coerceToDouble(quality?['coverage']) ??
+  final coverage = _flexibleToDouble(perfData?['usableFrameRatio']) ??
+      _flexibleToDouble(quality?['coverage']) ??
       0.0;
-  final lowConf = _coerceToDouble(perfData?['lowConfidenceRatio']) ??
-      _coerceToDouble(quality?['lowConfidence']) ??
+  final lowConf = _flexibleToDouble(perfData?['lowConfidenceRatio']) ??
+      _flexibleToDouble(quality?['lowConfidence']) ??
       0.0;
   final fps = neutralSeries?.sampling.effectiveFps ??
-      _coerceToDouble(meta?['fps']) ??
+      _flexibleToDouble(meta?['fps']) ??
       0.0;
-  final jitter = _coerceToDouble(perfData?['jitterPx']) ?? 0.0;
+  final jitter = _flexibleToDouble(perfData?['jitterPx']) ?? 0.0;
 
   return {
     'coverage': _roundDouble(coverage, 4),
