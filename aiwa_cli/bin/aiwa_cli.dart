@@ -429,12 +429,16 @@ class _EvidenceOutcome {
   final bool enabled;
   final int topK;
   final int generatedCount;
+  final int keptCount;
+  final int droppedCount;
   final bool overlayGenerated;
 
   const _EvidenceOutcome({
     required this.enabled,
     required this.topK,
     required this.generatedCount,
+    required this.keptCount,
+    required this.droppedCount,
     required this.overlayGenerated,
   });
 }
@@ -504,7 +508,8 @@ String? _buildHybridSummary(
     }
   }
   if (evidence.enabled) {
-    parts.add('evidence=topK${evidence.topK} generated=${evidence.generatedCount}');
+    parts.add(
+        'evidence=topK${evidence.topK} generated=${evidence.generatedCount} kept=${evidence.keptCount} dropped=${evidence.droppedCount}');
     parts.add('overlay=${evidence.overlayGenerated ? 'on' : 'off'}');
   }
   if (parts.isEmpty) {
@@ -569,29 +574,300 @@ void _validateEvidenceArtifacts({
   final evidenceItems = (resultJson['evidence'] as List<dynamic>? ?? [])
       .whereType<Map<String, dynamic>>()
       .toList(growable: false);
-  for (var i = 0; i < evidenceItems.length; i++) {
-    final item = evidenceItems[i];
-    final ts = item['timestampMs'];
-    if (ts is! num) {
-      log('WARN', 'Evidence item #$i missing numeric timestampMs.');
-    }
-    final cues = item['cues'];
-    if (cues is! List || cues.isEmpty) {
-      log('WARN', 'Evidence item #$i missing cues[].');
-    }
+  final invalidCount =
+      evidenceItems.where((item) => !_isEvidenceStructurallyValid(item)).length;
+  if (invalidCount > 0) {
+    log('WARN', 'Evidence validation found $invalidCount invalid items in result.json.');
   }
   if (outcome.overlayGenerated) {
     final overlayFile = File(path.join(outDir.path, 'overlay.mp4'));
     if (!overlayFile.existsSync()) {
       log('WARN', 'Evidence overlay flagged as generated but overlay.mp4 is missing.');
     }
-    for (var i = 0; i < evidenceItems.length; i++) {
-      final item = evidenceItems[i];
-      if (!item.containsKey('snapshotPath')) {
-        log('WARN', 'Evidence item #$i missing snapshotPath while overlay is enabled.');
+    final missingSnapshots = evidenceItems
+        .where((item) => (item['snapshotPath'] as String?)?.isNotEmpty != true)
+        .length;
+    if (missingSnapshots > 0) {
+      log('WARN',
+          'Evidence overlay generated but $missingSnapshots items are missing snapshotPath.');
+    }
+  }
+}
+
+double? _flexibleToDouble(dynamic value) {
+  if (value == null) {
+    return null;
+  }
+  if (value is num) {
+    return value.toDouble();
+  }
+  if (value is bool) {
+    return value ? 1.0 : 0.0;
+  }
+  if (value is String) {
+    final parsed = double.tryParse(value.trim());
+    if (parsed != null) {
+      return parsed;
+    }
+  }
+  return null;
+}
+
+double _resolveResultFps(Map<String, dynamic> resultJson) {
+  final meta = resultJson['meta'] as Map<String, dynamic>?;
+  final fps = _flexibleToDouble(meta?['fps']) ?? _flexibleToDouble(resultJson['fps']);
+  if (fps != null && fps > 0) {
+    return fps;
+  }
+  return _defaultFps;
+}
+
+int? _normalizeTimestamp(int? timestampMs, int? frameIndex, double fps) {
+  if (timestampMs != null) {
+    return timestampMs;
+  }
+  if (frameIndex != null && fps > 0) {
+    return ((frameIndex / fps) * 1000).round();
+  }
+  return null;
+}
+
+int _normalizeFrameIndex(int? frameIndex, int timestampMs, double fps) {
+  if (frameIndex != null) {
+    return frameIndex;
+  }
+  if (fps > 0) {
+    return ((timestampMs / 1000) * fps).round();
+  }
+  return 0;
+}
+
+List<String> _dedupeCues(Iterable<String> cues) {
+  final seen = <String>{};
+  final result = <String>[];
+  for (final cue in cues) {
+    if (seen.add(cue)) {
+      result.add(cue);
+    }
+  }
+  return result;
+}
+
+List<String> _buildPositiveCues(
+  Map<String, dynamic>? rep,
+  Map<String, dynamic> thresholds,
+) {
+  final cues = <String>[];
+  final depth = (rep?['kneeValleyAngle'] as num?)?.toDouble();
+  final depthThreshold = (thresholds['depth_minHipAngle'] as num?)?.toDouble();
+  if (depth != null && depthThreshold != null && depth <= depthThreshold + 1e-6) {
+    cues.add('depth_ok');
+  }
+  final tempo = rep?['tempo'] as Map<String, dynamic>?;
+  final ratio = (tempo?['ratio'] as num?)?.toDouble();
+  if (ratio != null && ratio >= 0.8 && ratio <= 1.2) {
+    cues.add('tempo_ok');
+  }
+  final startMs = (rep?['startMs'] as num?)?.toInt();
+  final endMs = (rep?['endMs'] as num?)?.toInt();
+  final valleyMs = (rep?['valleyMs'] as num?)?.toInt();
+  if (startMs != null && endMs != null && valleyMs != null) {
+    cues.add('phase_boundary');
+  }
+  cues.add('good_form');
+  return _dedupeCues(cues);
+}
+
+Map<String, dynamic> _mergeAngles(dynamic existingAngles, Map<String, dynamic>? rep) {
+  final angles = <String, dynamic>{};
+  if (existingAngles is Map<String, dynamic>) {
+    for (final entry in existingAngles.entries) {
+      final parsed = _flexibleToDouble(entry.value);
+      if (parsed != null) {
+        angles[entry.key] = _roundDouble(parsed, 2);
       }
     }
   }
+  if (rep != null) {
+    void addAngle(String key, dynamic value) {
+      if (angles.containsKey(key)) {
+        return;
+      }
+      final parsed = _flexibleToDouble(value);
+      if (parsed != null) {
+        angles[key] = _roundDouble(parsed, 2);
+      }
+    }
+
+    addAngle('kneeValleyAngle', rep['kneeValleyAngle']);
+    addAngle('minKneeOutAngle', rep['minKneeOutAngle']);
+    addAngle('maxForwardLean', rep['maxForwardLean']);
+  }
+  if (angles.isEmpty) {
+    final fallback = _flexibleToDouble(rep?['kneeValleyAngle']) ?? 0.0;
+    angles['kneeValleyAngle'] = _roundDouble(fallback, 2);
+  }
+  return angles;
+}
+
+String? _thresholdKeyForAngle(String angleKey) {
+  switch (angleKey) {
+    case 'kneeValleyAngle':
+      return 'depth_minHipAngle';
+    case 'minKneeOutAngle':
+      return 'leftKnee_maxValgus';
+  }
+  return null;
+}
+
+Map<String, dynamic> _thresholdsForAngles(
+  Map<String, dynamic> configThresholds,
+  Iterable<String> angleKeys,
+) {
+  final thresholds = <String, dynamic>{};
+  for (final angle in angleKeys) {
+    final key = _thresholdKeyForAngle(angle);
+    if (key != null) {
+      final value = configThresholds[key];
+      final parsed = _flexibleToDouble(value);
+      if (parsed != null) {
+        thresholds[key] = _roundDouble(parsed, 2);
+      }
+    }
+  }
+  if (thresholds.isEmpty && configThresholds.isNotEmpty) {
+    for (final entry in configThresholds.entries) {
+      final parsed = _flexibleToDouble(entry.value);
+      if (parsed != null) {
+        thresholds[entry.key] = _roundDouble(parsed, 2);
+        break;
+      }
+    }
+  }
+  if (thresholds.isEmpty) {
+    thresholds['depth_minHipAngle'] = 0;
+  }
+  return thresholds;
+}
+
+bool _isEvidenceStructurallyValid(Map<String, dynamic> item) {
+  final type = item['type'];
+  if (type != 'segment' && type != 'frame') {
+    return false;
+  }
+  final timestamp = item['timestampMs'];
+  if (timestamp is! num) {
+    return false;
+  }
+  final cues = item['cues'];
+  if (cues is! List || cues.isEmpty) {
+    return false;
+  }
+  final snapshot = item['snapshotPath'];
+  if (snapshot is! String) {
+    return false;
+  }
+  final angles = item['angles'];
+  if (angles is! Map || angles.isEmpty) {
+    return false;
+  }
+  final thresholds = item['thresholds'];
+  if (thresholds is! Map) {
+    return false;
+  }
+  return true;
+}
+
+bool _hasBasicEvidenceShape(Map<String, dynamic> item) {
+  final type = item['type'];
+  if (type != 'segment' && type != 'frame') {
+    return false;
+  }
+  final timestamp = item['timestampMs'];
+  if (timestamp is! num) {
+    return false;
+  }
+  final cues = item['cues'];
+  if (cues is! List || cues.isEmpty) {
+    return false;
+  }
+  return true;
+}
+
+int _removeInvalidEvidenceEntries(List<Map<String, dynamic>> items,
+    {bool strict = true}) {
+  var removed = 0;
+  items.removeWhere((item) {
+    final valid = strict
+        ? _isEvidenceStructurallyValid(item)
+        : _hasBasicEvidenceShape(item);
+    if (!valid) {
+      removed++;
+      return true;
+    }
+    return false;
+  });
+  return removed;
+}
+
+Map<String, dynamic>? _ensureSegmentEvidence(
+  Map<String, dynamic> source, {
+  required Map<String, dynamic>? rep,
+  required Map<String, dynamic> thresholds,
+  required double fallbackFps,
+  required int windowMs,
+}) {
+  final type = (source['type'] as String?) ?? 'segment';
+  if (type != 'segment' && type != 'frame') {
+    return null;
+  }
+  final normalized = Map<String, dynamic>.from(source);
+  normalized['type'] = type;
+
+  final frameIndex = (normalized['frameIndex'] as num?)?.toInt();
+  final timestamp = _normalizeTimestamp(
+      (normalized['timestampMs'] as num?)?.toInt(), frameIndex, fallbackFps);
+  if (timestamp == null) {
+    return null;
+  }
+  normalized['timestampMs'] = timestamp;
+  normalized['frameIndex'] = _normalizeFrameIndex(frameIndex, timestamp, fallbackFps);
+
+  final resolvedRepIndex =
+      (normalized['repIndex'] as num?)?.toInt() ?? (rep?['index'] as num?)?.toInt();
+  if (resolvedRepIndex != null) {
+    normalized['repIndex'] = resolvedRepIndex;
+  }
+
+  final rawCues = normalized['cues'];
+  final cueBuffer = <String>[];
+  if (rawCues is List) {
+    for (final cue in rawCues) {
+      if (cue is String && cue.trim().isNotEmpty) {
+        cueBuffer.add(cue.trim());
+      }
+    }
+  }
+  if (!cueBuffer.any((cue) => !cue.startsWith('issue:'))) {
+    cueBuffer.addAll(_buildPositiveCues(rep, thresholds));
+  }
+  normalized['cues'] = _dedupeCues(cueBuffer);
+
+  final mergedAngles = _mergeAngles(normalized['angles'], rep);
+  normalized['angles'] = mergedAngles;
+  normalized['thresholds'] =
+      _thresholdsForAngles(thresholds, mergedAngles.keys);
+
+  final snapshot = normalized['snapshotPath'];
+  normalized['snapshotPath'] = snapshot is String ? snapshot : '';
+
+  final window = normalized['window'] as Map<String, dynamic>?;
+  final startMs = (window?['startMs'] as num?)?.toInt() ??
+      math.max(0, timestamp - windowMs ~/ 2);
+  final endMs = (window?['endMs'] as num?)?.toInt() ?? timestamp + windowMs ~/ 2;
+  normalized['window'] = {'startMs': startMs, 'endMs': endMs};
+
+  return normalized;
 }
 
 Map<String, double> _buildHybridMetrics(
@@ -600,22 +876,24 @@ Map<String, double> _buildHybridMetrics(
   NeutralKeypointSeries? neutralSeries,
 ) {
   final quality = resultJson['quality'] as Map<String, dynamic>?;
-  final coverage = (perfData?['usableFrameRatio'] as num?)?.toDouble() ??
-      (quality?['coverage'] as num?)?.toDouble() ??
-      0.0;
-  final lowConf = (perfData?['lowConfidenceRatio'] as num?)?.toDouble() ??
-      (quality?['lowConfidence'] as num?)?.toDouble() ??
-      0.0;
   final meta = resultJson['meta'] as Map<String, dynamic>?;
-  final fps = neutralSeries?.sampling.effectiveFps ??
-      (meta?['fps'] as num?)?.toDouble() ??
+
+  final coverage = _flexibleToDouble(perfData?['usableFrameRatio']) ??
+      _flexibleToDouble(quality?['coverage']) ??
       0.0;
+  final lowConf = _flexibleToDouble(perfData?['lowConfidenceRatio']) ??
+      _flexibleToDouble(quality?['lowConfidence']) ??
+      0.0;
+  final fps = neutralSeries?.sampling.effectiveFps ??
+      _flexibleToDouble(meta?['fps']) ??
+      0.0;
+  final jitter = _flexibleToDouble(perfData?['jitterPx']) ?? 0.0;
 
   return {
     'coverage': _roundDouble(coverage, 4),
     'lowConfPct': _roundDouble(lowConf, 4),
     'fps': _roundDouble(fps, 2),
-    'jitterPx': _roundDouble((perfData?['jitterPx'] as num?)?.toDouble() ?? 0.0, 2),
+    'jitterPx': _roundDouble(jitter, 2),
   };
 }
 
@@ -990,6 +1268,7 @@ Future<_CloudMergeOutcome?> _mergeCloudMock({
           'repIndex': (matched['index'] as num?)?.toInt(),
           'frameIndex': (matched['index'] as num?)?.toInt(),
           'cues': cues,
+          'snapshotPath': '',
         });
       }
     }
@@ -1084,6 +1363,16 @@ Future<_HybridOutcome> _processHybrid({
   required String baseName,
   required _LogFn log,
 }) async {
+  if (!enabled) {
+    return const _HybridOutcome(
+      enabled: false,
+      triggered: false,
+      reasons: <String>[],
+      hadCloudMock: false,
+      cloudEnhanced: false,
+    );
+  }
+
   final metrics = _buildHybridMetrics(resultJson, perfData, neutralSeries);
   final hadCloudMock = cloudMockPath != null;
 
@@ -1093,55 +1382,53 @@ Future<_HybridOutcome> _processHybrid({
   String? policyVersion;
   Map<String, double> thresholds = const {};
 
-  if (enabled) {
-    final policyStr = await _readFile(policyPath, 'hybrid policy');
-    final decoded = jsonDecode(policyStr);
-    if (decoded is! Map<String, dynamic>) {
-      throw _CliException(
-        'Hybrid policy must be a JSON object.',
-        _exitParamError,
+  final policyStr = await _readFile(policyPath, 'hybrid policy');
+  final decoded = jsonDecode(policyStr);
+  if (decoded is! Map<String, dynamic>) {
+    throw _CliException(
+      'Hybrid policy must be a JSON object.',
+      _exitParamError,
+    );
+  }
+  policyVersion = decoded['version'] as String?;
+  thresholds = _extractPolicyThresholds(decoded, resultJson);
+  final evaluation = _evaluateHybridRules(decoded, metrics, thresholds);
+  triggered = evaluation.triggered;
+  reasons = evaluation.reasons;
+  slice = _computeHybridSlice(resultJson, decoded);
+
+  final triggerPayload = <String, dynamic>{
+    if (policyVersion != null) 'version': policyVersion,
+    'triggered': triggered,
+    'metrics': metrics,
+    'reasons': reasons,
+    if (slice != null) 'slice': slice,
+    if (thresholds.isNotEmpty) 'thresholds': thresholds,
+  };
+  final triggerFile = File(path.join(logsDir.path, 'hybrid_trigger.json'));
+  await triggerFile.writeAsString(_prettyJsonEncoder.convert(triggerPayload));
+
+  if (triggered) {
+    if (neutralSeries != null) {
+      final payloadArtifacts = _buildCloudPayload(
+        policy: decoded,
+        neutralSeries: neutralSeries,
+        slice: slice,
+        baseName: baseName,
+        exportCloudFragment: exportCloudFragment,
       );
-    }
-    policyVersion = decoded['version'] as String?;
-    thresholds = _extractPolicyThresholds(decoded, resultJson);
-    final evaluation = _evaluateHybridRules(decoded, metrics, thresholds);
-    triggered = evaluation.triggered;
-    reasons = evaluation.reasons;
-    slice = _computeHybridSlice(resultJson, decoded);
+      final payloadFile = File(path.join(logsDir.path, 'cloud_payload.json'));
+      await payloadFile
+          .writeAsString(_prettyJsonEncoder.convert(payloadArtifacts.payload));
 
-    final triggerPayload = <String, dynamic>{
-      if (policyVersion != null) 'version': policyVersion,
-      'triggered': triggered,
-      'metrics': metrics,
-      'reasons': reasons,
-      if (slice != null) 'slice': slice,
-      if (thresholds.isNotEmpty) 'thresholds': thresholds,
-    };
-    final triggerFile = File(path.join(logsDir.path, 'hybrid_trigger.json'));
-    await triggerFile.writeAsString(_prettyJsonEncoder.convert(triggerPayload));
-
-    if (triggered) {
-      if (neutralSeries != null) {
-        final payloadArtifacts = _buildCloudPayload(
-          policy: decoded,
-          neutralSeries: neutralSeries,
-          slice: slice,
-          baseName: baseName,
-          exportCloudFragment: exportCloudFragment,
-        );
-        final payloadFile = File(path.join(logsDir.path, 'cloud_payload.json'));
-        await payloadFile
-            .writeAsString(_prettyJsonEncoder.convert(payloadArtifacts.payload));
-
-        final audit = _buildPayloadAudit(
-          artifacts: payloadArtifacts,
-          exportCloudFragment: exportCloudFragment,
-        );
-        final auditFile = File(path.join(logsDir.path, 'payload_audit.json'));
-        await auditFile.writeAsString(_prettyJsonEncoder.convert(audit));
-      } else {
-        log('WARN', 'Hybrid triggered but neutral keypoints unavailable; skipping payload export.');
-      }
+      final audit = _buildPayloadAudit(
+        artifacts: payloadArtifacts,
+        exportCloudFragment: exportCloudFragment,
+      );
+      final auditFile = File(path.join(logsDir.path, 'payload_audit.json'));
+      await auditFile.writeAsString(_prettyJsonEncoder.convert(audit));
+    } else {
+      log('WARN', 'Hybrid triggered but neutral keypoints unavailable; skipping payload export.');
     }
   }
 
@@ -1211,6 +1498,8 @@ Future<_EvidenceOutcome> _processEvidence({
       enabled: false,
       topK: 0,
       generatedCount: 0,
+      keptCount: 0,
+      droppedCount: 0,
       overlayGenerated: false,
     );
   }
@@ -1231,11 +1520,16 @@ Future<_EvidenceOutcome> _processEvidence({
   final exportCfg = decoded['export'] as Map<String, dynamic>?;
   final overlayEnabled = overlayRequested || (exportCfg?['overlay'] == true);
   if (overlayEnabled) {
-    log('WARN', 'Evidence overlay export requested but not implemented. Skipping overlay.');
+    log('INFO',
+        'Evidence overlay export requested but not implemented. Snapshot paths will remain empty.');
   }
 
   final reps = (resultJson['reps'] as List<dynamic>)
       .cast<Map<String, dynamic>>();
+  final repByIndex = {
+    for (final rep in reps)
+      (rep['index'] as num?)?.toInt(): rep,
+  };
   final evidenceList =
       (resultJson['evidence'] as List<dynamic>).cast<Map<String, dynamic>>();
   final baselineEvidence = evidenceList
@@ -1253,6 +1547,38 @@ Future<_EvidenceOutcome> _processEvidence({
     }
   }
 
+  final fps = _resolveResultFps(resultJson);
+  final filteredLegacy =
+      _removeInvalidEvidenceEntries(evidenceList, strict: false);
+  if (filteredLegacy > 0) {
+    log('INFO', 'evidence: filtered $filteredLegacy invalid legacy items');
+  }
+
+  var normalizedLegacyDrops = 0;
+  final normalizedExisting = <Map<String, dynamic>>[];
+  for (final item in evidenceList) {
+    final repIndex = (item['repIndex'] as num?)?.toInt();
+    final normalized = _ensureSegmentEvidence(
+      item,
+      rep: repByIndex[repIndex],
+      thresholds: thresholds,
+      fallbackFps: fps,
+      windowMs: windowMs,
+    );
+    if (normalized != null) {
+      normalizedExisting.add(normalized);
+    } else {
+      normalizedLegacyDrops++;
+    }
+  }
+  evidenceList
+    ..clear()
+    ..addAll(normalizedExisting);
+  if (normalizedLegacyDrops > 0) {
+    log('WARN',
+        'evidence: dropped $normalizedLegacyDrops legacy items lacking required fields');
+  }
+
   final repCandidates = reps
       .map((rep) {
         final valley = (rep['valleyMs'] as num?)?.toInt() ?? _repCenter(rep);
@@ -1268,59 +1594,86 @@ Future<_EvidenceOutcome> _processEvidence({
       .toList();
   repCandidates.sort((a, b) => b.severity.compareTo(a.severity));
 
+  final limit = math.min(repCandidates.length, topK);
   final generated = <Map<String, dynamic>>[];
-  for (var i = 0; i < repCandidates.length && i < topK; i++) {
+  for (var i = 0; i < limit; i++) {
     final candidate = repCandidates[i];
     final rep = candidate.rep;
     final timestamp = candidate.timestamp;
     final cues = List<String>.from(candidate.cues);
-    if (cues.isEmpty) {
-      cues.add('rep:${rep['index']}');
-    }
-    final angles = <String, dynamic>{
-      'kneeValleyAngle': rep['kneeValleyAngle'],
-      'minKneeOutAngle': rep['minKneeOutAngle'],
-      'maxForwardLean': rep['maxForwardLean'],
-    }..removeWhere((key, value) => value == null);
     final entry = <String, dynamic>{
       'type': 'segment',
       'timestampMs': timestamp,
       'frameIndex': (rep['index'] as num?)?.toInt(),
       'repIndex': (rep['index'] as num?)?.toInt(),
       'cues': cues,
-      'angles': angles,
       'thresholds': thresholds,
       'window': {
         'startMs': math.max(0, timestamp - windowMs ~/ 2),
         'endMs': timestamp + windowMs ~/ 2,
       },
+      'snapshotPath': '',
     };
-    final depthThreshold = (thresholds['depth_minHipAngle'] as num?)?.toDouble();
-    final depth = (rep['kneeValleyAngle'] as num?)?.toDouble();
-    if (depthThreshold != null && depth != null) {
-      entry['scoreImpact'] = _roundDouble(depthThreshold - depth, 2);
+    final normalized = _ensureSegmentEvidence(
+      entry,
+      rep: rep,
+      thresholds: thresholds,
+      fallbackFps: fps,
+      windowMs: windowMs,
+    );
+    if (normalized != null) {
+      final depthThreshold =
+          (thresholds['depth_minHipAngle'] as num?)?.toDouble();
+      final depth = (rep['kneeValleyAngle'] as num?)?.toDouble();
+      if (depthThreshold != null && depth != null) {
+        normalized['scoreImpact'] = _roundDouble(depthThreshold - depth, 2);
+      }
+      generated.add(normalized);
     }
-    generated.add(entry);
   }
 
   evidenceList.addAll(generated);
+  final postMergeRemoved = _removeInvalidEvidenceEntries(evidenceList);
+  if (postMergeRemoved > 0) {
+    log('WARN',
+        'evidence: dropped $postMergeRemoved entries failing final validation');
+  }
+
+  final keptGeneratedEntries =
+      generated.where(evidenceList.contains).toList(growable: false);
+  final keptGenerated = keptGeneratedEntries.length;
+  final generatedAttempted = limit;
+  final droppedGenerated = generatedAttempted - keptGenerated;
+  if (droppedGenerated > 0) {
+    log('WARN',
+        'evidence: dropped $droppedGenerated generated items missing required data');
+  }
+
+  resultJson['evidence'] = evidenceList;
 
   final evidenceFile = File(path.join(outDir.path, 'evidence.json'));
-  await evidenceFile.writeAsString(_prettyJsonEncoder.convert(generated));
+  await evidenceFile
+      .writeAsString(_prettyJsonEncoder.convert(keptGeneratedEntries));
 
   final perfFile = File(path.join(logsDir.path, 'perf.json.evidence'));
   await perfFile.writeAsString(_prettyJsonEncoder.convert({
-    'generatedCount': generated.length,
+    'generatedCount': generatedAttempted,
+    'keptCount': keptGenerated,
+    'droppedCount': droppedGenerated,
+    'filteredLegacy': filteredLegacy + normalizedLegacyDrops,
     'topK': topK,
     'windowMs': windowMs,
     'overlayRequested': overlayEnabled,
+    'overlayGenerated': false,
     'timestamp': DateTime.now().toIso8601String(),
   }));
 
   return _EvidenceOutcome(
     enabled: true,
     topK: topK,
-    generatedCount: generated.length,
+    generatedCount: generatedAttempted,
+    keptCount: keptGenerated,
+    droppedCount: droppedGenerated,
     overlayGenerated: false,
   );
 }
