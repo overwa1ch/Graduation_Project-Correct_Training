@@ -1,17 +1,27 @@
 {
-  "depth_insufficient": {
-    "severity": "major",
-    "advice": "下蹲深度不足，请加大髋关节屈曲角度",
-    "relatedAngles": ["hipFlexion"]
+  "good_form": {
+    "severity": 0.5,
+    "advice": "动作稳定，继续保持当前节奏。",
+    "relatedAngles": ["kneeValleyAngle", "minKneeOutAngle"]
   },
-  "knee_inward": {
-    "severity": "moderate",
-    "advice": "膝盖内扣，请注意双膝方向与脚尖保持一致",
-    "relatedAngles": ["leftKnee", "rightKnee"]
+  "phase_boundary": {
+    "severity": 1.0,
+    "advice": "上升与下降切换顺畅，注意控制呼吸节奏。",
+    "relatedAngles": ["kneeValleyAngle"]
   },
-  "asymmetry": {
-    "severity": "minor",
-    "advice": "左右姿态不对称，请保持平衡",
+  "tempo_ok": {
+    "severity": 1.0,
+    "advice": "节奏均衡，保持同样的速度。",
+    "relatedAngles": ["tempo"]
+  },
+  "depth_ok": {
+    "severity": 2.0,
+    "advice": "下蹲深度达到标准，继续保持髋部幅度。",
+    "relatedAngles": ["kneeValleyAngle", "hipFlexion"]
+  },
+  "symmetry_ok": {
+    "severity": 1.5,
+    "advice": "左右稳定协调，注意膝盖方向一致。",
     "relatedAngles": ["leftKnee", "rightKnee"]
   }
 }

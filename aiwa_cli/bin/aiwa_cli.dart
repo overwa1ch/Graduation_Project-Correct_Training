@@ -89,9 +89,22 @@ ArgParser _buildParser() {
     ..addOption('evidence-config',
         help: 'Path to evidence configuration JSON.',
         defaultsTo: 'configs/evidence_config.json')
+    ..addOption('cue-map',
+        help: 'Path to cue advice map JSON.',
+        defaultsTo: 'rules/cue_advice_map.json')
     ..addFlag('cloud-video-fragment',
         negatable: false,
-        help: 'Export placeholder cloud video fragment when hybrid payload fires.');
+        help: 'Export placeholder cloud video fragment when hybrid payload fires.')
+    ..addFlag('assert',
+        negatable: false,
+        help: 'Enable built-in CI assertions on generated artifacts.')
+    ..addOption('assert-level',
+        defaultsTo: 'strict',
+        allowed: ['strict', 'loose'],
+        help: 'Assertion strictness (strict|loose).')
+    ..addFlag('assert-print',
+        negatable: false,
+        help: 'Print assertion success summary when assertions pass.');
 }
 
 String _usage(ArgParser parser) => '''
@@ -344,10 +357,12 @@ Future<void> _runFileMode(
   final evidenceOutcome = await _processEvidence(
     enabled: evidenceEnabled,
     configPath: evidenceConfigPath,
+    cueMapPath: (opts['cue-map'] as String?) ?? 'rules/cue_advice_map.json',
     outDir: outDir,
     logsDir: logsDir,
     resultJson: resultJson,
     overlayRequested: overlayRequested,
+    neutralSeries: neutralSeries,
     log: log,
   );
 
@@ -383,6 +398,13 @@ Future<void> _runFileMode(
   if (summary != null) {
     log('INFO', summary);
   }
+
+  _validateForCI(
+    outDir: outDir,
+    logsDir: logsDir,
+    resultJson: resultJson,
+    options: opts,
+  );
 }
 
 Future<void> _runEngineMode(
@@ -390,6 +412,12 @@ Future<void> _runEngineMode(
   RuleSet ruleSet,
   Strictness strictness,
 ) async {
+  _validateForCI(
+    outDir: Directory(opts['out'] as String? ?? _defaultOutDir),
+    logsDir: Directory(path.join(opts['out'] as String? ?? _defaultOutDir, 'logs')),
+    resultJson: const {},
+    options: opts,
+  );
   throw _CliException(
     'Engine mode (--video) is only available in the Flutter build. '
     'This standalone CLI package supports --keypoints file mode only.',
@@ -441,6 +469,324 @@ class _EvidenceOutcome {
     required this.droppedCount,
     required this.overlayGenerated,
   });
+}
+
+final Uint8List _placeholderOverlayPixel = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8Xw8AAnUB9SU/E1cAAAAASUVORK5CYII=',
+);
+
+class OverlayRenderer {
+  const OverlayRenderer();
+
+  Future<File> renderFrame({
+    required Map<String, dynamic> evidence,
+    required Directory frameDir,
+    required int index,
+    required int width,
+    required int height,
+    required Map<String, Map<String, dynamic>> cueMap,
+  }) async {
+    final fileName = 'frame_${index.toString().padLeft(4, '0')}.png';
+    final file = File(path.join(frameDir.path, fileName));
+    final cues = (evidence['cues'] as List<dynamic>? ?? const [])
+        .whereType<String>();
+    final severityScore = cues
+        .map((cue) => cueMap[cue] ?? cueMap[_normalizeCueKey(cue)])
+        .whereType<Map<String, dynamic>>()
+        .map((entry) => _cueSeverityToDouble(entry['severity']) ?? 0.0)
+        .fold<double>(0.0, (prev, value) => math.max(prev, value));
+    final _ = width + height + severityScore;
+    await file.parent.create(recursive: true);
+    await file.writeAsBytes(_placeholderOverlayPixel, flush: true);
+    return file;
+  }
+}
+
+Future<Map<String, Map<String, dynamic>>> _loadCueAdviceMap(
+    String pathStr, _LogFn log) async {
+  try {
+    final file = File(pathStr);
+    if (!file.existsSync()) {
+      log('WARN', 'cue map not loaded');
+      return const {};
+    }
+    final content = await file.readAsString();
+    final decoded = jsonDecode(content);
+    if (decoded is! Map<String, dynamic>) {
+      log('WARN', 'cue map not loaded');
+      return const {};
+    }
+    final normalized = <String, Map<String, dynamic>>{};
+    for (final entry in decoded.entries) {
+      final value = entry.value;
+      if (value is Map<String, dynamic>) {
+        normalized[entry.key] = Map<String, dynamic>.from(value);
+      }
+    }
+    return normalized;
+  } catch (_) {
+    log('WARN', 'cue map not loaded');
+    return const {};
+  }
+}
+
+void _enrichEvidenceWithCues(
+  List<Map<String, dynamic>> evidenceList,
+  Map<String, Map<String, dynamic>> cueMap,
+  _LogFn log,
+) {
+  if (evidenceList.isEmpty || cueMap.isEmpty) {
+    return;
+  }
+  final warned = <String>{};
+  for (final item in evidenceList) {
+    final cues = (item['cues'] as List<dynamic>? ?? const [])
+        .whereType<String>()
+        .toList(growable: false);
+    if (cues.isEmpty) {
+      continue;
+    }
+    final advice = <String>[];
+    final cuesMeta = <Map<String, dynamic>>[];
+    double? severityMax;
+    for (final cue in cues) {
+      final mapping = cueMap[cue] ?? cueMap[_normalizeCueKey(cue)];
+      if (mapping == null) {
+        if (warned.add(cue)) {
+          log('WARN', 'unknown cue: $cue');
+        }
+        continue;
+      }
+      final adviceValue = mapping['advice'];
+      if (adviceValue is String && adviceValue.isNotEmpty) {
+        advice.add(adviceValue);
+      } else if (adviceValue is List) {
+        advice.addAll(adviceValue.whereType<String>());
+      }
+      final severityValue = _cueSeverityToDouble(mapping['severity']);
+      if (severityValue != null) {
+        severityMax = severityMax == null
+            ? severityValue
+            : math.max(severityMax, severityValue);
+      }
+      final relatedAngles =
+          (mapping['relatedAngles'] as List<dynamic>? ?? const [])
+              .whereType<String>()
+              .toList(growable: false);
+      cuesMeta.add({
+        'cue': cue,
+        'advice': adviceValue,
+        'severity': mapping['severity'],
+        'relatedAngles': relatedAngles,
+      });
+    }
+    if (advice.isNotEmpty) {
+      item['advice'] = _dedupeCues(advice);
+    }
+    if (severityMax != null) {
+      item['severityMax'] = _roundDouble(severityMax, 2);
+    }
+    if (cuesMeta.isNotEmpty) {
+      item['cuesMeta'] = cuesMeta;
+    }
+  }
+}
+
+double? _cueSeverityToDouble(dynamic severity) {
+  if (severity == null) {
+    return null;
+  }
+  if (severity is num) {
+    return severity.toDouble();
+  }
+  if (severity is String) {
+    switch (severity.toLowerCase()) {
+      case 'critical':
+        return 3.0;
+      case 'major':
+        return 2.0;
+      case 'minor':
+        return 1.0;
+      case 'info':
+        return 0.5;
+    }
+  }
+  return null;
+}
+
+String _normalizeCueKey(String cue) {
+  final index = cue.indexOf(':');
+  if (index == -1) {
+    return cue;
+  }
+  return cue.substring(index + 1);
+}
+
+String _escapeForFfmpeg(String input) => input.replaceAll("'", "\\'");
+
+Future<Map<String, dynamic>> _exportOverlay({
+  required bool enabled,
+  required List<Map<String, dynamic>> additions,
+  required NeutralKeypointSeries? neutralSeries,
+  required List<String> angles,
+  required Map<String, Map<String, dynamic>> cueMap,
+  required Map<String, dynamic>? exportConfig,
+  required Directory outDir,
+  required Directory logsDir,
+  required _LogFn log,
+}) async {
+  final fps = (exportConfig?['fps'] as num?)?.toDouble() ?? 15.0;
+  final resolution = (exportConfig?['resolution'] as num?)?.toInt() ?? 480;
+  var width = resolution;
+  var height = resolution;
+  if (neutralSeries != null && neutralSeries.video.width > 0 &&
+      neutralSeries.video.height > 0) {
+    width = math.max(2,
+        (neutralSeries.video.width * resolution / neutralSeries.video.height)
+            .round());
+    height = resolution;
+  }
+  final report = <String, dynamic>{
+    'enabled': enabled,
+    'generated': false,
+    'frameCount': 0,
+    'fps': _roundDouble(fps, 2),
+    'durationMs': 0,
+    'width': width,
+    'height': height,
+    'angles': angles,
+    'logsDir': logsDir.path,
+  };
+
+  if (!enabled || additions.isEmpty) {
+    for (final item in additions) {
+      final snapshot = item['snapshotPath'];
+      item['snapshotPath'] = snapshot is String ? snapshot : '';
+    }
+    return report;
+  }
+
+  try {
+    final probe = await Process.run('ffmpeg', ['-version']);
+    if (probe.exitCode != 0) {
+      log('WARN', 'overlay export failed');
+      for (final item in additions) {
+        final snapshot = item['snapshotPath'];
+        item['snapshotPath'] = snapshot is String ? snapshot : '';
+      }
+      return report;
+    }
+  } on ProcessException catch (_) {
+    log('WARN', 'overlay export failed');
+    for (final item in additions) {
+      final snapshot = item['snapshotPath'];
+      item['snapshotPath'] = snapshot is String ? snapshot : '';
+    }
+    return report;
+  }
+
+  final frameDir = Directory(path.join(outDir.path, 'work', 'frames'))
+    ..createSync(recursive: true);
+  final renderer = const OverlayRenderer();
+  final entries = additions
+      .map((item) => (
+            evidence: item,
+            timestamp: (item['timestampMs'] as num?)?.toInt() ?? 0,
+          ))
+      .toList()
+    ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+  if (entries.isEmpty) {
+    return report;
+  }
+
+  final frameFiles = <File>[];
+  for (var i = 0; i < entries.length; i++) {
+    final frame = await renderer.renderFrame(
+      evidence: entries[i].evidence,
+      frameDir: frameDir,
+      index: i,
+      width: width,
+      height: height,
+      cueMap: cueMap,
+    );
+    frameFiles.add(frame);
+  }
+
+  final durations = <double>[];
+  for (var i = 0; i < entries.length; i++) {
+    final current = entries[i].timestamp / 1000.0;
+    final next = i + 1 < entries.length
+        ? entries[i + 1].timestamp / 1000.0
+        : null;
+    var duration =
+        next != null ? next - current : (fps > 0 ? 1.0 / fps : 0.5);
+    if (duration <= 0) {
+      duration = fps > 0 ? 1.0 / fps : 0.5;
+    }
+    durations.add(duration);
+  }
+
+  final concatFile = File(path.join(frameDir.path, 'frames.txt'));
+  final buffer = StringBuffer();
+  for (var i = 0; i < frameFiles.length; i++) {
+    final escaped = _escapeForFfmpeg(frameFiles[i].path);
+    buffer.writeln("file '$escaped'");
+    buffer.writeln('duration ${durations[i].toStringAsFixed(6)}');
+  }
+  buffer.writeln("file '${_escapeForFfmpeg(frameFiles.last.path)}'");
+  await concatFile.writeAsString(buffer.toString());
+
+  final overlayPath = path.join(outDir.path, 'overlay.mp4');
+  try {
+    final result = await Process.run('ffmpeg', [
+      '-y',
+      '-safe',
+      '0',
+      '-f',
+      'concat',
+      '-i',
+      concatFile.path,
+      '-c:v',
+      'libx264',
+      '-pix_fmt',
+      'yuv420p',
+      overlayPath,
+    ]);
+    if (result.exitCode != 0) {
+      log('WARN', 'overlay export failed');
+      for (final item in additions) {
+        final snapshot = item['snapshotPath'];
+        item['snapshotPath'] = snapshot is String ? snapshot : '';
+      }
+      return report;
+    }
+  } on ProcessException catch (_) {
+    log('WARN', 'overlay export failed');
+    for (final item in additions) {
+      final snapshot = item['snapshotPath'];
+      item['snapshotPath'] = snapshot is String ? snapshot : '';
+    }
+    return report;
+  }
+
+  var currentTime = 0.0;
+  for (var i = 0; i < entries.length; i++) {
+    final evidence = entries[i].evidence;
+    evidence['snapshotPath'] =
+        'overlay.mp4#t=${currentTime.toStringAsFixed(3)}';
+    currentTime += durations[i];
+  }
+
+  report
+    ..['generated'] = true
+    ..['frameCount'] = frameFiles.length
+    ..['durationMs'] = (currentTime * 1000).round()
+    ..['path'] = overlayPath
+    ..['neutralFps'] =
+        neutralSeries != null ? _roundDouble(neutralSeries.effectiveFps, 2) : null;
+
+  return report;
 }
 
 class _CloudMergeOutcome {
@@ -591,6 +937,169 @@ void _validateEvidenceArtifacts({
       log('WARN',
           'Evidence overlay generated but $missingSnapshots items are missing snapshotPath.');
     }
+  }
+}
+
+class _CiAssertOptions {
+  final bool enabled;
+  final bool strict;
+  final bool verbose;
+
+  const _CiAssertOptions({
+    required this.enabled,
+    required this.strict,
+    required this.verbose,
+  });
+
+  factory _CiAssertOptions.fromArgs(ArgResults options) {
+    final enabled = options['assert'] == true;
+    final level = (options['assert-level'] as String?)?.toLowerCase() ?? 'strict';
+    final strict = level != 'loose';
+    final verbose = options['assert-print'] == true;
+    return _CiAssertOptions(enabled: enabled, strict: strict, verbose: verbose);
+  }
+}
+
+void _validateForCI({
+  required Directory outDir,
+  required Directory logsDir,
+  required Map<String, dynamic> resultJson,
+  required ArgResults options,
+}) {
+  final assertOptions = _CiAssertOptions.fromArgs(options);
+  if (!assertOptions.enabled || resultJson.isEmpty) {
+    return;
+  }
+
+  final errors = <String>[];
+  void fail(String category, String message) {
+    errors.add('$category: $message');
+  }
+
+  final anglesFile = File(path.join(outDir.path, 'angles.csv'));
+  if (!anglesFile.existsSync()) {
+    fail('existence', 'missing angles.csv at ${anglesFile.path}');
+  }
+  final resultFile = File(path.join(outDir.path, 'result.json'));
+  if (!resultFile.existsSync()) {
+    fail('existence', 'missing result.json at ${resultFile.path}');
+  }
+  final runLog = File(path.join(logsDir.path, 'run.log'));
+  if (!runLog.existsSync()) {
+    fail('existence', 'missing run log at ${runLog.path}');
+  }
+
+  final evidenceItems = (resultJson['evidence'] as List<dynamic>? ?? const [])
+      .whereType<Map<String, dynamic>>()
+      .toList(growable: false);
+  final evidenceFile = File(path.join(outDir.path, 'evidence.json'));
+  final perfFile = File(path.join(logsDir.path, 'perf.json.evidence'));
+  if (evidenceItems.isNotEmpty) {
+    if (!evidenceFile.existsSync()) {
+      fail('existence', 'evidence present but ${evidenceFile.path} missing');
+    }
+    if (!perfFile.existsSync()) {
+      fail('existence', 'evidence present but ${perfFile.path} missing');
+    }
+  }
+
+  for (final item in evidenceItems) {
+    if (!_isEvidenceStructurallyValid(item)) {
+      fail('structure',
+          'invalid evidence structure at timestamp ${item['timestampMs']}');
+    }
+  }
+  if (evidenceItems.length >= 2) {
+    for (var i = 1; i < evidenceItems.length; i++) {
+      final previous = (evidenceItems[i - 1]['timestampMs'] as num?)?.toInt();
+      final current = (evidenceItems[i]['timestampMs'] as num?)?.toInt();
+      if (previous != null && current != null && current < previous) {
+        fail('structure', 'evidence timestampMs not sorted ascending');
+        break;
+      }
+    }
+  }
+
+  final maxEvidenceSize = assertOptions.strict ? 500 * 1024 : 750 * 1024;
+  final maxResultSize = assertOptions.strict ? 500 * 1024 : 1024 * 1024;
+  final maxOverlaySize = assertOptions.strict ? 50 * 1024 * 1024 : 80 * 1024 * 1024;
+  if (evidenceFile.existsSync()) {
+    final size = evidenceFile.lengthSync();
+    if (size > maxEvidenceSize) {
+      fail('budget', 'evidence.json too large (${size} bytes)');
+    }
+  }
+  if (resultFile.existsSync()) {
+    final size = resultFile.lengthSync();
+    if (size > maxResultSize) {
+      fail('budget', 'result.json too large (${size} bytes)');
+    }
+  }
+
+  Map<String, dynamic>? perfJson;
+  if (perfFile.existsSync()) {
+    try {
+      final raw = perfFile.readAsStringSync();
+      final decoded = jsonDecode(raw);
+      if (decoded is Map<String, dynamic>) {
+        perfJson = decoded;
+      } else {
+        fail('structure', 'perf.json.evidence must be an object');
+      }
+    } catch (_) {
+      fail('structure', 'failed to parse ${perfFile.path}');
+    }
+  }
+
+  if (perfJson != null) {
+    final kept = (perfJson['keptCount'] as num?)?.toInt();
+    if (kept != null && kept != evidenceItems.length) {
+      fail('consistency',
+          'keptCount ($kept) does not match evidence items (${evidenceItems.length})');
+    }
+  }
+
+  final overlayFile = File(path.join(outDir.path, 'overlay.mp4'));
+  final overlayInfo = perfJson?['overlay'] as Map<String, dynamic>?;
+  final overlayGenerated = overlayInfo?['generated'] == true;
+  if (overlayGenerated) {
+    if (!overlayFile.existsSync()) {
+      fail('existence', 'overlay.mp4 missing while overlayGenerated=true');
+    } else {
+      final size = overlayFile.lengthSync();
+      if (size > maxOverlaySize) {
+        fail('budget', 'overlay.mp4 too large (${size} bytes)');
+      }
+    }
+    final frameCount = (overlayInfo?['frameCount'] as num?)?.toInt();
+    if (assertOptions.strict && frameCount != null && frameCount != evidenceItems.length) {
+      fail('consistency',
+          'overlay frameCount ($frameCount) does not match evidence count (${evidenceItems.length})');
+    }
+    final durationMs = (overlayInfo?['durationMs'] as num?)?.toInt() ?? 0;
+    if (durationMs <= 0) {
+      fail('consistency', 'overlay duration is missing or zero');
+    }
+    for (final item in evidenceItems) {
+      final snapshot = item['snapshotPath'];
+      if (snapshot is! String || snapshot.isEmpty) {
+        fail('consistency', 'overlay generated but snapshotPath missing');
+        break;
+      }
+    }
+  }
+
+  if (errors.isNotEmpty) {
+    for (final message in errors) {
+      stderr.writeln('[FATAL] $message');
+    }
+    exitCode = 1;
+    throw _CliException('CI validation failed', 1);
+  }
+
+  if (assertOptions.verbose) {
+    stdout.writeln(
+        '[INFO] CI assertions passed (${assertOptions.strict ? 'strict' : 'loose'})');
   }
 }
 
@@ -1506,10 +2015,12 @@ Future<_HybridOutcome> _processHybrid({
 Future<_EvidenceOutcome> _processEvidence({
   required bool enabled,
   required String configPath,
+  required String cueMapPath,
   required Directory outDir,
   required Directory logsDir,
   required Map<String, dynamic> resultJson,
   required bool overlayRequested,
+  required NeutralKeypointSeries? neutralSeries,
   required _LogFn log,
 }) async {
   if (!enabled) {
@@ -1538,10 +2049,7 @@ Future<_EvidenceOutcome> _processEvidence({
       decoded['thresholds'] as Map<String, dynamic>? ?? const {});
   final exportCfg = decoded['export'] as Map<String, dynamic>?;
   final overlayEnabled = overlayRequested || (exportCfg?['overlay'] == true);
-  if (overlayEnabled) {
-    log('INFO',
-        'Evidence overlay export requested but not implemented. Snapshot paths will remain empty.');
-  }
+  final cueMap = await _loadCueAdviceMap(cueMapPath, log);
 
   final reps = (resultJson['reps'] as List<dynamic>)
       .cast<Map<String, dynamic>>();
@@ -1668,6 +2176,22 @@ Future<_EvidenceOutcome> _processEvidence({
         'evidence: dropped $droppedGenerated generated items missing required data');
   }
 
+  _enrichEvidenceWithCues(evidenceList, cueMap, log);
+
+  final overlayReport = await _exportOverlay(
+    enabled: overlayEnabled,
+    additions: evidenceList,
+    neutralSeries: neutralSeries,
+    angles: (decoded['angles'] as List<dynamic>? ?? const [])
+        .whereType<String>()
+        .toList(growable: false),
+    cueMap: cueMap,
+    exportConfig: exportCfg,
+    outDir: outDir,
+    logsDir: logsDir,
+    log: log,
+  );
+
   resultJson['evidence'] = evidenceList;
 
   final evidenceFile = File(path.join(outDir.path, 'evidence.json'));
@@ -1683,7 +2207,8 @@ Future<_EvidenceOutcome> _processEvidence({
     'topK': topK,
     'windowMs': windowMs,
     'overlayRequested': overlayEnabled,
-    'overlayGenerated': false,
+    'overlayGenerated': overlayReport['generated'] == true,
+    'overlay': overlayReport,
     'timestamp': DateTime.now().toIso8601String(),
   }));
 
@@ -1693,7 +2218,7 @@ Future<_EvidenceOutcome> _processEvidence({
     generatedCount: generatedAttempted,
     keptCount: keptGenerated,
     droppedCount: droppedGenerated,
-    overlayGenerated: false,
+    overlayGenerated: overlayReport['generated'] == true,
   );
 }
 
