@@ -594,28 +594,49 @@ void _validateEvidenceArtifacts({
   }
 }
 
+double? _flexibleToDouble(dynamic value) {
+  if (value == null) {
+    return null;
+  }
+  if (value is num) {
+    return value.toDouble();
+  }
+  if (value is bool) {
+    return value ? 1.0 : 0.0;
+  }
+  if (value is String) {
+    final parsed = double.tryParse(value.trim());
+    if (parsed != null) {
+      return parsed;
+    }
+  }
+  return null;
+}
+
 Map<String, double> _buildHybridMetrics(
   Map<String, dynamic> resultJson,
   Map<String, dynamic>? perfData,
   NeutralKeypointSeries? neutralSeries,
 ) {
   final quality = resultJson['quality'] as Map<String, dynamic>?;
-  final coverage = (perfData?['usableFrameRatio'] as num?)?.toDouble() ??
-      (quality?['coverage'] as num?)?.toDouble() ??
-      0.0;
-  final lowConf = (perfData?['lowConfidenceRatio'] as num?)?.toDouble() ??
-      (quality?['lowConfidence'] as num?)?.toDouble() ??
-      0.0;
   final meta = resultJson['meta'] as Map<String, dynamic>?;
-  final fps = neutralSeries?.sampling.effectiveFps ??
-      (meta?['fps'] as num?)?.toDouble() ??
+
+  final coverage = _flexibleToDouble(perfData?['usableFrameRatio']) ??
+      _flexibleToDouble(quality?['coverage']) ??
       0.0;
+  final lowConf = _flexibleToDouble(perfData?['lowConfidenceRatio']) ??
+      _flexibleToDouble(quality?['lowConfidence']) ??
+      0.0;
+  final fps = neutralSeries?.sampling.effectiveFps ??
+      _flexibleToDouble(meta?['fps']) ??
+      0.0;
+  final jitter = _flexibleToDouble(perfData?['jitterPx']) ?? 0.0;
 
   return {
     'coverage': _roundDouble(coverage, 4),
     'lowConfPct': _roundDouble(lowConf, 4),
     'fps': _roundDouble(fps, 2),
-    'jitterPx': _roundDouble((perfData?['jitterPx'] as num?)?.toDouble() ?? 0.0, 2),
+    'jitterPx': _roundDouble(jitter, 2),
   };
 }
 
@@ -1084,6 +1105,16 @@ Future<_HybridOutcome> _processHybrid({
   required String baseName,
   required _LogFn log,
 }) async {
+  if (!enabled) {
+    return const _HybridOutcome(
+      enabled: false,
+      triggered: false,
+      reasons: <String>[],
+      hadCloudMock: false,
+      cloudEnhanced: false,
+    );
+  }
+
   final metrics = _buildHybridMetrics(resultJson, perfData, neutralSeries);
   final hadCloudMock = cloudMockPath != null;
 
@@ -1093,55 +1124,53 @@ Future<_HybridOutcome> _processHybrid({
   String? policyVersion;
   Map<String, double> thresholds = const {};
 
-  if (enabled) {
-    final policyStr = await _readFile(policyPath, 'hybrid policy');
-    final decoded = jsonDecode(policyStr);
-    if (decoded is! Map<String, dynamic>) {
-      throw _CliException(
-        'Hybrid policy must be a JSON object.',
-        _exitParamError,
+  final policyStr = await _readFile(policyPath, 'hybrid policy');
+  final decoded = jsonDecode(policyStr);
+  if (decoded is! Map<String, dynamic>) {
+    throw _CliException(
+      'Hybrid policy must be a JSON object.',
+      _exitParamError,
+    );
+  }
+  policyVersion = decoded['version'] as String?;
+  thresholds = _extractPolicyThresholds(decoded, resultJson);
+  final evaluation = _evaluateHybridRules(decoded, metrics, thresholds);
+  triggered = evaluation.triggered;
+  reasons = evaluation.reasons;
+  slice = _computeHybridSlice(resultJson, decoded);
+
+  final triggerPayload = <String, dynamic>{
+    if (policyVersion != null) 'version': policyVersion,
+    'triggered': triggered,
+    'metrics': metrics,
+    'reasons': reasons,
+    if (slice != null) 'slice': slice,
+    if (thresholds.isNotEmpty) 'thresholds': thresholds,
+  };
+  final triggerFile = File(path.join(logsDir.path, 'hybrid_trigger.json'));
+  await triggerFile.writeAsString(_prettyJsonEncoder.convert(triggerPayload));
+
+  if (triggered) {
+    if (neutralSeries != null) {
+      final payloadArtifacts = _buildCloudPayload(
+        policy: decoded,
+        neutralSeries: neutralSeries,
+        slice: slice,
+        baseName: baseName,
+        exportCloudFragment: exportCloudFragment,
       );
-    }
-    policyVersion = decoded['version'] as String?;
-    thresholds = _extractPolicyThresholds(decoded, resultJson);
-    final evaluation = _evaluateHybridRules(decoded, metrics, thresholds);
-    triggered = evaluation.triggered;
-    reasons = evaluation.reasons;
-    slice = _computeHybridSlice(resultJson, decoded);
+      final payloadFile = File(path.join(logsDir.path, 'cloud_payload.json'));
+      await payloadFile
+          .writeAsString(_prettyJsonEncoder.convert(payloadArtifacts.payload));
 
-    final triggerPayload = <String, dynamic>{
-      if (policyVersion != null) 'version': policyVersion,
-      'triggered': triggered,
-      'metrics': metrics,
-      'reasons': reasons,
-      if (slice != null) 'slice': slice,
-      if (thresholds.isNotEmpty) 'thresholds': thresholds,
-    };
-    final triggerFile = File(path.join(logsDir.path, 'hybrid_trigger.json'));
-    await triggerFile.writeAsString(_prettyJsonEncoder.convert(triggerPayload));
-
-    if (triggered) {
-      if (neutralSeries != null) {
-        final payloadArtifacts = _buildCloudPayload(
-          policy: decoded,
-          neutralSeries: neutralSeries,
-          slice: slice,
-          baseName: baseName,
-          exportCloudFragment: exportCloudFragment,
-        );
-        final payloadFile = File(path.join(logsDir.path, 'cloud_payload.json'));
-        await payloadFile
-            .writeAsString(_prettyJsonEncoder.convert(payloadArtifacts.payload));
-
-        final audit = _buildPayloadAudit(
-          artifacts: payloadArtifacts,
-          exportCloudFragment: exportCloudFragment,
-        );
-        final auditFile = File(path.join(logsDir.path, 'payload_audit.json'));
-        await auditFile.writeAsString(_prettyJsonEncoder.convert(audit));
-      } else {
-        log('WARN', 'Hybrid triggered but neutral keypoints unavailable; skipping payload export.');
-      }
+      final audit = _buildPayloadAudit(
+        artifacts: payloadArtifacts,
+        exportCloudFragment: exportCloudFragment,
+      );
+      final auditFile = File(path.join(logsDir.path, 'payload_audit.json'));
+      await auditFile.writeAsString(_prettyJsonEncoder.convert(audit));
+    } else {
+      log('WARN', 'Hybrid triggered but neutral keypoints unavailable; skipping payload export.');
     }
   }
 
