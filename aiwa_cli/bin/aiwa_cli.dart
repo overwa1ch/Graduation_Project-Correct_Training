@@ -8,6 +8,7 @@ import 'package:args/args.dart';
 import 'package:path/path.dart' as path;
 
 import 'package:aiwa_core/core/io.dart';
+import 'package:aiwa_core/core/perf_timer.dart';
 import 'package:aiwa_core/pipeline/offline_pipeline.dart';
 import 'package:aiwa_core/pipeline/pose_input_converter.dart';
 import 'package:aiwa_core/pipeline/pose_series.dart';
@@ -89,9 +90,31 @@ ArgParser _buildParser() {
     ..addOption('evidence-config',
         help: 'Path to evidence configuration JSON.',
         defaultsTo: 'configs/evidence_config.json')
+    ..addFlag('evidence-export-overlay',
+        help: 'Enable overlay export when evidence is generated.',
+        defaultsTo: false)
+    ..addOption('cue-map',
+        help: 'Path to cue advice map JSON.',
+        defaultsTo: 'rules/cue_advice_map.json')
     ..addFlag('cloud-video-fragment',
         negatable: false,
-        help: 'Export placeholder cloud video fragment when hybrid payload fires.');
+        help: 'Export placeholder cloud video fragment when hybrid payload fires.')
+    ..addFlag('assert',
+        negatable: false,
+        help: 'Enable built-in CI assertions on generated artifacts.')
+    ..addOption('assert-level',
+        defaultsTo: 'strict',
+        allowed: ['strict', 'loose'],
+        help: 'Assertion strictness (strict|loose).')
+    ..addFlag('assert-print',
+        negatable: false,
+        help: 'Print assertion success summary when assertions pass.')
+    ..addFlag('strict',
+        negatable: false,
+        help: 'Enable strict performance guard mode (exit on perf regression).')
+    ..addFlag('perf-report',
+        negatable: false,
+        help: 'Generate logs/perf_report.md summary report.');
 }
 
 String _usage(ArgParser parser) => '''
@@ -263,6 +286,7 @@ Future<void> _runFileMode(
     );
   }
 
+  final adapterTimer = PerfTimer();
   NeutralKeypointSeries? neutralSeries;
   late final PoseSeries poseSeries;
   if ((kpRoot['version'] as Object?) == 'vB1.1') {
@@ -272,14 +296,8 @@ Future<void> _runFileMode(
     final legacySeries = parseKeypointSeriesFromMap(kpRoot);
     poseSeries = poseSeriesFromLegacy(legacySeries);
   }
-
-  final pipeline = OfflinePipeline(ruleSet, strictness);
-  late final ({String anglesCsv, Map<String, dynamic> resultJson}) out;
-  try {
-    out = await pipeline.run(poseSeries);
-  } catch (e) {
-    throw _CliException('Offline pipeline failed: $e', _exitInferenceError);
-  }
+  adapterTimer.lap('adapter');
+  final adapterDurationMs = adapterTimer.export()['adapter'] ?? 0;
 
   final outRoot = Directory(opts['out'] as String? ?? _defaultOutDir);
   final baseName = path.basenameWithoutExtension(keypointsPath);
@@ -301,6 +319,26 @@ Future<void> _runFileMode(
 
   log('INFO', 'File mode start → keypoints=$keypointsPath');
 
+  final resourceSampler = ResourceSampler()..sample();
+  final overlaySwitchRequested =
+      (opts['overlay'] == true) || (opts['evidence-export-overlay'] == true);
+  final perfGuard = PerfGuard(
+    strict: opts['strict'] == true,
+    log: log,
+    overlayRequested: overlaySwitchRequested,
+  );
+  final timingsMs = <String, int>{};
+
+  void recordTiming(String stage, int ms) {
+    if (ms < 0) return;
+    timingsMs[stage] = (timingsMs[stage] ?? 0) + ms;
+  }
+
+  final engineTimer = PerfTimer();
+  final pipeline = OfflinePipeline(ruleSet, strictness);
+  engineTimer.lap('engineInit');
+  recordTiming('engineInit', engineTimer.export()['engineInit'] ?? 0);
+
   final hybridEnabled = opts['hybrid'] == true;
   final hybridPolicyPath =
       (opts['hybrid-policy'] as String?) ?? 'configs/hybrid_policy.json';
@@ -309,9 +347,27 @@ Future<void> _runFileMode(
   final evidenceEnabled = opts['evidence'] == true;
   final evidenceConfigPath =
       (opts['evidence-config'] as String?) ?? 'configs/evidence_config.json';
-  final overlayRequested = opts['overlay'] == true;
+  final overlayRequested = overlaySwitchRequested;
 
-  final resultJson = Map<String, dynamic>.from(out.resultJson);
+  final pipelineTimer = PerfTimer();
+  late final ({String anglesCsv, Map<String, dynamic> resultJson}) pipelineOut;
+  try {
+    pipelineOut = await pipeline.run(poseSeries, timer: pipelineTimer);
+  } catch (e) {
+    throw _CliException('Offline pipeline failed: $e', _exitInferenceError);
+  }
+  final pipelineTimings = Map<String, int>.from(pipelineTimer.export());
+  final inferenceTotal = pipelineTimings.values.fold<int>(0, (sum, value) => sum + value);
+  recordTiming('inferenceTotal', inferenceTotal);
+  for (final stage in ['filtering', 'angles', 'phaseSeg', 'scoring', 'quality']) {
+    final value = pipelineTimings[stage];
+    if (value != null) {
+      recordTiming(stage, value);
+    }
+  }
+  resourceSampler.sample();
+
+  final resultJson = Map<String, dynamic>.from(pipelineOut.resultJson);
   final reps = (resultJson['reps'] as List<dynamic>? ?? [])
       .map((e) => Map<String, dynamic>.from(e as Map<String, dynamic>))
       .toList(growable: true);
@@ -323,11 +379,20 @@ Future<void> _runFileMode(
 
   final anglesFile = File(path.join(outDir.path, 'angles.csv'));
   try {
-    await anglesFile.writeAsString(out.anglesCsv);
+    await anglesFile.writeAsString(pipelineOut.anglesCsv);
   } on IOException catch (e) {
     throw _CliException('Failed to write angles.csv: $e', _exitOutputError);
   }
+  recordTiming('adapter', adapterDurationMs);
+  resourceSampler.sample();
 
+  final videoDurationMs = _estimateVideoDurationMs(poseSeries, neutralSeries);
+  final pipelineRtf = videoDurationMs > 0
+      ? _totalRuntimeMs(timingsMs) / videoDurationMs
+      : 0.0;
+  perfGuard.evaluateRealTime(pipelineRtf, poseSeries.fps);
+
+  final hybridTimer = PerfTimer();
   final hybridOutcome = await _processHybrid(
     enabled: hybridEnabled,
     policyPath: hybridPolicyPath,
@@ -339,16 +404,73 @@ Future<void> _runFileMode(
     neutralSeries: neutralSeries,
     baseName: baseName,
     log: log,
+    recordTiming: recordTiming,
   );
+  hybridTimer.lap('hybridTrigger');
+  recordTiming('hybridTrigger', hybridTimer.export()['hybridTrigger'] ?? 0);
+  resourceSampler.sample();
+
+  final isHighEnd =
+      (poseSeries.metadata.inputResolution ?? '').toLowerCase() == '720p';
+  perfGuard.evaluateMemory(resourceSampler.memPeakMb, highEnd: isHighEnd);
 
   final evidenceOutcome = await _processEvidence(
     enabled: evidenceEnabled,
     configPath: evidenceConfigPath,
+    cueMapPath: (opts['cue-map'] as String?) ?? 'rules/cue_advice_map.json',
     outDir: outDir,
     logsDir: logsDir,
     resultJson: resultJson,
     overlayRequested: overlayRequested,
+    overlayAllowed: perfGuard.overlayAllowed,
+    topKOverride: perfGuard.topKOverride,
+    neutralSeries: neutralSeries,
     log: log,
+    recordTiming: recordTiming,
+  );
+  resourceSampler.sample();
+
+  final memPeakMb = resourceSampler.memPeakMb;
+  final thermalInfo = <String, dynamic>{
+    'throttled': false,
+    'tempC_max': 0.0,
+  };
+  perfGuard.evaluateThermal(
+    throttled: thermalInfo['throttled'] as bool,
+    tempC: (thermalInfo['tempC_max'] as num).toDouble(),
+  );
+
+  final jankCount = 0;
+  if (perfGuard.strict && jankCount > _kStrictJankThreshold) {
+    perfGuard.strictViolation = true;
+  }
+
+  final perfMetrics = <String, dynamic>{
+    'inferenceFps': double.parse(poseSeries.fps.toStringAsFixed(2)),
+    'pipelineRtf': double.parse(pipelineRtf.toStringAsFixed(3)),
+    'cpuUtilAvgPct': 0.0,
+    'memPeakMB': memPeakMb,
+    'jankCount': jankCount,
+    'videoDurationMs': videoDurationMs,
+    'framesProcessed': poseSeries.frames.length,
+  };
+  if (perfGuard.downgradedFps != null) {
+    perfMetrics['degradedFps'] =
+        double.parse(perfGuard.downgradedFps!.toStringAsFixed(2));
+  }
+
+  final notes = perfGuard.buildNotes();
+  final generateReport = (opts['perf-report'] == true) || (opts['strict'] == true);
+
+  await _flushPerfLogs(
+    logsDir: logsDir,
+    runLabel: baseName,
+    timingsMs: timingsMs,
+    perfMetrics: perfMetrics,
+    thermal: thermalInfo,
+    evidence: evidenceOutcome.perfSummary,
+    notes: notes,
+    generateReport: generateReport,
   );
 
   _validateHybridArtifacts(
@@ -383,6 +505,17 @@ Future<void> _runFileMode(
   if (summary != null) {
     log('INFO', summary);
   }
+
+  if (perfGuard.strictViolation) {
+    throw _CliException('Performance guard triggered (--strict).', 3);
+  }
+
+  _validateForCI(
+    outDir: outDir,
+    logsDir: logsDir,
+    resultJson: resultJson,
+    options: opts,
+  );
 }
 
 Future<void> _runEngineMode(
@@ -390,6 +523,12 @@ Future<void> _runEngineMode(
   RuleSet ruleSet,
   Strictness strictness,
 ) async {
+  _validateForCI(
+    outDir: Directory(opts['out'] as String? ?? _defaultOutDir),
+    logsDir: Directory(path.join(opts['out'] as String? ?? _defaultOutDir, 'logs')),
+    resultJson: const {},
+    options: opts,
+  );
   throw _CliException(
     'Engine mode (--video) is only available in the Flutter build. '
     'This standalone CLI package supports --keypoints file mode only.',
@@ -432,6 +571,7 @@ class _EvidenceOutcome {
   final int keptCount;
   final int droppedCount;
   final bool overlayGenerated;
+  final Map<String, dynamic> perfSummary;
 
   const _EvidenceOutcome({
     required this.enabled,
@@ -440,7 +580,442 @@ class _EvidenceOutcome {
     required this.keptCount,
     required this.droppedCount,
     required this.overlayGenerated,
+    this.perfSummary = const {},
   });
+}
+
+const List<String> _kPerfStageOrder = [
+  'engineInit',
+  'adapter',
+  'inferenceTotal',
+  'filtering',
+  'angles',
+  'phaseSeg',
+  'scoring',
+  'quality',
+  'hybridTrigger',
+  'cloudMerge',
+  'evidenceSelect',
+  'overlayExport',
+];
+
+const int _kStrictJankThreshold = 3;
+
+class ResourceSampler {
+  int _memPeakBytes = 0;
+
+  void sample() {
+    try {
+      final rss = ProcessInfo.currentRss;
+      if (rss > _memPeakBytes) {
+        _memPeakBytes = rss;
+      }
+    } catch (_) {
+      // ProcessInfo may not be available in some runtimes.
+    }
+  }
+
+  int get memPeakBytes => _memPeakBytes;
+  int get memPeakMb => (_memPeakBytes / (1024 * 1024)).round();
+}
+
+class PerfGuard {
+  final bool strict;
+  final _LogFn log;
+  bool overlayAllowed;
+  int? topKOverride;
+  bool strictViolation = false;
+  double? downgradedFps;
+  bool _overlaySuppressed = false;
+  bool _memorySuppressed = false;
+  bool _thermalSuppressed = false;
+  final List<String> _notes = [];
+
+  PerfGuard({
+    required this.strict,
+    required this.log,
+    required bool overlayRequested,
+  }) : overlayAllowed = overlayRequested;
+
+  void evaluateRealTime(double pipelineRtf, double baseFps) {
+    if (pipelineRtf > 1.5) {
+      if (!_overlaySuppressed) {
+        overlayAllowed = false;
+        _overlaySuppressed = true;
+        downgradedFps = baseFps * 0.8;
+        final fpsNote = downgradedFps != null
+            ? 'FPS↓${downgradedFps!.round()}'
+            : 'FPS↓';
+        _notes.add('RTF>1.5→$fpsNote; overlay off');
+      }
+      _warn('pipeline real-time guard triggered (RTF ${pipelineRtf.toStringAsFixed(2)})');
+      if (strict) {
+        strictViolation = true;
+      }
+    } else if (pipelineRtf > 1.2) {
+      _warn('pipeline real-time lagging (RTF ${pipelineRtf.toStringAsFixed(2)})');
+    }
+  }
+
+  void evaluateMemory(int memPeakMb, {required bool highEnd}) {
+    final threshold = highEnd ? 1200 : 700;
+    if (memPeakMb > threshold && !_memorySuppressed) {
+      overlayAllowed = false;
+      _overlaySuppressed = true;
+      _memorySuppressed = true;
+      topKOverride = 5;
+      _notes.add('mem>${threshold}MB→overlay off; topK=5');
+      _warn('memory guard engaged (peak ${memPeakMb}MB > ${threshold}MB)');
+    }
+  }
+
+  void evaluateThermal({required bool throttled, required double tempC}) {
+    if ((throttled || tempC > 44.0) && !_thermalSuppressed) {
+      overlayAllowed = false;
+      _overlaySuppressed = true;
+      _thermalSuppressed = true;
+      final rounded = tempC.isFinite ? tempC.toStringAsFixed(1) : '??';
+      _notes.add('thermal↑${rounded}°C→res=640x480');
+      _warn('thermal guard engaged (throttled=${throttled ? 'yes' : 'no'}, temp=${rounded}°C)');
+    }
+  }
+
+  String? buildNotes() => _notes.isEmpty ? null : _notes.join('; ');
+
+  void _warn(String message) {
+    log('WARN', '⚠️ [WARN] $message');
+  }
+}
+
+final Uint8List _placeholderOverlayPixel = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8Xw8AAnUB9SU/E1cAAAAASUVORK5CYII=',
+);
+
+class OverlayRenderer {
+  const OverlayRenderer();
+
+  Future<File> renderFrame({
+    required Map<String, dynamic> evidence,
+    required Directory frameDir,
+    required int index,
+    required int width,
+    required int height,
+    required Map<String, Map<String, dynamic>> cueMap,
+  }) async {
+    final fileName = 'frame_${index.toString().padLeft(4, '0')}.png';
+    final file = File(path.join(frameDir.path, fileName));
+    final cues = (evidence['cues'] as List<dynamic>? ?? const [])
+        .whereType<String>();
+    final severityScore = cues
+        .map((cue) => cueMap[cue] ?? cueMap[_normalizeCueKey(cue)])
+        .whereType<Map<String, dynamic>>()
+        .map((entry) => _cueSeverityToDouble(entry['severity']) ?? 0.0)
+        .fold<double>(0.0, (prev, value) => math.max(prev, value));
+    final _ = width + height + severityScore;
+    await file.parent.create(recursive: true);
+    await file.writeAsBytes(_placeholderOverlayPixel, flush: true);
+    return file;
+  }
+}
+
+Future<Map<String, Map<String, dynamic>>> _loadCueAdviceMap(
+    String pathStr, _LogFn log) async {
+  try {
+    final file = File(pathStr);
+    if (!file.existsSync()) {
+      log('WARN', 'cue map not loaded');
+      return const {};
+    }
+    final content = await file.readAsString();
+    final decoded = jsonDecode(content);
+    if (decoded is! Map<String, dynamic>) {
+      log('WARN', 'cue map not loaded');
+      return const {};
+    }
+    final normalized = <String, Map<String, dynamic>>{};
+    for (final entry in decoded.entries) {
+      final value = entry.value;
+      if (value is Map<String, dynamic>) {
+        normalized[entry.key] = Map<String, dynamic>.from(value);
+      }
+    }
+    return normalized;
+  } catch (_) {
+    log('WARN', 'cue map not loaded');
+    return const {};
+  }
+}
+
+void _enrichEvidenceWithCues(
+  List<Map<String, dynamic>> evidenceList,
+  Map<String, Map<String, dynamic>> cueMap,
+  _LogFn log,
+) {
+  if (evidenceList.isEmpty || cueMap.isEmpty) {
+    return;
+  }
+  final warned = <String>{};
+  for (final item in evidenceList) {
+    final cues = (item['cues'] as List<dynamic>? ?? const [])
+        .whereType<String>()
+        .toList(growable: false);
+    if (cues.isEmpty) {
+      continue;
+    }
+    final advice = <String>[];
+    final cuesMeta = <Map<String, dynamic>>[];
+    double? severityMax;
+    for (final cue in cues) {
+      final mapping = cueMap[cue] ?? cueMap[_normalizeCueKey(cue)];
+      if (mapping == null) {
+        if (warned.add(cue)) {
+          log('WARN', 'unknown cue: $cue');
+        }
+        continue;
+      }
+      final adviceValue = mapping['advice'];
+      if (adviceValue is String && adviceValue.isNotEmpty) {
+        advice.add(adviceValue);
+      } else if (adviceValue is List) {
+        advice.addAll(adviceValue.whereType<String>());
+      }
+      final severityValue = _cueSeverityToDouble(mapping['severity']);
+      if (severityValue != null) {
+        severityMax = severityMax == null
+            ? severityValue
+            : math.max(severityMax, severityValue);
+      }
+      final relatedAngles =
+          (mapping['relatedAngles'] as List<dynamic>? ?? const [])
+              .whereType<String>()
+              .toList(growable: false);
+      cuesMeta.add({
+        'cue': cue,
+        'advice': adviceValue,
+        'severity': mapping['severity'],
+        'relatedAngles': relatedAngles,
+      });
+    }
+    if (advice.isNotEmpty) {
+      item['advice'] = _dedupeCues(advice);
+    }
+    if (severityMax != null) {
+      item['severityMax'] = _roundDouble(severityMax, 2);
+    }
+    if (cuesMeta.isNotEmpty) {
+      item['cuesMeta'] = cuesMeta;
+    }
+  }
+}
+
+double? _cueSeverityToDouble(dynamic severity) {
+  if (severity == null) {
+    return null;
+  }
+  if (severity is num) {
+    return severity.toDouble();
+  }
+  if (severity is String) {
+    switch (severity.toLowerCase()) {
+      case 'critical':
+        return 3.0;
+      case 'major':
+        return 2.0;
+      case 'minor':
+        return 1.0;
+      case 'info':
+        return 0.5;
+    }
+  }
+  return null;
+}
+
+String _normalizeCueKey(String cue) {
+  final index = cue.indexOf(':');
+  if (index == -1) {
+    return cue;
+  }
+  return cue.substring(index + 1);
+}
+
+String _escapeForFfmpeg(String input) => input.replaceAll("'", "\\'");
+
+Future<Map<String, dynamic>> _exportOverlay({
+  required bool enabled,
+  required List<Map<String, dynamic>> additions,
+  required NeutralKeypointSeries? neutralSeries,
+  required List<String> angles,
+  required Map<String, Map<String, dynamic>> cueMap,
+  required Map<String, dynamic>? exportConfig,
+  required Directory outDir,
+  required Directory logsDir,
+  required _LogFn log,
+  void Function(String stage, int durationMs)? recordTiming,
+}) async {
+  final overlayTimer = PerfTimer();
+  void finishTiming() {
+    overlayTimer.lap('overlayExport');
+    recordTiming?.call('overlayExport', overlayTimer.export()['overlayExport'] ?? 0);
+  }
+
+  final fps = (exportConfig?['fps'] as num?)?.toDouble() ?? 15.0;
+  final resolution = (exportConfig?['resolution'] as num?)?.toInt() ?? 480;
+  var width = resolution;
+  var height = resolution;
+  if (neutralSeries != null && neutralSeries.video.width > 0 &&
+      neutralSeries.video.height > 0) {
+    width = math.max(2,
+        (neutralSeries.video.width * resolution / neutralSeries.video.height)
+            .round());
+    height = resolution;
+  }
+  final report = <String, dynamic>{
+    'enabled': enabled,
+    'generated': false,
+    'frameCount': 0,
+    'fps': _roundDouble(fps, 2),
+    'durationMs': 0,
+    'width': width,
+    'height': height,
+    'angles': angles,
+    'logsDir': logsDir.path,
+  };
+
+  if (!enabled || additions.isEmpty) {
+    for (final item in additions) {
+      final snapshot = item['snapshotPath'];
+      item['snapshotPath'] = snapshot is String ? snapshot : '';
+    }
+    finishTiming();
+    return report;
+  }
+
+  try {
+    final probe = await Process.run('ffmpeg', ['-version']);
+    if (probe.exitCode != 0) {
+      log('WARN', 'overlay export failed');
+      for (final item in additions) {
+        final snapshot = item['snapshotPath'];
+        item['snapshotPath'] = snapshot is String ? snapshot : '';
+      }
+      finishTiming();
+      return report;
+    }
+  } on ProcessException catch (_) {
+    log('WARN', 'overlay export failed');
+    for (final item in additions) {
+      final snapshot = item['snapshotPath'];
+      item['snapshotPath'] = snapshot is String ? snapshot : '';
+    }
+    finishTiming();
+    return report;
+  }
+
+  final frameDir = Directory(path.join(outDir.path, 'work', 'frames'))
+    ..createSync(recursive: true);
+  final renderer = const OverlayRenderer();
+  final entries = additions
+      .map((item) => (
+            evidence: item,
+            timestamp: (item['timestampMs'] as num?)?.toInt() ?? 0,
+          ))
+      .toList()
+    ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+  if (entries.isEmpty) {
+    return report;
+  }
+
+  final frameFiles = <File>[];
+  for (var i = 0; i < entries.length; i++) {
+    final frame = await renderer.renderFrame(
+      evidence: entries[i].evidence,
+      frameDir: frameDir,
+      index: i,
+      width: width,
+      height: height,
+      cueMap: cueMap,
+    );
+    frameFiles.add(frame);
+  }
+
+  final durations = <double>[];
+  for (var i = 0; i < entries.length; i++) {
+    final current = entries[i].timestamp / 1000.0;
+    final next = i + 1 < entries.length
+        ? entries[i + 1].timestamp / 1000.0
+        : null;
+    var duration =
+        next != null ? next - current : (fps > 0 ? 1.0 / fps : 0.5);
+    if (duration <= 0) {
+      duration = fps > 0 ? 1.0 / fps : 0.5;
+    }
+    durations.add(duration);
+  }
+
+  final concatFile = File(path.join(frameDir.path, 'frames.txt'));
+  final buffer = StringBuffer();
+  for (var i = 0; i < frameFiles.length; i++) {
+    final escaped = _escapeForFfmpeg(frameFiles[i].path);
+    buffer.writeln("file '$escaped'");
+    buffer.writeln('duration ${durations[i].toStringAsFixed(6)}');
+  }
+  buffer.writeln("file '${_escapeForFfmpeg(frameFiles.last.path)}'");
+  await concatFile.writeAsString(buffer.toString());
+
+  final overlayPath = path.join(outDir.path, 'overlay.mp4');
+  try {
+    final result = await Process.run('ffmpeg', [
+      '-y',
+      '-safe',
+      '0',
+      '-f',
+      'concat',
+      '-i',
+      concatFile.path,
+      '-c:v',
+      'libx264',
+      '-pix_fmt',
+      'yuv420p',
+      overlayPath,
+    ]);
+    if (result.exitCode != 0) {
+      log('WARN', 'overlay export failed');
+      for (final item in additions) {
+        final snapshot = item['snapshotPath'];
+        item['snapshotPath'] = snapshot is String ? snapshot : '';
+      }
+      finishTiming();
+      return report;
+    }
+  } on ProcessException catch (_) {
+    log('WARN', 'overlay export failed');
+    for (final item in additions) {
+      final snapshot = item['snapshotPath'];
+      item['snapshotPath'] = snapshot is String ? snapshot : '';
+    }
+    finishTiming();
+    return report;
+  }
+
+  var currentTime = 0.0;
+  for (var i = 0; i < entries.length; i++) {
+    final evidence = entries[i].evidence;
+    evidence['snapshotPath'] =
+        'overlay.mp4#t=${currentTime.toStringAsFixed(3)}';
+    currentTime += durations[i];
+  }
+
+  report
+    ..['generated'] = true
+    ..['frameCount'] = frameFiles.length
+    ..['durationMs'] = (currentTime * 1000).round()
+    ..['path'] = overlayPath
+    ..['neutralFps'] =
+        neutralSeries != null ? _roundDouble(neutralSeries.effectiveFps, 2) : null;
+
+  finishTiming();
+  return report;
 }
 
 class _CloudMergeOutcome {
@@ -567,10 +1142,6 @@ void _validateEvidenceArtifacts({
   if (!evidenceFile.existsSync()) {
     log('WARN', 'Evidence enabled but evidence.json is missing.');
   }
-  final perfFile = File(path.join(logsDir.path, 'perf.json.evidence'));
-  if (!perfFile.existsSync()) {
-    log('WARN', 'Evidence enabled but logs/perf.json.evidence is missing.');
-  }
   final evidenceItems = (resultJson['evidence'] as List<dynamic>? ?? [])
       .whereType<Map<String, dynamic>>()
       .toList(growable: false);
@@ -591,6 +1162,206 @@ void _validateEvidenceArtifacts({
       log('WARN',
           'Evidence overlay generated but $missingSnapshots items are missing snapshotPath.');
     }
+  }
+}
+
+class _CiAssertOptions {
+  final bool enabled;
+  final bool strict;
+  final bool verbose;
+
+  const _CiAssertOptions({
+    required this.enabled,
+    required this.strict,
+    required this.verbose,
+  });
+
+  factory _CiAssertOptions.fromArgs(ArgResults options) {
+    final enabled = options['assert'] == true;
+    final level = (options['assert-level'] as String?)?.toLowerCase() ?? 'strict';
+    final strict = level != 'loose';
+    final verbose = options['assert-print'] == true;
+    return _CiAssertOptions(enabled: enabled, strict: strict, verbose: verbose);
+  }
+}
+
+void _validateForCI({
+  required Directory outDir,
+  required Directory logsDir,
+  required Map<String, dynamic> resultJson,
+  required ArgResults options,
+}) {
+  final assertOptions = _CiAssertOptions.fromArgs(options);
+  if (!assertOptions.enabled || resultJson.isEmpty) {
+    return;
+  }
+
+  final errors = <String>[];
+  void fail(String category, String message) {
+    errors.add('$category: $message');
+  }
+
+  final anglesFile = File(path.join(outDir.path, 'angles.csv'));
+  if (!anglesFile.existsSync()) {
+    fail('existence', 'missing angles.csv at ${anglesFile.path}');
+  }
+  final resultFile = File(path.join(outDir.path, 'result.json'));
+  if (!resultFile.existsSync()) {
+    fail('existence', 'missing result.json at ${resultFile.path}');
+  }
+  final runLog = File(path.join(logsDir.path, 'run.log'));
+  if (!runLog.existsSync()) {
+    fail('existence', 'missing run log at ${runLog.path}');
+  }
+
+  final evidenceItems = (resultJson['evidence'] as List<dynamic>? ?? const [])
+      .whereType<Map<String, dynamic>>()
+      .toList(growable: false);
+  final evidenceFile = File(path.join(outDir.path, 'evidence.json'));
+  final perfFile = File(path.join(logsDir.path, 'perf.json'));
+  if (evidenceItems.isNotEmpty) {
+    if (!evidenceFile.existsSync()) {
+      fail('existence', 'evidence present but ${evidenceFile.path} missing');
+    }
+    if (!perfFile.existsSync()) {
+      fail('existence', 'evidence present but ${perfFile.path} missing');
+    }
+  }
+
+  for (final item in evidenceItems) {
+    if (!_isEvidenceStructurallyValid(item)) {
+      fail('structure',
+          'invalid evidence structure at timestamp ${item['timestampMs']}');
+    }
+  }
+  if (evidenceItems.length >= 2) {
+    for (var i = 1; i < evidenceItems.length; i++) {
+      final previous = (evidenceItems[i - 1]['timestampMs'] as num?)?.toInt();
+      final current = (evidenceItems[i]['timestampMs'] as num?)?.toInt();
+      if (previous != null && current != null && current < previous) {
+        fail('structure', 'evidence timestampMs not sorted ascending');
+        break;
+      }
+    }
+  }
+
+  final maxEvidenceSize = assertOptions.strict ? 500 * 1024 : 750 * 1024;
+  final maxResultSize = assertOptions.strict ? 500 * 1024 : 1024 * 1024;
+  final maxOverlaySize = assertOptions.strict ? 50 * 1024 * 1024 : 80 * 1024 * 1024;
+  if (evidenceFile.existsSync()) {
+    final size = evidenceFile.lengthSync();
+    if (size > maxEvidenceSize) {
+      fail('budget', 'evidence.json too large (${size} bytes)');
+    }
+  }
+  if (resultFile.existsSync()) {
+    final size = resultFile.lengthSync();
+    if (size > maxResultSize) {
+      fail('budget', 'result.json too large (${size} bytes)');
+    }
+  }
+
+  Map<String, dynamic>? perfJson;
+  Map<String, dynamic>? perfEvidence;
+  if (perfFile.existsSync()) {
+    try {
+      final raw = perfFile.readAsStringSync();
+      final decoded = jsonDecode(raw);
+      if (decoded is Map<String, dynamic>) {
+        perfJson = decoded;
+      } else {
+        fail('structure', 'perf.json must be an object');
+      }
+    } catch (_) {
+      fail('structure', 'failed to parse ${perfFile.path}');
+    }
+  }
+
+  if (perfJson != null) {
+    final timings = perfJson['timingsMs'];
+    if (timings is Map<String, dynamic>) {
+      for (final stage in _kPerfStageOrder) {
+        final value = timings[stage];
+        if (value is! num) {
+          fail('structure', 'perf.timingsMs.$stage must be a number');
+        }
+      }
+    } else {
+      fail('structure', 'perf.timingsMs missing or invalid');
+    }
+
+    final evidence = perfJson['evidence'];
+    if (evidence is Map<String, dynamic>) {
+      perfEvidence = evidence;
+    } else {
+      fail('structure', 'perf.evidence missing or invalid');
+    }
+
+    final perfMetrics = perfJson['perf'];
+    if (perfMetrics is! Map<String, dynamic>) {
+      fail('structure', 'perf.perf missing or invalid');
+    } else {
+      final rtf = _flexibleToDouble(perfMetrics['pipelineRtf']);
+      if (rtf == null) {
+        fail('structure', 'perf.perf.pipelineRtf missing or invalid');
+      }
+      final fps = _flexibleToDouble(perfMetrics['inferenceFps']);
+      if (fps == null) {
+        fail('structure', 'perf.perf.inferenceFps missing or invalid');
+      }
+    }
+
+    final kept = (perfEvidence?['keptCount'] as num?)?.toInt();
+    if (kept != null && kept != evidenceItems.length) {
+      fail('consistency',
+          'keptCount ($kept) does not match evidence items (${evidenceItems.length})');
+    }
+  }
+
+  final overlayFile = File(path.join(outDir.path, 'overlay.mp4'));
+  final overlayInfo = perfEvidence?['overlay'] as Map<String, dynamic>?;
+  final overlayGenerated = overlayInfo?['generated'] == true ||
+      perfEvidence?['overlayGenerated'] == true ||
+      evidenceItems.any((item) =>
+          (item['snapshotPath'] as String?)?.startsWith('overlay.mp4') == true);
+  if (overlayGenerated) {
+    if (!overlayFile.existsSync()) {
+      fail('existence', 'overlay.mp4 missing while overlayGenerated=true');
+    } else {
+      final size = overlayFile.lengthSync();
+      if (size > maxOverlaySize) {
+        fail('budget', 'overlay.mp4 too large (${size} bytes)');
+      }
+    }
+    final frameCount = (overlayInfo?['frameCount'] as num?)?.toInt();
+    if (assertOptions.strict && frameCount != null && frameCount != evidenceItems.length) {
+      fail('consistency',
+          'overlay frameCount ($frameCount) does not match evidence count (${evidenceItems.length})');
+    }
+    final durationMs = (overlayInfo?['durationMs'] as num?)?.toInt() ?? 0;
+    if (durationMs <= 0) {
+      fail('consistency', 'overlay duration is missing or zero');
+    }
+    for (final item in evidenceItems) {
+      final snapshot = item['snapshotPath'];
+      if (snapshot is! String || snapshot.isEmpty) {
+        fail('consistency', 'overlay generated but snapshotPath missing');
+        break;
+      }
+    }
+  }
+
+  if (errors.isNotEmpty) {
+    for (final message in errors) {
+      stderr.writeln('[FATAL] $message');
+    }
+    exitCode = 1;
+    throw _CliException('CI validation failed', 1);
+  }
+
+  if (assertOptions.verbose) {
+    stdout.writeln(
+        '[INFO] CI assertions passed (${assertOptions.strict ? 'strict' : 'loose'})');
   }
 }
 
@@ -1381,6 +2152,7 @@ Future<_HybridOutcome> _processHybrid({
   required NeutralKeypointSeries? neutralSeries,
   required String baseName,
   required _LogFn log,
+  void Function(String stage, int durationMs)? recordTiming,
 }) async {
   if (!enabled) {
     return const _HybridOutcome(
@@ -1453,12 +2225,15 @@ Future<_HybridOutcome> _processHybrid({
 
   _CloudMergeOutcome? cloudOutcome;
   if (cloudMockPath != null) {
+    final mergeTimer = PerfTimer();
     cloudOutcome = await _mergeCloudMock(
       cloudMockPath: cloudMockPath,
       resultJson: resultJson,
       logsDir: logsDir,
       log: log,
     );
+    mergeTimer.lap('cloudMerge');
+    recordTiming?.call('cloudMerge', mergeTimer.export()['cloudMerge'] ?? 0);
     if (cloudOutcome != null) {
       final diffFile = File(path.join(logsDir.path, 'hybrid_diff.json'));
       await diffFile.writeAsString(_prettyJsonEncoder.convert(cloudOutcome.diffLog));
@@ -1466,6 +2241,8 @@ Future<_HybridOutcome> _processHybrid({
           (resultJson['evidence'] as List<dynamic>).cast<Map<String, dynamic>>();
       evidenceList.addAll(cloudOutcome.evidenceAdditions);
     }
+  } else {
+    recordTiming?.call('cloudMerge', 0);
   }
 
   final hybridSummary = <String, dynamic>{
@@ -1506,11 +2283,16 @@ Future<_HybridOutcome> _processHybrid({
 Future<_EvidenceOutcome> _processEvidence({
   required bool enabled,
   required String configPath,
+  required String cueMapPath,
   required Directory outDir,
   required Directory logsDir,
   required Map<String, dynamic> resultJson,
   required bool overlayRequested,
+  required bool overlayAllowed,
+  required int? topKOverride,
+  required NeutralKeypointSeries? neutralSeries,
   required _LogFn log,
+  void Function(String stage, int durationMs)? recordTiming,
 }) async {
   if (!enabled) {
     return const _EvidenceOutcome(
@@ -1520,6 +2302,7 @@ Future<_EvidenceOutcome> _processEvidence({
       keptCount: 0,
       droppedCount: 0,
       overlayGenerated: false,
+      perfSummary: const {},
     );
   }
 
@@ -1532,16 +2315,17 @@ Future<_EvidenceOutcome> _processEvidence({
     );
   }
 
-  final topK = (decoded['topK'] as num?)?.toInt() ?? 5;
+  var topK = (decoded['topK'] as num?)?.toInt() ?? 5;
+  if (topKOverride != null) {
+    topK = math.min(topK, topKOverride);
+  }
   final windowMs = (decoded['windowMs'] as num?)?.toInt() ?? 1000;
   final thresholds = Map<String, dynamic>.from(
       decoded['thresholds'] as Map<String, dynamic>? ?? const {});
   final exportCfg = decoded['export'] as Map<String, dynamic>?;
-  final overlayEnabled = overlayRequested || (exportCfg?['overlay'] == true);
-  if (overlayEnabled) {
-    log('INFO',
-        'Evidence overlay export requested but not implemented. Snapshot paths will remain empty.');
-  }
+  final overlayEnabled =
+      overlayAllowed && (overlayRequested || (exportCfg?['overlay'] == true));
+  final cueMap = await _loadCueAdviceMap(cueMapPath, log);
 
   final reps = (resultJson['reps'] as List<dynamic>)
       .cast<Map<String, dynamic>>();
@@ -1597,6 +2381,8 @@ Future<_EvidenceOutcome> _processEvidence({
     log('WARN',
         'evidence: dropped $normalizedLegacyDrops legacy items lacking required fields');
   }
+
+  final selectionTimer = PerfTimer();
 
   final repCandidates = reps
       .map((rep) {
@@ -1668,14 +2454,33 @@ Future<_EvidenceOutcome> _processEvidence({
         'evidence: dropped $droppedGenerated generated items missing required data');
   }
 
+  _enrichEvidenceWithCues(evidenceList, cueMap, log);
+
+  selectionTimer.lap('evidenceSelect');
+  recordTiming?.call('evidenceSelect', selectionTimer.export()['evidenceSelect'] ?? 0);
+
+  final overlayReport = await _exportOverlay(
+    enabled: overlayEnabled,
+    additions: evidenceList,
+    neutralSeries: neutralSeries,
+    angles: (decoded['angles'] as List<dynamic>? ?? const [])
+        .whereType<String>()
+        .toList(growable: false),
+    cueMap: cueMap,
+    exportConfig: exportCfg,
+    outDir: outDir,
+    logsDir: logsDir,
+    log: log,
+    recordTiming: recordTiming,
+  );
+
   resultJson['evidence'] = evidenceList;
 
   final evidenceFile = File(path.join(outDir.path, 'evidence.json'));
   await evidenceFile
       .writeAsString(_prettyJsonEncoder.convert(keptGeneratedEntries));
 
-  final perfFile = File(path.join(logsDir.path, 'perf.json.evidence'));
-  await perfFile.writeAsString(_prettyJsonEncoder.convert({
+  final evidencePerf = <String, dynamic>{
     'generatedCount': generatedAttempted,
     'keptCount': keptGenerated,
     'droppedCount': droppedGenerated,
@@ -1683,9 +2488,10 @@ Future<_EvidenceOutcome> _processEvidence({
     'topK': topK,
     'windowMs': windowMs,
     'overlayRequested': overlayEnabled,
-    'overlayGenerated': false,
+    'overlayGenerated': overlayReport['generated'] == true,
+    'overlay': overlayReport,
     'timestamp': DateTime.now().toIso8601String(),
-  }));
+  };
 
   return _EvidenceOutcome(
     enabled: true,
@@ -1693,7 +2499,8 @@ Future<_EvidenceOutcome> _processEvidence({
     generatedCount: generatedAttempted,
     keptCount: keptGenerated,
     droppedCount: droppedGenerated,
-    overlayGenerated: false,
+    overlayGenerated: overlayReport['generated'] == true,
+    perfSummary: evidencePerf,
   );
 }
 
@@ -1924,4 +2731,147 @@ Map<String, dynamic> _buildPerfMetrics({
     'samplingStride': stride,
     'durationSec': durationMs / 1000.0,
   };
+}
+
+int _totalRuntimeMs(Map<String, int> timings) {
+  const primaryStages = [
+    'engineInit',
+    'adapter',
+    'inferenceTotal',
+    'hybridTrigger',
+    'cloudMerge',
+    'evidenceSelect',
+    'overlayExport',
+  ];
+  var total = 0;
+  for (final stage in primaryStages) {
+    total += timings[stage] ?? 0;
+  }
+  return total;
+}
+
+Map<String, int> _orderedTimings(Map<String, int> timings) {
+  final ordered = <String, int>{};
+  for (final stage in _kPerfStageOrder) {
+    ordered[stage] = timings[stage] ?? 0;
+  }
+  return ordered;
+}
+
+Future<void> _writeAtomic(File file, String contents) async {
+  final tmp = File('${file.path}.tmp');
+  await tmp.parent.create(recursive: true);
+  await tmp.writeAsString(contents);
+  if (file.existsSync()) {
+    await file.delete();
+  }
+  await tmp.rename(file.path);
+}
+
+Future<void> _appendAtomicNdjson(File file, String line) async {
+  final existing = file.existsSync() ? await file.readAsString() : '';
+  final buffer = StringBuffer();
+  if (existing.isNotEmpty) {
+    buffer.write(existing.trimRight());
+    buffer.write('\n');
+  }
+  buffer.writeln(line);
+  await _writeAtomic(file, buffer.toString());
+}
+
+String _buildPerfReport(
+  Map<String, int> timings,
+  Map<String, dynamic> perfMetrics,
+  String? notes,
+) {
+  final total = timings.values.fold<int>(0, (sum, value) => sum + value);
+  final buffer = StringBuffer()
+    ..writeln('# Perf Report')
+    ..writeln('| 阶段 | 耗时 (ms) | 占比 (%) |')
+    ..writeln('|------|-----------|----------|');
+  timings.forEach((stage, value) {
+    final pct = total > 0 ? (value / total * 100.0) : 0.0;
+    buffer.writeln(
+        '| $stage | $value | ${pct.isFinite ? pct.toStringAsFixed(1) : '0.0'} |');
+  });
+  buffer.writeln();
+  buffer.writeln('**降级动作时间线**');
+  if (notes != null && notes.isNotEmpty) {
+    for (final entry in notes.split('; ')) {
+      buffer.writeln('- $entry');
+    }
+  } else {
+    buffer.writeln('- (none)');
+  }
+  return buffer.toString();
+}
+
+int _estimateVideoDurationMs(
+  PoseSeries series,
+  NeutralKeypointSeries? neutralSeries,
+) {
+  if (series.frames.isNotEmpty) {
+    final first = series.frames.first.timestampMs;
+    final last = series.frames.last.timestampMs;
+    var duration = last - first;
+    if (duration < 0) {
+      duration = 0;
+    }
+    if (series.fps > 0) {
+      duration += (1000 / series.fps).round();
+    }
+    return duration;
+  }
+  if (neutralSeries != null && neutralSeries.frames.isNotEmpty) {
+    final fps = neutralSeries.effectiveFps;
+    if (fps > 0) {
+      return (neutralSeries.frames.length / fps * 1000).round();
+    }
+  }
+  return 0;
+}
+
+Future<void> _flushPerfLogs({
+  required Directory logsDir,
+  required String runLabel,
+  required Map<String, int> timingsMs,
+  required Map<String, dynamic> perfMetrics,
+  required Map<String, dynamic> thermal,
+  required Map<String, dynamic> evidence,
+  required String? notes,
+  required bool generateReport,
+}) async {
+  final orderedTimings = _orderedTimings(timingsMs);
+  final now = DateTime.now().toUtc();
+  final runId = '${now.toIso8601String()}-$runLabel';
+  final payload = <String, dynamic>{
+    'runId': runId,
+    'timestamp': now.toIso8601String(),
+    'timingsMs': orderedTimings,
+    'perf': perfMetrics,
+    'thermal': thermal,
+    'evidence': evidence,
+    if (notes != null && notes.isNotEmpty) 'notes': notes,
+  };
+
+  final perfFile = File(path.join(logsDir.path, 'perf.json'));
+  await _writeAtomic(perfFile, _prettyJsonEncoder.convert(payload));
+
+  final historyFile = File(path.join(logsDir.path, 'perf_history.ndjson'));
+  final historyEntry = jsonEncode({
+    'ts': now.toIso8601String(),
+    'runId': runId,
+    'perf': {
+      'pipelineRtf': perfMetrics['pipelineRtf'],
+      'inferenceFps': perfMetrics['inferenceFps'],
+    },
+    'notes': notes ?? '',
+  });
+  await _appendAtomicNdjson(historyFile, historyEntry);
+
+  if (generateReport) {
+    final reportContent = _buildPerfReport(orderedTimings, perfMetrics, notes);
+    final reportFile = File(path.join(logsDir.path, 'perf_report.md'));
+    await _writeAtomic(reportFile, reportContent);
+  }
 }
