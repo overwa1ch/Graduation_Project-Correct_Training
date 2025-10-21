@@ -20,6 +20,7 @@ class RunnerOptions {
     required this.cliEntry,
     required this.outputRoot,
     required this.dartExecutable,
+    required this.useDartRunSubcommand,
     required this.evidenceConfigPath,
     required this.cueMapPath,
     required this.verbose,
@@ -34,6 +35,7 @@ class RunnerOptions {
   final String cliEntry;
   final String outputRoot;
   final String dartExecutable;
+  final bool useDartRunSubcommand;
   final String evidenceConfigPath;
   final String cueMapPath;
   final bool verbose;
@@ -182,6 +184,9 @@ Examples:
       }
     }
 
+    final useDartRunSubcommand =
+        _detectDartRunSupport(dartExecutable);
+
     return RunnerOptions(
       manifestPath: _absoluteFilePath(manifestPath),
       rulePath: _absoluteFilePath(rulePath),
@@ -189,6 +194,7 @@ Examples:
       cliEntry: cliEntry,
       outputRoot: _absoluteDirPath(outputRoot),
       dartExecutable: dartExecutable,
+      useDartRunSubcommand: useDartRunSubcommand,
       evidenceConfigPath: _absoluteFilePath(evidenceConfigPath),
       cueMapPath: _absoluteFilePath(cueMapPath),
       verbose: verbose,
@@ -375,10 +381,12 @@ class ExamplesRunner {
     final sampleOutRootPath = _resolvePath(options.outputRoot, spec.sampleId);
     final sampleOutRoot = Directory(sampleOutRootPath);
 
-    final cliArgs = <String>[
-      'run',
-      options.cliEntry,
-    ];
+    final cliArgs = <String>[];
+    if (options.useDartRunSubcommand) {
+      cliArgs.addAll(['run', options.cliEntry]);
+    } else {
+      cliArgs.add(options.cliEntry);
+    }
 
     if (keypointsPath != null) {
       cliArgs.addAll([
@@ -442,6 +450,7 @@ class ExamplesRunner {
       options.dartExecutable,
       cliArgs,
       workingDirectory: options.cliWorkingDir,
+      runInShell: Platform.isWindows,
     );
 
     final stdoutFuture = process.stdout
@@ -1165,6 +1174,31 @@ String _resolvePath(String base, String relative) {
   final baseUri = Directory(base).uri;
   final normalized = relative.replaceAll('\', '/');
   return baseUri.resolve(normalized).toFilePath();
+}
+
+bool _detectDartRunSupport(String executable) {
+  try {
+    final result = Process.runSync(executable, const ['--version']);
+    final combined = StringBuffer()
+      ..write(result.stdout)
+      ..write(result.stderr);
+    final match = RegExp(r'Dart (SDK|VM) version: (\d+)\.(\d+)\.(\d+)')
+        .firstMatch(combined.toString());
+    if (match != null) {
+      final major = int.tryParse(match.group(2) ?? '0') ?? 0;
+      final minor = int.tryParse(match.group(3) ?? '0') ?? 0;
+      if (major > 2) {
+        return true;
+      }
+      if (major == 2) {
+        return minor >= 10;
+      }
+      return false;
+    }
+  } catch (_) {
+    // If detection fails, assume modern Dart with `dart run` support.
+  }
+  return true;
 }
 
 String _formatCliCommand(String executable, List<String> args) {
