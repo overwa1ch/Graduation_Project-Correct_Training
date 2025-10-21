@@ -1,0 +1,15 @@
+{
+  "timingsMs": {
+    "total": 1840.5,
+    "loadModel": 112.3,
+    "inference": 1420.7,
+    "postProcess": 218.6
+  },
+  "inferenceFps": 28.4,
+  "cpuUtilAvgPct": 63.8,
+  "cpuUtilPeakPct": 79.5,
+  "gpuUtilAvgPct": 0.0,
+  "rtf": 0.82,
+  "memPeakMB": 412,
+  "notes": "Pixel 7 trace, offline pipeline default settings."
+}
