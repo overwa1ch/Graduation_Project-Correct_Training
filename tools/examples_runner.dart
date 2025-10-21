@@ -377,7 +377,6 @@ class ExamplesRunner {
 
     final cliArgs = <String>[
       'run',
-      '--disable-dart-dev',
       options.cliEntry,
     ];
 
