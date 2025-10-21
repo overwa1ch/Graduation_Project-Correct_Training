@@ -1,0 +1,15 @@
+{
+  "timingsMs": {
+    "total": 1820.3,
+    "startup": 210.0,
+    "inference": 1290.5,
+    "postProcess": 219.8
+  },
+  "inferenceFps": 27.9,
+  "cpuUtilAvgPct": 62.1,
+  "cpuUtilPeakPct": 77.0,
+  "gpuUtilAvgPct": 0.0,
+  "rtf": 0.87,
+  "memPeakMB": 405,
+  "notes": "Synthetic tempo stress test derived from neutral keypoints."
+}

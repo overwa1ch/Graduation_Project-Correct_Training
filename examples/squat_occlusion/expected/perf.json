@@ -1,0 +1,16 @@
+{
+  "timingsMs": {
+    "total": 2960.4,
+    "loadModel": 118.2,
+    "inference": 2150.7,
+    "postProcess": 340.5,
+    "cloudMerge": 351.0
+  },
+  "inferenceFps": 19.6,
+  "cpuUtilAvgPct": 71.4,
+  "cpuUtilPeakPct": 88.9,
+  "gpuUtilAvgPct": 0.0,
+  "rtf": 1.24,
+  "memPeakMB": 488,
+  "notes": "Occlusion handling triggered hybrid fallback; includes network mock latency."
+}

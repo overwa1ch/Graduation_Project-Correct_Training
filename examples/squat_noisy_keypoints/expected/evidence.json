@@ -1,0 +1,18 @@
+[
+  {
+    "type": "frame",
+    "timestampMs": 1040,
+    "frameIndex": 16,
+    "repIndex": 1,
+    "cues": ["confidence:drop"],
+    "angles": {
+      "kneeMain": null,
+      "trunk": null
+    },
+    "thresholds": {
+      "scoreMin": 0.3
+    },
+    "scoreImpact": -4.2,
+    "snapshotPath": "evidence/noise_low_confidence.png"
+  }
+]

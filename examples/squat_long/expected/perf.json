@@ -1,0 +1,16 @@
+{
+  "timingsMs": {
+    "total": 378420.0,
+    "startup": 235.0,
+    "inference": 331200.0,
+    "postProcess": 32100.0,
+    "downsample": 14700.0
+  },
+  "inferenceFps": 28.6,
+  "cpuUtilAvgPct": 68.5,
+  "cpuUtilPeakPct": 86.4,
+  "gpuUtilAvgPct": 0.0,
+  "rtf": 0.96,
+  "memPeakMB": 552,
+  "notes": "Long-run perf capture with ring-buffer frame eviction enabled."
+}
