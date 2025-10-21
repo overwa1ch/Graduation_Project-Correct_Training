@@ -1,0 +1,18 @@
+[
+  {
+    "type": "frame",
+    "timestampMs": 260,
+    "frameIndex": 5,
+    "repIndex": 1,
+    "cues": ["rep:completed"],
+    "angles": {
+      "kneeMain": 92.1,
+      "trunk": 22.4
+    },
+    "thresholds": {
+      "depthMin": 90
+    },
+    "scoreImpact": 0.0,
+    "snapshotPath": "evidence/rep1_valley.png"
+  }
+]

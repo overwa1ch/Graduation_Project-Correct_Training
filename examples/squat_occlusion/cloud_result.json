@@ -1,0 +1,22 @@
+{
+  "source": "cloud-mock",
+  "repCount": 11,
+  "scores": {
+    "form": 88.2,
+    "stability": 90.1,
+    "tempo": 92.0,
+    "overall": 89.7
+  },
+  "issues": [
+    {
+      "code": "DEPTH_INSUFFICIENT",
+      "frames": [1820],
+      "severity": "major"
+    }
+  ],
+  "metadata": {
+    "model": "pose-lite-cloud",
+    "version": "2024.05.mock",
+    "latencyMs": 950
+  }
+}
