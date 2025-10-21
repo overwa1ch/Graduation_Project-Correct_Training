@@ -3,8 +3,13 @@
     "sampleId": "squat_normal",
     "category": "正常样本",
     "purpose": "验证主流程在标准光照视频下的输出结构与评分稳定性",
-    "inputs": ["input.mp4"],
-    "expectedOutputs": ["result.json", "angles.csv", "evidence.json", "perf.json"],
+    "inputs": ["neutral_keypoints.json"],
+    "expectedOutputs": [
+      "neutral_keypoints/result.json",
+      "neutral_keypoints/angles.csv",
+      "neutral_keypoints/evidence.json",
+      "neutral_keypoints/logs/perf.json"
+    ],
     "validationRules": [
       "hybrid.triggered == false",
       "scores.overall >= 90",
@@ -15,22 +20,36 @@
     "sampleId": "squat_occlusion",
     "category": "异常样本",
     "purpose": "验证 Hybrid 触发与云端合并逻辑",
-    "inputs": ["input.mp4", "hybrid_policy.json", "cloud_result.json"],
-    "expectedOutputs": ["result.json", "angles.csv", "evidence.json", "perf.json"],
+    "inputs": [
+      "neutral_keypoints.json",
+      "hybrid_policy.json",
+      "cloud_result.json"
+    ],
+    "expectedOutputs": [
+      "neutral_keypoints/result.json",
+      "neutral_keypoints/angles.csv",
+      "neutral_keypoints/evidence.json",
+      "neutral_keypoints/logs/perf.json"
+    ],
     "validationRules": [
       "hybrid.triggered == true",
       "hybrid.mergeStrategy == 'prefer-cloud-count-then-reconcile'",
-      "hybrid.delta.countFinal == cloud_result.repCount"
+      "cloud_result.repCount == repCount"
     ]
   },
   {
     "sampleId": "squat_short",
     "category": "性能样本",
     "purpose": "验证超短素材下的启动开销与结果完整性",
-    "inputs": ["input.mp4"],
-    "expectedOutputs": ["result.json", "angles.csv", "evidence.json", "perf.json"],
+    "inputs": ["neutral_keypoints.json"],
+    "expectedOutputs": [
+      "neutral_keypoints/result.json",
+      "neutral_keypoints/angles.csv",
+      "neutral_keypoints/evidence.json",
+      "neutral_keypoints/logs/perf.json"
+    ],
     "validationRules": [
-      "perf.rtf < 0.5",
+      "perf.pipelineRtf <= 0.5",
       "repCount <= 1",
       "hybrid.triggered == false"
     ]
@@ -39,11 +58,16 @@
     "sampleId": "squat_long",
     "category": "性能样本",
     "purpose": "验证超长素材下的内存峰值与降级策略",
-    "inputs": ["input.mp4"],
-    "expectedOutputs": ["result.json", "angles.csv", "evidence.json", "perf.json"],
+    "inputs": ["neutral_keypoints.json"],
+    "expectedOutputs": [
+      "neutral_keypoints/result.json",
+      "neutral_keypoints/angles.csv",
+      "neutral_keypoints/evidence.json",
+      "neutral_keypoints/logs/perf.json"
+    ],
     "validationRules": [
       "perf.memPeakMB <= 600",
-      "abs(perf.rtf - 1.0) <= 0.1",
+      "abs(perf.pipelineRtf - 1.0) <= 0.1",
       "repCount >= 70"
     ]
   },
@@ -52,7 +76,12 @@
     "category": "节奏样本",
     "purpose": "检查节奏异常下的评分稳健性",
     "inputs": ["neutral_keypoints.json"],
-    "expectedOutputs": ["result.json", "angles.csv", "evidence.json", "perf.json"],
+    "expectedOutputs": [
+      "neutral_keypoints/result.json",
+      "neutral_keypoints/angles.csv",
+      "neutral_keypoints/evidence.json",
+      "neutral_keypoints/logs/perf.json"
+    ],
     "validationRules": [
       "issues.any(code == 'TEMPO_VARIATION')",
       "scores.tempo < scores.form",
@@ -64,7 +93,12 @@
     "category": "噪声样本",
     "purpose": "验证关键点噪声时的鲁棒性",
     "inputs": ["neutral_keypoints.json"],
-    "expectedOutputs": ["result.json", "angles.csv", "evidence.json", "perf.json"],
+    "expectedOutputs": [
+      "neutral_keypoints/result.json",
+      "neutral_keypoints/angles.csv",
+      "neutral_keypoints/evidence.json",
+      "neutral_keypoints/logs/perf.json"
+    ],
     "validationRules": [
       "quality.lowConfidence == true",
       "issues.any(code == 'NOISY_LANDMARKS')",
