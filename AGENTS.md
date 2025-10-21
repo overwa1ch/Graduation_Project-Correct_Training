@@ -75,3 +75,91 @@
 - 修改或新增脚本时，请在对应包目录更新文档与依赖说明。
 - 提交前运行 `dart test`（核心）或相应 `flutter test`，确保新增逻辑的稳定性；若涉及代码生成，请执行 `dart run build_runner build --delete-conflicting-outputs` 并提交生成文件。
 - 确保 CLI 入参与输出路径在文档或 README 中更新，以便团队成员快速复现。
+
+## Milestone E 任务描述（Milestone C 测试与样例阶段）
+
+### 阶段目标
+
+- 证明功能可靠、性能达标、边界条件安全。
+- 通过生成并运行多种测试样本，验证整个系统在不同输入条件下能否稳定、准确、可复现地工作。
+
+### 总体要求
+
+1. **功能验证**：确认 C 阶段新增的 CLI 参数、Hybrid 触发、Schema 字段、证据化输出全通。
+2. **稳定性验证**：不同素材与设备下结果变化小，误差在容差范围内。
+3. **回归防护**：生成 Golden 样本 `expected/` 目录，用于后续版本自动比对。
+4. **性能监测**：自动输出 `perf.json` 并检查帧率、耗时、内存，防止性能退化。
+
+### 样本类别（共 5 类）
+
+| 类型      | 目录名                                            | 输入内容                           | 测试目的                        |
+| --------- | ------------------------------------------------- | ---------------------------------- | ------------------------------- |
+| ✅ 正常样本  | `examples/squat_normal/`                          | 光照正常、动作标准的视频或关键点文件             | 验证主流程与输出格式                  |
+| ⚠️ 异常样本 | `examples/squat_occlusion/`                       | 遮挡/低光素材 + `hybrid_policy.json` | 验证 Hybrid 触发与 cloud mock 合并 |
+| ⏱ 性能样本  | `examples/squat_short/`、`examples/squat_long/`   | 超短 (< 5 s) 与超长 (> 5 min) 视频  | 测试耗时、内存、降级逻辑                |
+| 🌀 节奏样本 | `examples/squat_tempo_irregular/`                 | 动作忽快忽慢、停顿素材                    | 检查节奏与评分稳健性                  |
+| 🧪 噪声样本 | `examples/squat_noisy_keypoints/`                 | 在关键点中注入抖动或置信度噪声                | 测系统鲁棒性（输出不乱跳）               |
+
+### 每个样本的文件结构
+
+```
+input.mp4 或 neutral_keypoints.json
+hybrid_policy.json        # 若涉及 Hybrid 触发
+cloud_result.json         # 若涉及云端 mock
+expected/
+  ├── result.json
+  ├── angles.csv
+  └── evidence.json
+  README.md               # 说明样本目的、触发条件、预期结果
+  perf.json               # 记录性能指标（timingsMs、RTF、内存等）
+```
+
+### 输出格式规范
+
+要求 AI Agent 生成统一结构的 JSON 描述（便于 CI 识别）：
+
+```json
+{
+  "sampleId": "squat_occlusion",
+  "category": "异常样本",
+  "purpose": "验证 Hybrid 触发与云端合并逻辑",
+  "inputs": ["input.mp4", "hybrid_policy.json", "cloud_result.json"],
+  "expectedOutputs": ["result.json", "angles.csv", "evidence.json", "perf.json"],
+  "validationRules": [
+    "hybrid.triggered == true",
+    "mergeStrategy == 'prefer-cloud-count-then-reconcile'",
+    "overlay.durationDiff <= 1s"
+  ]
+}
+```
+
+> **提示：**
+>
+> - `expected/*.json` 可用伪数据填充，但字段结构必须符合 Schema vB1.1 + C-augment。
+> - 所有文件命名与 CLI 输出规范保持一致。
+> - 若能，生成 `perf.json` 样例，含 `timingsMs`、`inferenceFps`、`cpuUtilAvgPct` 等字段。
+
+### 验收标准
+
+- 覆盖 5 类样本（正常/异常/性能/节奏/噪声）。
+- 每类样本产物完整：`result.json`、`angles.csv`、`evidence[]`、`perf.json`。
+- 校验脚本 PASS 率 = 100%。
+- 性能指标 ≤ 阈值：`RTF ≤ 1.0`、`memPeakMB ≤ 600`。
+- Golden 回归连续 3 次稳定 PASS。
+
+### 附加指令（可选）
+
+- `--generate-mock` → 允许 Agent 创建伪 keypoints 数据。
+- `--verify-schema` → 在生成样本时自动跑 schema 校验。
+- `--export-json` → 导出所有样本描述为 `examples_manifest.json` 供 CI 调用。
+
+### 使用建议
+
+- 将本提示词放入 `AGENTS.md > Milestone E 任务描述`。
+- 在 CI 或本地命令中执行：
+
+  ```bash
+  aiwa_agent run milestoneE_test_generation
+  ```
+
+  Agent 会自动创建 `examples/` 目录、生成样本定义与预期输出模板。
