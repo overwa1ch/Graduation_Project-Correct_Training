@@ -1,0 +1,34 @@
+[
+  {
+    "type": "frame",
+    "timestampMs": 480,
+    "frameIndex": 8,
+    "repIndex": 1,
+    "cues": ["quality:low-coverage"],
+    "angles": {
+      "kneeMain": 101.2,
+      "trunk": 34.8
+    },
+    "thresholds": {
+      "coverage": 0.7
+    },
+    "scoreImpact": -6.5,
+    "snapshotPath": "evidence/quality_drop.png"
+  },
+  {
+    "type": "frame",
+    "timestampMs": 840,
+    "frameIndex": 12,
+    "repIndex": 1,
+    "cues": ["valgus:inward-knee"],
+    "angles": {
+      "kneeOut": 3.8,
+      "trunk": 41.5
+    },
+    "thresholds": {
+      "valgusMin": 5
+    },
+    "scoreImpact": -8.4,
+    "snapshotPath": "evidence/valgus_peak.png"
+  }
+]

@@ -1,0 +1,15 @@
+{
+  "timingsMs": {
+    "total": 1765.2,
+    "startup": 208.0,
+    "inference": 1214.6,
+    "postProcess": 242.6
+  },
+  "inferenceFps": 27.1,
+  "cpuUtilAvgPct": 61.0,
+  "cpuUtilPeakPct": 76.5,
+  "gpuUtilAvgPct": 0.0,
+  "rtf": 0.83,
+  "memPeakMB": 398,
+  "notes": "Noise-injected keypoints processed via smoothing fallback."
+}
