@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -24,6 +25,7 @@ class RunnerOptions {
     required this.verbose,
     required this.onlySampleIds,
     required this.engine,
+    required this.dryRun,
   });
 
   final String manifestPath;
@@ -37,6 +39,7 @@ class RunnerOptions {
   final bool verbose;
   final List<String> onlySampleIds;
   final String engine;
+  final bool dryRun;
 
   static void _printUsage() {
     stdout.writeln('''examples_runner.dart — run AIWA CLI against Milestone C samples
@@ -53,18 +56,25 @@ Options:
   --engine <name>      Engine to use for video samples (default: mlkit).
   --only <ids>         Comma-separated sample IDs to run.
   --verbose            Stream CLI output while running.
+  --dry-run            Preview commands without executing the CLI.
   --evidence-config    Override evidence config path.
   --cue-map            Override cue map path.
   * Provide either neutral_keypoints.json or input.mp4 for each sample.
-  * Outputs are written to <out>/<sampleId>/.
+  * Outputs are written to <out>/<sampleId>/ (sampleId-based folders).
+  * Video samples default to engine "mlkit" unless overridden.
   -h, --help           Show this help message.
 
 Examples:
   # File-mode (neutral keypoints)
-  dart tools/examples_runner.dart --only=squat_noisy_keypoints
+  dart tools/examples_runner.dart --only=squat_noisy_keypoints \
+    --out build/examples_runner
 
   # Video/engine-mode with explicit engine
-  dart tools/examples_runner.dart --only=squat_normal --engine mlkit --verbose
+  dart tools/examples_runner.dart --only=squat_normal --engine mlkit --verbose \
+    --out build/examples_runner
+
+  # Dry-run (no execution, just print commands)
+  dart tools/examples_runner.dart --dry-run --verbose
 ''');
   }
 
@@ -80,6 +90,7 @@ Examples:
     var evidenceConfigPath = 'configs/evidence_config.json';
     var cueMapPath = 'rules/cue_advice_map.json';
     var engine = 'mlkit';
+    var dryRun = false;
 
     for (var i = 0; i < args.length; i++) {
       final arg = args[i];
@@ -164,6 +175,8 @@ Examples:
           _error('--cue-map requires a value.');
         }
         cueMapPath = args[++i];
+      } else if (arg == '--dry-run') {
+        dryRun = true;
       } else {
         _error('Unknown option: $arg');
       }
@@ -181,6 +194,7 @@ Examples:
       verbose: verbose,
       onlySampleIds: only,
       engine: engine,
+      dryRun: dryRun,
     );
   }
 
@@ -197,6 +211,27 @@ class ExamplesRunner {
   final RunnerOptions options;
 
   Future<List<SampleRunResult>> run() async {
+    final missingRequired = <String>[];
+    for (final requiredPath in [options.evidenceConfigPath, options.cueMapPath]) {
+      if (!File(requiredPath).existsSync()) {
+        missingRequired.add(requiredPath);
+      }
+    }
+
+    if (missingRequired.isNotEmpty) {
+      final reason =
+          'Missing required runner dependency: ${missingRequired.join(', ')}';
+      stderr.writeln(reason);
+      final failure = SampleRunResult.failure(
+        sampleId: 'GLOBAL',
+        reason: reason,
+        cliCommand: null,
+        cliExitCode: null,
+        outputDirPath: null,
+      );
+      return [failure];
+    }
+
     final manifestFile = File(options.manifestPath);
     if (!manifestFile.existsSync()) {
       throw StateError('Manifest not found at ${options.manifestPath}');
@@ -303,7 +338,7 @@ class ExamplesRunner {
       }
       if (input.endsWith('.json') && input.contains('keypoints')) {
         keypointsPath = file.path;
-      } else if (input.endsWith('.mp4')) {
+      } else if (_videoFilePattern.hasMatch(input)) {
         videoPath = file.path;
       }
       if (input == 'hybrid_policy.json') {
@@ -332,15 +367,13 @@ class ExamplesRunner {
     if (keypointsPath == null && videoPath == null) {
       return SampleRunResult.failure(
         sampleId: spec.sampleId,
-        reason: 'Sample must include neutral_keypoints.json or input.mp4 in inputs.',
+        reason:
+            'Sample must include neutral_keypoints.json or a supported video (mp4/mov/mkv/webm).',
       );
     }
 
-    final sampleOutRoot = Directory(_resolvePath(options.outputRoot, spec.sampleId));
-    if (sampleOutRoot.existsSync()) {
-      sampleOutRoot.deleteSync(recursive: true);
-    }
-    sampleOutRoot.createSync(recursive: true);
+    final sampleOutRootPath = _resolvePath(options.outputRoot, spec.sampleId);
+    final sampleOutRoot = Directory(sampleOutRootPath);
 
     final cliArgs = <String>[
       'run',
@@ -394,6 +427,17 @@ class ExamplesRunner {
     final cliCommand =
         _formatCliCommand(options.dartExecutable, ['--disable-dart-dev', ...cliArgs]);
 
+    if (options.dryRun) {
+      stdout.writeln('[${spec.sampleId}] (dry-run) $cliCommand');
+      stdout.writeln('[${spec.sampleId}] (dry-run) Output dir -> ${sampleOutRoot.path}');
+      return SampleRunResult.success(sampleId: spec.sampleId);
+    }
+
+    if (sampleOutRoot.existsSync()) {
+      sampleOutRoot.deleteSync(recursive: true);
+    }
+    sampleOutRoot.createSync(recursive: true);
+
     final process = await Process.start(
       options.dartExecutable,
       ['--disable-dart-dev', ...cliArgs],
@@ -420,7 +464,15 @@ class ExamplesRunner {
       return line;
     }).toList();
 
-    final exitCode = await process.exitCode;
+    var timedOut = false;
+    int exitCode;
+    try {
+      exitCode = await process.exitCode.timeout(const Duration(minutes: 10));
+    } on TimeoutException {
+      timedOut = true;
+      process.kill(ProcessSignal.sigkill);
+      exitCode = -9;
+    }
     final cliStdout = await stdoutFuture;
     final cliStderr = await stderrFuture;
 
@@ -428,9 +480,12 @@ class ExamplesRunner {
     final artifactListing = _listDirectoryContents(artifactDir);
 
     if (exitCode != 0) {
+      final reason = timedOut
+          ? 'CLI timed out after 10 minutes (SIGKILL sent).'
+          : 'CLI exited with code $exitCode';
       return SampleRunResult.failure(
         sampleId: spec.sampleId,
-        reason: 'CLI exited with code $exitCode',
+        reason: reason,
         stdoutLines: cliStdout,
         stderrLines: cliStderr,
         cliCommand: cliCommand,
@@ -465,12 +520,24 @@ class ExamplesRunner {
     }
 
     final resultFile = producedFiles['result.json'];
+    if (resultFile == null) {
+      return SampleRunResult.failure(
+        sampleId: spec.sampleId,
+        reason: 'result.json not produced.',
+        stdoutLines: cliStdout,
+        stderrLines: cliStderr,
+        cliCommand: cliCommand,
+        cliExitCode: exitCode,
+        outputDirPath: artifactDir.path,
+        outputDirEntries: artifactListing,
+      );
+    }
     final expectsPerf = spec.expectedOutputs.contains('perf.json');
     final perfFile = expectsPerf ? producedFiles['perf.json'] : null;
 
     Map<String, dynamic> resultJson;
     try {
-      resultJson = jsonDecode(await resultFile!.readAsString()) as Map<String, dynamic>;
+      resultJson = jsonDecode(await resultFile.readAsString()) as Map<String, dynamic>;
     } catch (e) {
       return SampleRunResult.failure(
         sampleId: spec.sampleId,
@@ -740,9 +807,11 @@ RuleEvaluation evaluateRule(String rule, RuleContext ctx) {
   if (passed) {
     return const RuleEvaluation(true, null);
   }
+  final leftDisplay = '${leftExpr.trim()} => ${_formatValue(leftValue)}';
+  final rightDisplay = '${rightExpr.trim()} => ${_formatValue(rightValue)}';
   return RuleEvaluation(
     false,
-    'Observed ${_formatValue(leftValue)} $operator ${_formatValue(rightValue)}',
+    '$leftDisplay $operator $rightDisplay',
   );
 }
 
@@ -1082,3 +1151,6 @@ String _relativePath(String root, String fullPath) {
 String _absoluteFilePath(String path) => File(path).absolute.path;
 
 String _absoluteDirPath(String path) => Directory(path).absolute.path;
+
+final RegExp _videoFilePattern =
+    RegExp(r'\.(mp4|mov|mkv|webm)$', caseSensitive: false);
