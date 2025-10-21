@@ -23,7 +23,6 @@ class RunnerOptions {
     required this.cueMapPath,
     required this.verbose,
     required this.onlySampleIds,
-    required this.engine,
   });
 
   final String manifestPath;
@@ -36,27 +35,37 @@ class RunnerOptions {
   final String cueMapPath;
   final bool verbose;
   final List<String> onlySampleIds;
-  final String engine;
 
   static void _printUsage() {
     stdout.writeln('''examples_runner.dart — run AIWA CLI against Milestone C samples
 
-Usage: dart tools/examples_runner.dart [options]
+'
+        'Usage: dart tools/examples_runner.dart [options]
 
-Options:
-  --manifest <path>    Path to examples manifest JSON.
-  --rule <path>        Path to squat rule JSON file.
-  --out <path>         Output root directory for generated artifacts.
-  --cli-dir <path>     Working directory containing aiwa_cli pubspec.
-  --cli-entry <path>   CLI entrypoint relative to --cli-dir.
-  --dart <path>        Dart executable to use (default: dart).
-  --engine <name>      Engine to use for video samples (default: mlkit).
-  --only <ids>         Comma-separated sample IDs to run.
-  --verbose            Stream CLI output while running.
-  --evidence-config    Override evidence config path.
-  --cue-map            Override cue map path.
-  * Provide either neutral_keypoints.json or input.mp4 for each sample.
-  -h, --help           Show this help message.
+'
+        'Options:
+'
+        '  --manifest <path>    Path to examples manifest JSON.
+'
+        '  --rule <path>        Path to squat rule JSON file.
+'
+        '  --out <path>         Output root directory for generated artifacts.
+'
+        '  --cli-dir <path>     Working directory containing aiwa_cli pubspec.
+'
+        '  --cli-entry <path>   CLI entrypoint relative to --cli-dir.
+'
+        '  --dart <path>        Dart executable to use (default: dart).
+'
+        '  --only <ids>         Comma-separated sample IDs to run.
+'
+        '  --verbose            Stream CLI output while running.
+'
+        '  --evidence-config    Override evidence config path.
+'
+        '  --cue-map            Override cue map path.
+'
+        '  -h, --help           Show this help message.
 ''');
   }
 
@@ -71,7 +80,6 @@ Options:
     final only = <String>[];
     var evidenceConfigPath = 'configs/evidence_config.json';
     var cueMapPath = 'rules/cue_advice_map.json';
-    var engine = 'mlkit';
 
     for (var i = 0; i < args.length; i++) {
       final arg = args[i];
@@ -120,13 +128,6 @@ Options:
           _error('--dart requires a value.');
         }
         dartExecutable = args[++i];
-      } else if (arg.startsWith('--engine=')) {
-        engine = arg.substring('--engine='.length);
-      } else if (arg == '--engine') {
-        if (i + 1 >= args.length) {
-          _error('--engine requires a value.');
-        }
-        engine = args[++i];
       } else if (arg == '--verbose') {
         verbose = true;
       } else if (arg.startsWith('--only=')) {
@@ -172,7 +173,6 @@ Options:
       cueMapPath: _absoluteFilePath(cueMapPath),
       verbose: verbose,
       onlySampleIds: only,
-      engine: engine,
     );
   }
 
@@ -307,11 +307,11 @@ class ExamplesRunner {
       }
     }
 
-    if (keypointsPath == null && videoPath == null) {
-      return SampleRunResult.failure(
-        sampleId: spec.sampleId,
-        reason: 'Sample must include neutral_keypoints.json or input.mp4 in inputs.',
-      );
+    if (keypointsPath == null) {
+      final reason = videoPath != null
+          ? 'Sample provides video input "$videoPath" but neutral_keypoints.json is required for CLI file mode.'
+          : 'Sample must include neutral_keypoints.json in inputs.';
+      return SampleRunResult.failure(sampleId: spec.sampleId, reason: reason);
     }
 
     final sampleOutRoot = Directory(_resolvePath(options.outputRoot, spec.sampleId));
@@ -323,27 +323,10 @@ class ExamplesRunner {
     final cliArgs = <String>[
       'run',
       options.cliEntry,
-    ];
-
-    if (keypointsPath != null) {
-      cliArgs.addAll([
-        '--keypoints',
-        keypointsPath!,
-        '--rule',
-        options.rulePath,
-      ]);
-    } else {
-      cliArgs.addAll([
-        '--engine',
-        options.engine,
-        '--input',
-        videoPath!,
-        '--rule',
-        options.rulePath,
-      ]);
-    }
-
-    cliArgs.addAll([
+      '--keypoints',
+      keypointsPath!,
+      '--rule',
+      options.rulePath,
       '--out',
       sampleOutRoot.path,
       '--strictness',
@@ -357,7 +340,7 @@ class ExamplesRunner {
       '--assert-level',
       'strict',
       '--assert-print',
-    ]);
+    ];
 
     if (hybridPolicyPath != null || cloudMockPath != null) {
       cliArgs.add('--hybrid');
@@ -408,9 +391,8 @@ class ExamplesRunner {
       );
     }
 
-    final resolvedInput = keypointsPath ?? videoPath;
-    final inputBase = _basenameWithoutExtension(resolvedInput!);
-    final outDir = Directory(_resolvePath(sampleOutRoot.path, inputBase));
+    final keypointsBase = _basenameWithoutExtension(keypointsPath!);
+    final outDir = Directory(_resolvePath(sampleOutRoot.path, keypointsBase));
     if (!outDir.existsSync()) {
       return SampleRunResult.failure(
         sampleId: spec.sampleId,
