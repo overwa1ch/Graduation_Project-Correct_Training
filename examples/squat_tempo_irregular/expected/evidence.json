@@ -1,0 +1,18 @@
+[
+  {
+    "type": "frame",
+    "timestampMs": 1240,
+    "frameIndex": 21,
+    "repIndex": 2,
+    "cues": ["tempo:slow-up-phase"],
+    "angles": {
+      "kneeMain": 85.7,
+      "trunk": 32.4
+    },
+    "thresholds": {
+      "tempoRatioMax": 1.3
+    },
+    "scoreImpact": -7.6,
+    "snapshotPath": "evidence/tempo_variation.png"
+  }
+]

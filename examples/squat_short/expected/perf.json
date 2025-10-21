@@ -1,0 +1,15 @@
+{
+  "timingsMs": {
+    "total": 620.5,
+    "startup": 240.0,
+    "inference": 260.3,
+    "postProcess": 90.2
+  },
+  "inferenceFps": 32.5,
+  "cpuUtilAvgPct": 57.6,
+  "cpuUtilPeakPct": 74.3,
+  "gpuUtilAvgPct": 0.0,
+  "rtf": 0.32,
+  "memPeakMB": 298,
+  "notes": "Short clip benchmark highlighting startup overhead dominance."
+}
