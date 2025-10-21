@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import '../core/errors.dart';
+import '../core/perf_timer.dart';
 import '../core/rounding.dart';
 import '../math/angles.dart';
 import '../math/one_euro.dart';
@@ -19,12 +20,16 @@ class OfflinePipeline {
   OfflinePipeline(this.rules, this.strictness);
 
   Future<({String anglesCsv, Map<String, dynamic> resultJson})> run(
-      PoseSeries series) async {
+    PoseSeries series, {
+    PerfTimer? timer,
+  }) async {
     final frames = series.frames;
     final tMs = frames.map((f) => f.timestampMs).toList(growable: false);
 
     final filteredPts = _filterKeypoints(series);
+    timer?.lap('filtering');
     final rawAngles = _computeAngles(filteredPts);
+    timer?.lap('angles');
 
     final hasAnyKnee = rawAngles.kneeL.any((v) => v != null) ||
         rawAngles.kneeR.any((v) => v != null);
@@ -65,6 +70,7 @@ class OfflinePipeline {
 
     final minPhaseMs = (rules.phases['minMs'] as num?)?.toInt() ?? 250;
     final phaseSegs = segmentDownUp(tMs, mainKnee, minMs: minPhaseMs);
+    timer?.lap('phaseSeg');
 
     final counts = rules.counts;
     final minIntervalMs = (counts['minIntervalMs'] as num?)?.toInt() ?? 600;
@@ -82,8 +88,10 @@ class OfflinePipeline {
       windowMs: windowMs,
       minValleyKneeAngle: minValley,
     );
+    timer?.lap('scoring');
 
     final quality = computeQualityFromKeypoints(frames);
+    timer?.lap('quality');
 
     final metrics = rules.metrics;
     final depthSpec = (metrics['depth'] as Map)['kneeAngleMin'] as Map;
