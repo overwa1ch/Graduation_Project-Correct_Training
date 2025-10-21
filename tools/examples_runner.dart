@@ -59,9 +59,9 @@ Options:
   --dry-run            Preview commands without executing the CLI.
   --evidence-config    Override evidence config path.
   --cue-map            Override cue map path.
-  * Provide either neutral_keypoints.json or input.mp4 for each sample.
+  * Provide neutral_keypoints.json for each sample (CLI file mode only).
   * Outputs are written to <out>/<sampleId>/ (sampleId-based folders).
-  * Video samples default to engine "mlkit" unless overridden.
+  * Video/engine mode is only available in the Flutter app builds.
   -h, --help           Show this help message.
 
 Examples:
@@ -519,7 +519,20 @@ class ExamplesRunner {
       );
     }
 
-    final resultFile = producedFiles['result.json'];
+    File? _firstBySuffix(String suffix) {
+      final normalizedSuffix = suffix.replaceAll('\\', '/');
+      final matches = producedFiles.entries
+          .where((entry) =>
+              entry.key.replaceAll('\\', '/').endsWith(normalizedSuffix))
+          .toList(growable: false);
+      if (matches.isEmpty) {
+        return null;
+      }
+      matches.sort((a, b) => a.key.compareTo(b.key));
+      return matches.first.value;
+    }
+
+    final resultFile = _firstBySuffix('result.json');
     if (resultFile == null) {
       return SampleRunResult.failure(
         sampleId: spec.sampleId,
@@ -532,8 +545,9 @@ class ExamplesRunner {
         outputDirEntries: artifactListing,
       );
     }
-    final expectsPerf = spec.expectedOutputs.contains('perf.json');
-    final perfFile = expectsPerf ? producedFiles['perf.json'] : null;
+    final expectsPerf =
+        spec.expectedOutputs.any((path) => path.endsWith('perf.json'));
+    final perfFile = expectsPerf ? _firstBySuffix('perf.json') : null;
 
     Map<String, dynamic> resultJson;
     try {
@@ -1066,12 +1080,51 @@ File? _locateOutputFile(Directory outDir, String fileName) {
   if (direct.existsSync()) {
     return direct;
   }
-  final logsDir = Directory(_resolvePath(outDir.path, 'logs'));
-  final logCandidate = File(_resolvePath(logsDir.path, fileName));
-  if (logCandidate.existsSync()) {
-    return logCandidate;
+
+  final normalizedExpected = fileName.replaceAll('\\', '/');
+  final expectedSegments = normalizedExpected
+      .split('/')
+      .where((segment) => segment.isNotEmpty)
+      .toList(growable: false);
+
+  bool endsWithSegments(String relativePath) {
+    final normalized = relativePath.replaceAll('\\', '/');
+    if (normalized == normalizedExpected) {
+      return true;
+    }
+    final candidateSegments = normalized
+        .split('/')
+        .where((segment) => segment.isNotEmpty)
+        .toList(growable: false);
+    if (expectedSegments.length > candidateSegments.length) {
+      return false;
+    }
+    for (var i = 0; i < expectedSegments.length; i++) {
+      final candidateIndex = candidateSegments.length - expectedSegments.length + i;
+      if (candidateSegments[candidateIndex] != expectedSegments[i]) {
+        return false;
+      }
+    }
+    return true;
   }
-  return null;
+
+  final matches = <File>[];
+  for (final entity in outDir.listSync(recursive: true, followLinks: false)) {
+    if (entity is! File) {
+      continue;
+    }
+    final relative = _relativePath(outDir.path, entity.path);
+    if (endsWithSegments(relative)) {
+      matches.add(entity);
+    }
+  }
+
+  if (matches.isEmpty) {
+    return null;
+  }
+
+  matches.sort((a, b) => a.path.compareTo(b.path));
+  return matches.first;
 }
 
 void _printStreamSummary(String label, List<String> lines) {
