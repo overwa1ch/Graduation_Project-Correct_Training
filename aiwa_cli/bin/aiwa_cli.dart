@@ -90,9 +90,6 @@ ArgParser _buildParser() {
     ..addOption('evidence-config',
         help: 'Path to evidence configuration JSON.',
         defaultsTo: 'configs/evidence_config.json')
-    ..addFlag('evidence-export-overlay',
-        help: 'Enable overlay export when evidence is generated.',
-        defaultsTo: false)
     ..addOption('cue-map',
         help: 'Path to cue advice map JSON.',
         defaultsTo: 'rules/cue_advice_map.json')
@@ -108,13 +105,7 @@ ArgParser _buildParser() {
         help: 'Assertion strictness (strict|loose).')
     ..addFlag('assert-print',
         negatable: false,
-        help: 'Print assertion success summary when assertions pass.')
-    ..addFlag('strict',
-        negatable: false,
-        help: 'Enable strict performance guard mode (exit on perf regression).')
-    ..addFlag('perf-report',
-        negatable: false,
-        help: 'Generate logs/perf_report.md summary report.');
+        help: 'Print assertion success summary when assertions pass.');
 }
 
 String _usage(ArgParser parser) => '''
@@ -422,8 +413,6 @@ Future<void> _runFileMode(
     logsDir: logsDir,
     resultJson: resultJson,
     overlayRequested: overlayRequested,
-    overlayAllowed: perfGuard.overlayAllowed,
-    topKOverride: perfGuard.topKOverride,
     neutralSeries: neutralSeries,
     log: log,
     recordTiming: recordTiming,
@@ -506,10 +495,6 @@ Future<void> _runFileMode(
     log('INFO', summary);
   }
 
-  if (perfGuard.strictViolation) {
-    throw _CliException('Performance guard triggered (--strict).', 3);
-  }
-
   _validateForCI(
     outDir: outDir,
     logsDir: logsDir,
@@ -582,109 +567,6 @@ class _EvidenceOutcome {
     required this.overlayGenerated,
     this.perfSummary = const {},
   });
-}
-
-const List<String> _kPerfStageOrder = [
-  'engineInit',
-  'adapter',
-  'inferenceTotal',
-  'filtering',
-  'angles',
-  'phaseSeg',
-  'scoring',
-  'quality',
-  'hybridTrigger',
-  'cloudMerge',
-  'evidenceSelect',
-  'overlayExport',
-];
-
-const int _kStrictJankThreshold = 3;
-
-class _ResourceSampler {
-  int _memPeakBytes = 0;
-
-  void sample() {
-    try {
-      final rss = ProcessInfo.currentRss;
-      if (rss > _memPeakBytes) {
-        _memPeakBytes = rss;
-      }
-    } catch (_) {
-      // ProcessInfo may not be available in some runtimes.
-    }
-  }
-
-  int get memPeakBytes => _memPeakBytes;
-  int get memPeakMb => (_memPeakBytes / (1024 * 1024)).round();
-}
-
-class _PerfGuard {
-  final bool strict;
-  final _LogFn log;
-  bool overlayAllowed;
-  int? topKOverride;
-  bool strictViolation = false;
-  double? downgradedFps;
-  bool _overlaySuppressed = false;
-  bool _memorySuppressed = false;
-  bool _thermalSuppressed = false;
-  final List<String> _notes = [];
-
-  _PerfGuard({
-    required this.strict,
-    required this.log,
-    required bool overlayRequested,
-  }) : overlayAllowed = overlayRequested;
-
-  void evaluateRealTime(double pipelineRtf, double baseFps) {
-    if (pipelineRtf > 1.5) {
-      if (!_overlaySuppressed) {
-        overlayAllowed = false;
-        _overlaySuppressed = true;
-        downgradedFps = baseFps * 0.8;
-        final fpsNote = downgradedFps != null
-            ? 'FPS↓${downgradedFps!.round()}'
-            : 'FPS↓';
-        _notes.add('RTF>1.5→$fpsNote; overlay off');
-      }
-      _warn('pipeline real-time guard triggered (RTF ${pipelineRtf.toStringAsFixed(2)})');
-      if (strict) {
-        strictViolation = true;
-      }
-    } else if (pipelineRtf > 1.2) {
-      _warn('pipeline real-time lagging (RTF ${pipelineRtf.toStringAsFixed(2)})');
-    }
-  }
-
-  void evaluateMemory(int memPeakMb, {required bool highEnd}) {
-    final threshold = highEnd ? 1200 : 700;
-    if (memPeakMb > threshold && !_memorySuppressed) {
-      overlayAllowed = false;
-      _overlaySuppressed = true;
-      _memorySuppressed = true;
-      topKOverride = 5;
-      _notes.add('mem>${threshold}MB→overlay off; topK=5');
-      _warn('memory guard engaged (peak ${memPeakMb}MB > ${threshold}MB)');
-    }
-  }
-
-  void evaluateThermal({required bool throttled, required double tempC}) {
-    if ((throttled || tempC > 44.0) && !_thermalSuppressed) {
-      overlayAllowed = false;
-      _overlaySuppressed = true;
-      _thermalSuppressed = true;
-      final rounded = tempC.isFinite ? tempC.toStringAsFixed(1) : '??';
-      _notes.add('thermal↑${rounded}°C→res=640x480');
-      _warn('thermal guard engaged (throttled=${throttled ? 'yes' : 'no'}, temp=${rounded}°C)');
-    }
-  }
-
-  String? buildNotes() => _notes.isEmpty ? null : _notes.join('; ');
-
-  void _warn(String message) {
-    log('WARN', '⚠️ [WARN] $message');
-  }
 }
 
 final Uint8List _placeholderOverlayPixel = base64Decode(
@@ -850,14 +732,7 @@ Future<Map<String, dynamic>> _exportOverlay({
   required Directory outDir,
   required Directory logsDir,
   required _LogFn log,
-  void Function(String stage, int durationMs)? recordTiming,
 }) async {
-  final overlayTimer = PerfTimer();
-  void finishTiming() {
-    overlayTimer.lap('overlayExport');
-    recordTiming?.call('overlayExport', overlayTimer.export()['overlayExport'] ?? 0);
-  }
-
   final fps = (exportConfig?['fps'] as num?)?.toDouble() ?? 15.0;
   final resolution = (exportConfig?['resolution'] as num?)?.toInt() ?? 480;
   var width = resolution;
@@ -886,7 +761,6 @@ Future<Map<String, dynamic>> _exportOverlay({
       final snapshot = item['snapshotPath'];
       item['snapshotPath'] = snapshot is String ? snapshot : '';
     }
-    finishTiming();
     return report;
   }
 
@@ -898,7 +772,6 @@ Future<Map<String, dynamic>> _exportOverlay({
         final snapshot = item['snapshotPath'];
         item['snapshotPath'] = snapshot is String ? snapshot : '';
       }
-      finishTiming();
       return report;
     }
   } on ProcessException catch (_) {
@@ -907,7 +780,6 @@ Future<Map<String, dynamic>> _exportOverlay({
       final snapshot = item['snapshotPath'];
       item['snapshotPath'] = snapshot is String ? snapshot : '';
     }
-    finishTiming();
     return report;
   }
 
@@ -985,7 +857,6 @@ Future<Map<String, dynamic>> _exportOverlay({
         final snapshot = item['snapshotPath'];
         item['snapshotPath'] = snapshot is String ? snapshot : '';
       }
-      finishTiming();
       return report;
     }
   } on ProcessException catch (_) {
@@ -994,7 +865,6 @@ Future<Map<String, dynamic>> _exportOverlay({
       final snapshot = item['snapshotPath'];
       item['snapshotPath'] = snapshot is String ? snapshot : '';
     }
-    finishTiming();
     return report;
   }
 
@@ -1014,7 +884,6 @@ Future<Map<String, dynamic>> _exportOverlay({
     ..['neutralFps'] =
         neutralSeries != null ? _roundDouble(neutralSeries.effectiveFps, 2) : null;
 
-  finishTiming();
   return report;
 }
 
@@ -1218,7 +1087,7 @@ void _validateForCI({
       .whereType<Map<String, dynamic>>()
       .toList(growable: false);
   final evidenceFile = File(path.join(outDir.path, 'evidence.json'));
-  final perfFile = File(path.join(logsDir.path, 'perf.json'));
+  final perfFile = File(path.join(logsDir.path, 'perf.json.evidence'));
   if (evidenceItems.isNotEmpty) {
     if (!evidenceFile.existsSync()) {
       fail('existence', 'evidence present but ${evidenceFile.path} missing');
@@ -1262,7 +1131,6 @@ void _validateForCI({
   }
 
   Map<String, dynamic>? perfJson;
-  Map<String, dynamic>? perfEvidence;
   if (perfFile.existsSync()) {
     try {
       final raw = perfFile.readAsStringSync();
@@ -1270,7 +1138,7 @@ void _validateForCI({
       if (decoded is Map<String, dynamic>) {
         perfJson = decoded;
       } else {
-        fail('structure', 'perf.json must be an object');
+        fail('structure', 'perf.json.evidence must be an object');
       }
     } catch (_) {
       fail('structure', 'failed to parse ${perfFile.path}');
@@ -1278,40 +1146,7 @@ void _validateForCI({
   }
 
   if (perfJson != null) {
-    final timings = perfJson['timingsMs'];
-    if (timings is Map<String, dynamic>) {
-      for (final stage in _kPerfStageOrder) {
-        final value = timings[stage];
-        if (value is! num) {
-          fail('structure', 'perf.timingsMs.$stage must be a number');
-        }
-      }
-    } else {
-      fail('structure', 'perf.timingsMs missing or invalid');
-    }
-
-    final evidence = perfJson['evidence'];
-    if (evidence is Map<String, dynamic>) {
-      perfEvidence = evidence;
-    } else {
-      fail('structure', 'perf.evidence missing or invalid');
-    }
-
-    final perfMetrics = perfJson['perf'];
-    if (perfMetrics is! Map<String, dynamic>) {
-      fail('structure', 'perf.perf missing or invalid');
-    } else {
-      final rtf = _flexibleToDouble(perfMetrics['pipelineRtf']);
-      if (rtf == null) {
-        fail('structure', 'perf.perf.pipelineRtf missing or invalid');
-      }
-      final fps = _flexibleToDouble(perfMetrics['inferenceFps']);
-      if (fps == null) {
-        fail('structure', 'perf.perf.inferenceFps missing or invalid');
-      }
-    }
-
-    final kept = (perfEvidence?['keptCount'] as num?)?.toInt();
+    final kept = (perfJson['keptCount'] as num?)?.toInt();
     if (kept != null && kept != evidenceItems.length) {
       fail('consistency',
           'keptCount ($kept) does not match evidence items (${evidenceItems.length})');
@@ -1319,11 +1154,8 @@ void _validateForCI({
   }
 
   final overlayFile = File(path.join(outDir.path, 'overlay.mp4'));
-  final overlayInfo = perfEvidence?['overlay'] as Map<String, dynamic>?;
-  final overlayGenerated = overlayInfo?['generated'] == true ||
-      perfEvidence?['overlayGenerated'] == true ||
-      evidenceItems.any((item) =>
-          (item['snapshotPath'] as String?)?.startsWith('overlay.mp4') == true);
+  final overlayInfo = perfJson?['overlay'] as Map<String, dynamic>?;
+  final overlayGenerated = overlayInfo?['generated'] == true;
   if (overlayGenerated) {
     if (!overlayFile.existsSync()) {
       fail('existence', 'overlay.mp4 missing while overlayGenerated=true');
@@ -2288,8 +2120,6 @@ Future<_EvidenceOutcome> _processEvidence({
   required Directory logsDir,
   required Map<String, dynamic> resultJson,
   required bool overlayRequested,
-  required bool overlayAllowed,
-  required int? topKOverride,
   required NeutralKeypointSeries? neutralSeries,
   required _LogFn log,
   void Function(String stage, int durationMs)? recordTiming,
@@ -2323,8 +2153,7 @@ Future<_EvidenceOutcome> _processEvidence({
   final thresholds = Map<String, dynamic>.from(
       decoded['thresholds'] as Map<String, dynamic>? ?? const {});
   final exportCfg = decoded['export'] as Map<String, dynamic>?;
-  final overlayEnabled =
-      overlayAllowed && (overlayRequested || (exportCfg?['overlay'] == true));
+  final overlayEnabled = overlayRequested || (exportCfg?['overlay'] == true);
   final cueMap = await _loadCueAdviceMap(cueMapPath, log);
 
   final reps = (resultJson['reps'] as List<dynamic>)
@@ -2456,9 +2285,6 @@ Future<_EvidenceOutcome> _processEvidence({
 
   _enrichEvidenceWithCues(evidenceList, cueMap, log);
 
-  selectionTimer.lap('evidenceSelect');
-  recordTiming?.call('evidenceSelect', selectionTimer.export()['evidenceSelect'] ?? 0);
-
   final overlayReport = await _exportOverlay(
     enabled: overlayEnabled,
     additions: evidenceList,
@@ -2471,7 +2297,6 @@ Future<_EvidenceOutcome> _processEvidence({
     outDir: outDir,
     logsDir: logsDir,
     log: log,
-    recordTiming: recordTiming,
   );
 
   resultJson['evidence'] = evidenceList;
@@ -2500,7 +2325,6 @@ Future<_EvidenceOutcome> _processEvidence({
     keptCount: keptGenerated,
     droppedCount: droppedGenerated,
     overlayGenerated: overlayReport['generated'] == true,
-    perfSummary: evidencePerf,
   );
 }
 
