@@ -1,0 +1,44 @@
+{
+  "meta": {
+    "version": "vB1.1",
+    "engine": "mlkit",
+    "engineVersion": "3.2.0",
+    "inputResolution": "720p",
+    "samplingStride": 2
+  },
+  "quality": {
+    "coverage": 0.88,
+    "lowConfidence": 0.05
+  },
+  "repCount": 2,
+  "reps": [
+    {"index": 1, "score": 87.1, "startMs": 0, "endMs": 640},
+    {"index": 2, "score": 85.6, "startMs": 640, "endMs": 1280}
+  ],
+  "scores": {
+    "overall": 86.4,
+    "form": 86.9,
+    "stability": 85.7,
+    "tempo": 86.0
+  },
+  "issues": [],
+  "hybrid": {
+    "triggered": false,
+    "cloudEnhanced": false,
+    "reason": [],
+    "mergeStrategy": "prefer-local"
+  },
+  "evidence": [
+    {
+      "type": "frame",
+      "timestampMs": 320,
+      "frameIndex": 5,
+      "repIndex": 1,
+      "cues": ["phase:bottom", "duration:short"],
+      "angles": {"leftKneeDeg": 93.5, "rightKneeDeg": 96.2, "trunkDeg": 38.7},
+      "thresholds": {"knee": 95, "trunk": 40},
+      "scoreImpact": -0.3,
+      "snapshotPath": "overlay/frame_005.png"
+    }
+  ]
+}

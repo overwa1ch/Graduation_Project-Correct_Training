@@ -4,6 +4,9 @@
 # 忽略数据文件
 *.csv
 result.json
+# Allow committed golden artifacts under examples/
+!examples/**/expected/*.csv
+!examples/**/expected/result.json
 __pycache__/
 
 *.patch

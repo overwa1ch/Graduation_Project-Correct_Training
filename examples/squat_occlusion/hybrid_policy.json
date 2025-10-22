@@ -1,0 +1,22 @@
+{
+  "version": "v1",
+  "triggerRules": [
+    {
+      "name": "occlusion-window",
+      "metric": "lowConfidenceRatio",
+      "windowMs": 2000,
+      "threshold": 0.45
+    },
+    {
+      "name": "pose-missing",
+      "metric": "missingJointCount",
+      "windowMs": 1000,
+      "threshold": 6
+    }
+  ],
+  "mergeStrategy": "prefer-cloud-count-then-reconcile",
+  "fallback": {
+    "minReps": 8,
+    "maxLocalDelta": 2
+  }
+}

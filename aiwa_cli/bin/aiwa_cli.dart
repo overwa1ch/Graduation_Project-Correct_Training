@@ -34,14 +34,151 @@ const _defaultSamplingStride = 2;
 const _defaultInputResolution = '720p';
 const _defaultFps = 30.0;
 
+const _kStrictJankThreshold = 3;
+const _kHighEndMemBudgetMb = 600;
+const _kLowEndMemBudgetMb = 450;
+const _kThermalWarnTempC = 85.0;
+
+const List<String> _kPerfStageOrder = <String>[
+  'engineInit',
+  'adapter',
+  'inferenceTotal',
+  'filtering',
+  'angles',
+  'phaseSeg',
+  'scoring',
+  'quality',
+  'hybridTrigger',
+  'cloudMerge',
+  'evidenceSelect',
+  'overlayExport',
+];
+
+final int? topKOverride = _parseTopKOverride();
+
 const JsonEncoder _prettyJsonEncoder = JsonEncoder.withIndent('  ');
 
 typedef _LogFn = void Function(String level, String message);
+
+class _ResourceSampler {
+  int _memPeakMb = 0;
+
+  int get memPeakMb => _memPeakMb;
+
+  void sample() {
+    try {
+      final rssBytes = ProcessInfo.currentRss;
+      final rssMb = (rssBytes / (1024 * 1024)).round();
+      if (rssMb > _memPeakMb) {
+        _memPeakMb = rssMb;
+      }
+    } catch (_) {
+      // Ignore platforms where memory sampling is unavailable.
+    }
+  }
+}
+
+class _PerfGuard {
+  _PerfGuard({
+    required this.strict,
+    required this.log,
+    required this.overlayRequested,
+  });
+
+  final bool strict;
+  final _LogFn log;
+  final bool overlayRequested;
+
+  bool strictViolation = false;
+  double? downgradedFps;
+
+  final List<String> _notes = <String>[];
+
+  void evaluateRealTime(double pipelineRtf, double fps) {
+    if (!pipelineRtf.isFinite || pipelineRtf <= 1.0) {
+      return;
+    }
+    if (fps.isFinite && fps > 0) {
+      downgradedFps = double.parse((fps / pipelineRtf).toStringAsFixed(2));
+    }
+    final message =
+        'perf: pipeline RTF ${pipelineRtf.toStringAsFixed(3)} exceeds budget 1.0';
+    log('WARN', message);
+    _notes.add(message);
+    if (overlayRequested && downgradedFps != null) {
+      _notes.add(
+        'overlay requested; effective FPS capped at ${downgradedFps!.toStringAsFixed(2)}',
+      );
+    }
+    if (strict) {
+      strictViolation = true;
+    }
+  }
+
+  void evaluateMemory(int memPeakMb, {required bool highEnd}) {
+    final limit = highEnd ? _kHighEndMemBudgetMb : _kLowEndMemBudgetMb;
+    if (memPeakMb <= limit) {
+      return;
+    }
+    final message =
+        'perf: memory peak ${memPeakMb}MB exceeds budget ${limit}MB';
+    log('WARN', message);
+    _notes.add(message);
+    if (strict) {
+      strictViolation = true;
+    }
+  }
+
+  void evaluateThermal({required bool throttled, required double tempC}) {
+    if (throttled) {
+      const message = 'perf: thermal throttling detected';
+      log('WARN', message);
+      _notes.add(message);
+      if (strict) {
+        strictViolation = true;
+      }
+      return;
+    }
+    if (tempC.isFinite && tempC >= _kThermalWarnTempC) {
+      final message =
+          'perf: device temperature ${tempC.toStringAsFixed(1)}°C nearing limit';
+      log('WARN', message);
+      _notes.add(message);
+    }
+  }
+
+  String? buildNotes() {
+    if (_notes.isEmpty) {
+      return null;
+    }
+    final seen = <String>{};
+    final deduped = <String>[];
+    for (final note in _notes) {
+      if (seen.add(note)) {
+        deduped.add(note);
+      }
+    }
+    return deduped.join('; ');
+  }
+}
 
 final Map<String, int> _neutralNameToIndex = {
   for (var i = 0; i < kNeutralKeypointNames.length; i++)
     kNeutralKeypointNames[i]: i,
 };
+
+int? _parseTopKOverride() {
+  final env = Platform.environment;
+  final raw = env['AIWA_EVIDENCE_TOPK'] ?? env['AIWA_EVIDENCE_TOP_K'];
+  if (raw == null || raw.trim().isEmpty) {
+    return null;
+  }
+  final value = int.tryParse(raw.trim());
+  if (value == null || value <= 0) {
+    return null;
+  }
+  return value;
+}
 
 ArgParser _buildParser() {
   return ArgParser()
@@ -2147,7 +2284,7 @@ Future<_EvidenceOutcome> _processEvidence({
 
   var topK = (decoded['topK'] as num?)?.toInt() ?? 5;
   if (topKOverride != null) {
-    topK = math.min(topK, topKOverride);
+    topK = topK < topKOverride! ? topK : topKOverride!;
   }
   final windowMs = (decoded['windowMs'] as num?)?.toInt() ?? 1000;
   final thresholds = Map<String, dynamic>.from(
