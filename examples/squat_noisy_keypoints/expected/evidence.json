@@ -1,0 +1,13 @@
+[
+  {
+    "type": "frame",
+    "timestampMs": 200,
+    "frameIndex": 3,
+    "repIndex": 1,
+    "cues": ["confidence:drop", "noise:spike"],
+    "angles": {"leftKneeDeg": 108.7, "rightKneeDeg": 114.2, "trunkDeg": 36.6},
+    "thresholds": {"confidence": 0.4},
+    "scoreImpact": -0.7,
+    "snapshotPath": "overlay/frame_003.png"
+  }
+]

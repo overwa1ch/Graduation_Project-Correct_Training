@@ -1,0 +1,7 @@
+{
+  "timingsMs": {"load": 44, "inference": 1890, "postProcess": 312},
+  "pipelineRtf": 0.97,
+  "inferenceFps": 26.8,
+  "cpuUtilAvgPct": 78.5,
+  "memPeakMB": 528
+}

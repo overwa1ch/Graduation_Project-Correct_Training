@@ -1,0 +1,84 @@
+{
+  "sampleId": "squat_long",
+  "meta": {
+    "version": "vB1.1",
+    "engine": "mlkit",
+    "engineVersion": "3.2.0",
+    "inputResolution": "720p",
+    "samplingStride": 2,
+    "hybridEnabled": true,
+    "exportOverlay": true,
+    "strictMode": false
+  },
+  "scores": {
+    "overall": 88.0,
+    "form": 88.4,
+    "stability": 87.2,
+    "tempo": 88.5
+  },
+  "repCount": 168,
+  "reps": [
+    {
+      "index": 1,
+      "score": 88.5,
+      "startMs": 0,
+      "endMs": 3600
+    },
+    {
+      "index": 84,
+      "score": 87.9,
+      "startMs": 180000,
+      "endMs": 183600
+    },
+    {
+      "index": 168,
+      "score": 88.1,
+      "startMs": 358800,
+      "endMs": 362400
+    }
+  ],
+  "quality": {
+    "coverageRatio": 0.92,
+    "lowConfidenceRatio": 0.08,
+    "lowConfidence": false,
+    "occlusionRatio": 0.0
+  },
+  "hybrid": {
+    "triggered": false,
+    "cloudEnhanced": false,
+    "reason": [
+      "batching:enabled"
+    ],
+    "mergeStrategy": "prefer-local"
+  },
+  "evidence": [
+    {
+      "type": "segment",
+      "timestampMs": 278400,
+      "frameIndex": 4176,
+      "repIndex": 156,
+      "cues": [
+        "fatigue",
+        "depth:shallow"
+      ],
+      "angles": {
+        "leftKneeDeg": 104.3,
+        "rightKneeDeg": 109.6,
+        "trunkDeg": 34.8
+      },
+      "thresholds": {
+        "knee": 100,
+        "trunk": 40
+      },
+      "scoreImpact": -1.1,
+      "snapshotPath": "overlay/frame_4176.png"
+    }
+  ],
+  "issues": [
+    {
+      "code": "fatigue-knee-depth",
+      "timestampMs": 278400,
+      "severity": "notice"
+    }
+  ]
+}

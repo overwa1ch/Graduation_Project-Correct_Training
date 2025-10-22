@@ -1,0 +1,13 @@
+[
+  {
+    "type": "segment",
+    "timestampMs": 2050,
+    "frameIndex": 31,
+    "repIndex": 2,
+    "cues": ["tempo:fast", "tempo:variance"],
+    "angles": {"leftKneeDeg": 88.9, "rightKneeDeg": 92.1, "trunkDeg": 41.5},
+    "thresholds": {"tempoRtf": 1.2},
+    "scoreImpact": -1.6,
+    "snapshotPath": "overlay/frame_031.png"
+  }
+]

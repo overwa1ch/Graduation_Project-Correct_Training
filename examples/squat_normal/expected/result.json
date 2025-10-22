@@ -1,0 +1,91 @@
+{
+  "sampleId": "squat_normal",
+  "meta": {
+    "version": "vB1.1",
+    "engine": "mlkit",
+    "engineVersion": "3.2.0",
+    "inputResolution": "720p",
+    "samplingStride": 2,
+    "hybridEnabled": false,
+    "exportOverlay": true,
+    "strictMode": false
+  },
+  "scores": {
+    "overall": 89.6,
+    "form": 90.1,
+    "stability": 88.7,
+    "tempo": 90.3
+  },
+  "repCount": 12,
+  "reps": [
+    {
+      "index": 1,
+      "score": 91.2,
+      "startMs": 0,
+      "endMs": 520
+    },
+    {
+      "index": 2,
+      "score": 90.5,
+      "startMs": 520,
+      "endMs": 1040
+    }
+  ],
+  "quality": {
+    "coverageRatio": 0.94,
+    "lowConfidenceRatio": 0.0,
+    "lowConfidence": false,
+    "occlusionRatio": 0.0
+  },
+  "hybrid": {
+    "triggered": false,
+    "cloudEnhanced": false,
+    "reason": [],
+    "mergeStrategy": "prefer-local"
+  },
+  "evidence": [
+    {
+      "type": "frame",
+      "timestampMs": 267,
+      "frameIndex": 4,
+      "repIndex": 1,
+      "cues": [
+        "depth:min",
+        "phase:bottom"
+      ],
+      "angles": {
+        "leftKneeDeg": 94.3,
+        "rightKneeDeg": 95.8,
+        "trunkDeg": 36.4
+      },
+      "thresholds": {
+        "knee": 100,
+        "trunk": 40
+      },
+      "scoreImpact": 0.6,
+      "snapshotPath": "overlay/frame_004.png"
+    },
+    {
+      "type": "frame",
+      "timestampMs": 400,
+      "frameIndex": 6,
+      "repIndex": 1,
+      "cues": [
+        "tempo:recovery",
+        "stability:smooth"
+      ],
+      "angles": {
+        "leftKneeDeg": 128.9,
+        "rightKneeDeg": 130.5,
+        "trunkDeg": 23.1
+      },
+      "thresholds": {
+        "knee": 140,
+        "trunk": 35
+      },
+      "scoreImpact": 0.2,
+      "snapshotPath": "overlay/frame_006.png"
+    }
+  ],
+  "issues": []
+}
