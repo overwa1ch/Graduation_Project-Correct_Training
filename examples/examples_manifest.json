@@ -11,7 +11,7 @@
       "neutral_keypoints/logs/perf.json"
     ],
     "validationRules": [
-      "hybrid.triggered == false",
+      "hybrid.triggered != true",
       "scores.overall >= 90",
       "quality.coverage >= 0.92"
     ]
@@ -51,7 +51,7 @@
     "validationRules": [
       "perf.pipelineRtf <= 0.5",
       "repCount <= 1",
-      "hybrid.triggered == false"
+      "hybrid.triggered != true"
     ]
   },
   {
@@ -85,7 +85,7 @@
     "validationRules": [
       "issues.any(code == 'TEMPO_VARIATION')",
       "scores.tempo < scores.form",
-      "hybrid.triggered == false"
+      "hybrid.triggered != true"
     ]
   },
   {

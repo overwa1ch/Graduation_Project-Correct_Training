@@ -61,8 +61,8 @@
         {"name": "rightHip", "x": 0.58, "y": 0.87, "z": -0.21, "score": 0.34},
         {"name": "leftKnee", "x": 0.42, "y": 1.00, "z": -0.21, "score": 0.59},
         {"name": "rightKnee", "x": 0.61, "y": 1.00, "z": -0.24, "score": 0.31},
-        {"name": "leftAnkle", "x": 0.40, "y": 1.05, "z": -0.11, "score": 0.54},
-        {"name": "rightAnkle", "x": 0.64, "y": 1.07, "z": -0.15, "score": 0.28}
+        {"name": "leftAnkle", "x": 0.40, "y": 1.00, "z": -0.11, "score": 0.54},
+        {"name": "rightAnkle", "x": 0.64, "y": 1.00, "z": -0.15, "score": 0.28}
       ]
     },
     {
