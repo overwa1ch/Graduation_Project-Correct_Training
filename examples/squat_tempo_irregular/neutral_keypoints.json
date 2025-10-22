@@ -5,7 +5,7 @@
     "fps": 30,
     "width": 720,
     "height": 1280,
-    "durationMs": 4200
+    "durationMs": 1200
   },
   "engine": {
     "name": "mlkit",
@@ -83,7 +83,7 @@
     },
     {
       "frameIndex": 6,
-      "timestampMs": 59,
+      "timestampMs": 45,
       "lowConfidence": false,
       "mirrorApplied": false,
       "keypoints": [
@@ -147,7 +147,7 @@
     },
     {
       "frameIndex": 18,
-      "timestampMs": 200,
+      "timestampMs": 120,
       "lowConfidence": true,
       "mirrorApplied": false,
       "keypoints": [
@@ -211,7 +211,7 @@
     },
     {
       "frameIndex": 28,
-      "timestampMs": 350,
+      "timestampMs": 420,
       "lowConfidence": false,
       "mirrorApplied": false,
       "keypoints": [
@@ -275,7 +275,7 @@
     },
     {
       "frameIndex": 44,
-      "timestampMs": 534,
+      "timestampMs": 900,
       "lowConfidence": false,
       "mirrorApplied": false,
       "keypoints": [
