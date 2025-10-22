@@ -1,13 +1,11 @@
 {
-  "policyVersion": "c-h1",
+  "version": "C-augment",
   "trigger": {
-    "lowConfidenceThreshold": 0.7,
-    "minOcclusionFrames": 12,
-    "enableCloudFallback": true
+    "coverageBelow": 0.75,
+    "lowConfidenceRatioAbove": 0.25
   },
-  "merge": {
-    "strategy": "prefer-cloud-count-then-reconcile",
-    "maxCountDelta": 2,
-    "allowScoreBlend": true
+  "mergeStrategy": "prefer-cloud-count-then-reconcile",
+  "evidence": {
+    "exportOverlay": false
   }
 }

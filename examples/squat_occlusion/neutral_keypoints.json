@@ -20,17 +20,65 @@
     {
       "frameIndex": 0,
       "timestampMs": 0,
-      "lowConfidence": false,
+      "lowConfidence": true,
       "mirrorApplied": false,
       "keypoints": [
-        {"name": "leftShoulder", "x": 0.47, "y": 0.36, "z": -0.09, "score": 0.95},
-        {"name": "rightShoulder", "x": 0.53, "y": 0.36, "z": -0.08, "score": 0.95},
-        {"name": "leftHip", "x": 0.48, "y": 0.65, "z": -0.11, "score": 0.94},
-        {"name": "rightHip", "x": 0.52, "y": 0.65, "z": -0.11, "score": 0.94},
-        {"name": "leftKnee", "x": 0.47, "y": 0.84, "z": -0.09, "score": 0.93},
-        {"name": "rightKnee", "x": 0.53, "y": 0.84, "z": -0.09, "score": 0.93},
-        {"name": "leftAnkle", "x": 0.46, "y": 0.97, "z": -0.05, "score": 0.92},
-        {"name": "rightAnkle", "x": 0.54, "y": 0.97, "z": -0.05, "score": 0.92}
+        {
+          "name": "leftShoulder",
+          "x": 0.47,
+          "y": 0.36,
+          "z": -0.09,
+          "score": 0.4
+        },
+        {
+          "name": "rightShoulder",
+          "x": 0.53,
+          "y": 0.36,
+          "z": -0.08,
+          "score": 0.4
+        },
+        {
+          "name": "leftHip",
+          "x": 0.48,
+          "y": 0.65,
+          "z": -0.11,
+          "score": 0.4
+        },
+        {
+          "name": "rightHip",
+          "x": 0.52,
+          "y": 0.65,
+          "z": -0.11,
+          "score": 0.4
+        },
+        {
+          "name": "leftKnee",
+          "x": 0.47,
+          "y": 0.84,
+          "z": -0.09,
+          "score": 0.4
+        },
+        {
+          "name": "rightKnee",
+          "x": 0.53,
+          "y": 0.84,
+          "z": -0.09,
+          "score": 0.4
+        },
+        {
+          "name": "leftAnkle",
+          "x": 0.46,
+          "y": 0.97,
+          "z": -0.05,
+          "score": 0.4
+        },
+        {
+          "name": "rightAnkle",
+          "x": 0.54,
+          "y": 0.97,
+          "z": -0.05,
+          "score": 0.4
+        }
       ]
     },
     {
@@ -39,14 +87,62 @@
       "lowConfidence": true,
       "mirrorApplied": false,
       "keypoints": [
-        {"name": "leftShoulder", "x": 0.46, "y": 0.40, "z": -0.08, "score": 0.74},
-        {"name": "rightShoulder", "x": 0.55, "y": 0.41, "z": -0.07, "score": 0.58},
-        {"name": "leftHip", "x": 0.46, "y": 0.75, "z": -0.15, "score": 0.70},
-        {"name": "rightHip", "x": 0.55, "y": 0.78, "z": -0.18, "score": 0.51},
-        {"name": "leftKnee", "x": 0.44, "y": 0.93, "z": -0.16, "score": 0.66},
-        {"name": "rightKnee", "x": 0.58, "y": 0.95, "z": -0.19, "score": 0.42},
-        {"name": "leftAnkle", "x": 0.43, "y": 1.00, "z": -0.08, "score": 0.61},
-        {"name": "rightAnkle", "x": 0.60, "y": 1.00, "z": -0.12, "score": 0.39}
+        {
+          "name": "leftShoulder",
+          "x": 0.46,
+          "y": 0.4,
+          "z": -0.08,
+          "score": 0.74
+        },
+        {
+          "name": "rightShoulder",
+          "x": 0.55,
+          "y": 0.41,
+          "z": -0.07,
+          "score": 0.58
+        },
+        {
+          "name": "leftHip",
+          "x": 0.46,
+          "y": 0.75,
+          "z": -0.15,
+          "score": 0.7
+        },
+        {
+          "name": "rightHip",
+          "x": 0.55,
+          "y": 0.78,
+          "z": -0.18,
+          "score": 0.51
+        },
+        {
+          "name": "leftKnee",
+          "x": 0.44,
+          "y": 0.93,
+          "z": -0.16,
+          "score": 0.66
+        },
+        {
+          "name": "rightKnee",
+          "x": 0.58,
+          "y": 0.95,
+          "z": -0.19,
+          "score": 0.42
+        },
+        {
+          "name": "leftAnkle",
+          "x": 0.43,
+          "y": 1.0,
+          "z": -0.08,
+          "score": 0.61
+        },
+        {
+          "name": "rightAnkle",
+          "x": 0.6,
+          "y": 1.0,
+          "z": -0.12,
+          "score": 0.39
+        }
       ]
     },
     {
@@ -55,30 +151,126 @@
       "lowConfidence": true,
       "mirrorApplied": false,
       "keypoints": [
-        {"name": "leftShoulder", "x": 0.45, "y": 0.45, "z": -0.09, "score": 0.68},
-        {"name": "rightShoulder", "x": 0.56, "y": 0.47, "z": -0.09, "score": 0.36},
-        {"name": "leftHip", "x": 0.45, "y": 0.83, "z": -0.18, "score": 0.63},
-        {"name": "rightHip", "x": 0.58, "y": 0.87, "z": -0.21, "score": 0.34},
-        {"name": "leftKnee", "x": 0.42, "y": 1.00, "z": -0.21, "score": 0.59},
-        {"name": "rightKnee", "x": 0.61, "y": 1.00, "z": -0.24, "score": 0.31},
-        {"name": "leftAnkle", "x": 0.40, "y": 1.00, "z": -0.11, "score": 0.54},
-        {"name": "rightAnkle", "x": 0.64, "y": 1.00, "z": -0.15, "score": 0.28}
+        {
+          "name": "leftShoulder",
+          "x": 0.45,
+          "y": 0.45,
+          "z": -0.09,
+          "score": 0.68
+        },
+        {
+          "name": "rightShoulder",
+          "x": 0.56,
+          "y": 0.47,
+          "z": -0.09,
+          "score": 0.36
+        },
+        {
+          "name": "leftHip",
+          "x": 0.45,
+          "y": 0.83,
+          "z": -0.18,
+          "score": 0.63
+        },
+        {
+          "name": "rightHip",
+          "x": 0.58,
+          "y": 0.87,
+          "z": -0.21,
+          "score": 0.34
+        },
+        {
+          "name": "leftKnee",
+          "x": 0.42,
+          "y": 1.0,
+          "z": -0.21,
+          "score": 0.59
+        },
+        {
+          "name": "rightKnee",
+          "x": 0.61,
+          "y": 1.0,
+          "z": -0.24,
+          "score": 0.31
+        },
+        {
+          "name": "leftAnkle",
+          "x": 0.4,
+          "y": 1.0,
+          "z": -0.11,
+          "score": 0.54
+        },
+        {
+          "name": "rightAnkle",
+          "x": 0.64,
+          "y": 1.0,
+          "z": -0.15,
+          "score": 0.28
+        }
       ]
     },
     {
       "frameIndex": 30,
       "timestampMs": 2100,
-      "lowConfidence": false,
+      "lowConfidence": true,
       "mirrorApplied": false,
       "keypoints": [
-        {"name": "leftShoulder", "x": 0.46, "y": 0.38, "z": -0.09, "score": 0.94},
-        {"name": "rightShoulder", "x": 0.54, "y": 0.38, "z": -0.08, "score": 0.93},
-        {"name": "leftHip", "x": 0.47, "y": 0.72, "z": -0.14, "score": 0.92},
-        {"name": "rightHip", "x": 0.53, "y": 0.73, "z": -0.14, "score": 0.89},
-        {"name": "leftKnee", "x": 0.45, "y": 0.90, "z": -0.13, "score": 0.91},
-        {"name": "rightKnee", "x": 0.55, "y": 0.91, "z": -0.14, "score": 0.87},
-        {"name": "leftAnkle", "x": 0.44, "y": 1.00, "z": -0.06, "score": 0.89},
-        {"name": "rightAnkle", "x": 0.56, "y": 1.00, "z": -0.07, "score": 0.86}
+        {
+          "name": "leftShoulder",
+          "x": 0.46,
+          "y": 0.38,
+          "z": -0.09,
+          "score": 0.4
+        },
+        {
+          "name": "rightShoulder",
+          "x": 0.54,
+          "y": 0.38,
+          "z": -0.08,
+          "score": 0.4
+        },
+        {
+          "name": "leftHip",
+          "x": 0.47,
+          "y": 0.72,
+          "z": -0.14,
+          "score": 0.4
+        },
+        {
+          "name": "rightHip",
+          "x": 0.53,
+          "y": 0.73,
+          "z": -0.14,
+          "score": 0.4
+        },
+        {
+          "name": "leftKnee",
+          "x": 0.45,
+          "y": 0.9,
+          "z": -0.13,
+          "score": 0.4
+        },
+        {
+          "name": "rightKnee",
+          "x": 0.55,
+          "y": 0.91,
+          "z": -0.14,
+          "score": 0.4
+        },
+        {
+          "name": "leftAnkle",
+          "x": 0.44,
+          "y": 1.0,
+          "z": -0.06,
+          "score": 0.4
+        },
+        {
+          "name": "rightAnkle",
+          "x": 0.56,
+          "y": 1.0,
+          "z": -0.07,
+          "score": 0.4
+        }
       ]
     },
     {
@@ -87,14 +279,62 @@
       "lowConfidence": false,
       "mirrorApplied": false,
       "keypoints": [
-        {"name": "leftShoulder", "x": 0.47, "y": 0.35, "z": -0.09, "score": 0.95},
-        {"name": "rightShoulder", "x": 0.53, "y": 0.35, "z": -0.08, "score": 0.94},
-        {"name": "leftHip", "x": 0.48, "y": 0.64, "z": -0.11, "score": 0.94},
-        {"name": "rightHip", "x": 0.52, "y": 0.64, "z": -0.11, "score": 0.93},
-        {"name": "leftKnee", "x": 0.47, "y": 0.82, "z": -0.09, "score": 0.93},
-        {"name": "rightKnee", "x": 0.53, "y": 0.82, "z": -0.09, "score": 0.92},
-        {"name": "leftAnkle", "x": 0.46, "y": 0.97, "z": -0.05, "score": 0.91},
-        {"name": "rightAnkle", "x": 0.54, "y": 0.97, "z": -0.05, "score": 0.91}
+        {
+          "name": "leftShoulder",
+          "x": 0.47,
+          "y": 0.35,
+          "z": -0.09,
+          "score": 0.95
+        },
+        {
+          "name": "rightShoulder",
+          "x": 0.53,
+          "y": 0.35,
+          "z": -0.08,
+          "score": 0.94
+        },
+        {
+          "name": "leftHip",
+          "x": 0.48,
+          "y": 0.64,
+          "z": -0.11,
+          "score": 0.94
+        },
+        {
+          "name": "rightHip",
+          "x": 0.52,
+          "y": 0.64,
+          "z": -0.11,
+          "score": 0.93
+        },
+        {
+          "name": "leftKnee",
+          "x": 0.47,
+          "y": 0.82,
+          "z": -0.09,
+          "score": 0.93
+        },
+        {
+          "name": "rightKnee",
+          "x": 0.53,
+          "y": 0.82,
+          "z": -0.09,
+          "score": 0.92
+        },
+        {
+          "name": "leftAnkle",
+          "x": 0.46,
+          "y": 0.97,
+          "z": -0.05,
+          "score": 0.91
+        },
+        {
+          "name": "rightAnkle",
+          "x": 0.54,
+          "y": 0.97,
+          "z": -0.05,
+          "score": 0.91
+        }
       ]
     }
   ]
