@@ -1,0 +1,23 @@
+{
+    "version": "C1",
+    "topK": 10,
+    "windowMs": 1200,
+    "types": ["frame", "segment"],
+    "selectors": {
+      "worstPosture":   { "metric": "angleError",  "op": ">=", "threshold": 10 },
+      "phaseBoundary":  { "metric": "phaseChange", "op": ">=", "threshold": 0.30 },
+      "lowScore":       { "metric": "repScore",    "op": "<=", "threshold": 80 },
+      "depthImpact":    { "metric": "scoreImpact", "op": ">=", "threshold": 0.10 }
+    },
+    "export": {
+      "overlay": true,
+      "fps": 15,
+      "resolution": 480,
+      "drawSkeleton": true,
+      "highlightCues": true
+    },
+    "filters": {
+      "minConfidence": 0.0
+    }
+  }
+  

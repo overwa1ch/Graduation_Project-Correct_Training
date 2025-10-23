@@ -1,8 +1,10 @@
 sealed class AiwaError implements Exception {
-  final String code;   // RULES_PARSE_ERROR, INPUT_KP_INVALID, MODEL_ADAPTER_MISSING, ...
+  final String
+      code; // RULES_PARSE_ERROR, INPUT_KP_INVALID, MODEL_ADAPTER_MISSING, ...
   final String message;
   const AiwaError(this.code, this.message);
-  @override String toString() => '[$code] $message';
+  @override
+  String toString() => '[$code] $message';
 }
 
 class RulesParseError extends AiwaError {

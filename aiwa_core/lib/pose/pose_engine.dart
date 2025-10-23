@@ -79,10 +79,10 @@ class NeutralFrame {
 
 /// 引擎配置：是否使用高精度模型、是否输出 Z 值等
 class PoseEngineConfig {
-  final bool preferAccurate;         // ML Kit: base vs accurate
-  final bool outputZ;                // 是否保留 z 坐标
-  final double minScore;             // 过滤低置信度关键点
-  final bool returnEmptyWhenLow;     // 若全部低于 minScore 是否允许返回空
+  final bool preferAccurate; // ML Kit: base vs accurate
+  final bool outputZ; // 是否保留 z 坐标
+  final double minScore; // 过滤低置信度关键点
+  final bool returnEmptyWhenLow; // 若全部低于 minScore 是否允许返回空
 
   const PoseEngineConfig({
     this.preferAccurate = false,

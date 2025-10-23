@@ -1,6 +1,7 @@
 class PhaseSeg {
   final int startMs, endMs;
-  final bool isDown; // true 表示下蹲 (angle decreasing)，false 表示起身 (angle increasing)
+  final bool
+      isDown; // true 表示下蹲 (angle decreasing)，false 表示起身 (angle increasing)
   PhaseSeg(this.startMs, this.endMs, this.isDown);
 }
 

@@ -4,7 +4,7 @@
     "fpsIntended": 30,
     "width": 720,
     "height": 1280,
-    "durationMs": 620
+    "durationMs": 3216
   },
   "engine": {
     "name": "mlkit",
@@ -22,15 +22,15 @@
       "lowConfidence": false,
       "mirrorApplied": false,
       "keypoints": [
-        {"name": "nose", "x": 0.52, "y": 0.12, "z": -0.03, "score": 0.92},
-        {"name": "leftShoulder", "x": 0.44, "y": 0.25, "z": -0.04, "score": 0.88},
-        {"name": "rightShoulder", "x": 0.60, "y": 0.25, "z": -0.02, "score": 0.90},
-        {"name": "leftHip", "x": 0.46, "y": 0.55, "z": 0.01, "score": 0.91},
-        {"name": "rightHip", "x": 0.58, "y": 0.55, "z": 0.00, "score": 0.89},
-        {"name": "leftKnee", "x": 0.48, "y": 0.80, "z": 0.04, "score": 0.93},
-        {"name": "rightKnee", "x": 0.56, "y": 0.79, "z": 0.03, "score": 0.92},
-        {"name": "leftAnkle", "x": 0.50, "y": 0.95, "z": 0.05, "score": 0.90},
-        {"name": "rightAnkle", "x": 0.54, "y": 0.95, "z": 0.04, "score": 0.89}
+        {"name":"nose","x":0.52,"y":0.12,"z":-0.03,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.25,"z":-0.04,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.25,"z":-0.03,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.55,"z":0.00,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.55,"z":0.00,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.80,"z":0.02,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.79,"z":0.02,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
       ]
     },
     {
@@ -39,151 +39,820 @@
       "lowConfidence": false,
       "mirrorApplied": false,
       "keypoints": [
-        {"name": "nose", "x": 0.51, "y": 0.13, "z": -0.03, "score": 0.93},
-        {"name": "leftShoulder", "x": 0.44, "y": 0.26, "z": -0.04, "score": 0.89},
-        {"name": "rightShoulder", "x": 0.59, "y": 0.26, "z": -0.02, "score": 0.92},
-        {"name": "leftHip", "x": 0.47, "y": 0.56, "z": 0.01, "score": 0.91},
-        {"name": "rightHip", "x": 0.58, "y": 0.56, "z": 0.01, "score": 0.90},
-        {"name": "leftKnee", "x": 0.49, "y": 0.81, "z": 0.04, "score": 0.94},
-        {"name": "rightKnee", "x": 0.56, "y": 0.80, "z": 0.03, "score": 0.93},
-        {"name": "leftAnkle", "x": 0.50, "y": 0.95, "z": 0.05, "score": 0.90},
-        {"name": "rightAnkle", "x": 0.54, "y": 0.95, "z": 0.04, "score": 0.90}
+        {"name":"nose","x":0.52,"y":0.126,"z":-0.029,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.255,"z":-0.039,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.255,"z":-0.029,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.565,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.565,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.806,"z":0.021,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.799,"z":0.021,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
       ]
     },
     {
       "frameIndex": 2,
-      "timestampMs": 133,
+      "timestampMs": 134,
       "lowConfidence": false,
       "mirrorApplied": false,
       "keypoints": [
-        {"name": "nose", "x": 0.50, "y": 0.15, "z": -0.03, "score": 0.94},
-        {"name": "leftShoulder", "x": 0.43, "y": 0.28, "z": -0.03, "score": 0.90},
-        {"name": "rightShoulder", "x": 0.58, "y": 0.28, "z": -0.02, "score": 0.91},
-        {"name": "leftHip", "x": 0.48, "y": 0.58, "z": 0.02, "score": 0.92},
-        {"name": "rightHip", "x": 0.57, "y": 0.58, "z": 0.01, "score": 0.91},
-        {"name": "leftKnee", "x": 0.49, "y": 0.82, "z": 0.05, "score": 0.95},
-        {"name": "rightKnee", "x": 0.55, "y": 0.81, "z": 0.04, "score": 0.94},
-        {"name": "leftAnkle", "x": 0.50, "y": 0.96, "z": 0.05, "score": 0.91},
-        {"name": "rightAnkle", "x": 0.53, "y": 0.96, "z": 0.04, "score": 0.90}
+        {"name":"nose","x":0.52,"y":0.132,"z":-0.028,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.26,"z":-0.038,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.26,"z":-0.028,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.58,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.58,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.812,"z":0.022,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.808,"z":0.022,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
       ]
     },
     {
       "frameIndex": 3,
-      "timestampMs": 200,
+      "timestampMs": 201,
       "lowConfidence": false,
       "mirrorApplied": false,
       "keypoints": [
-        {"name": "nose", "x": 0.49, "y": 0.18, "z": -0.02, "score": 0.95},
-        {"name": "leftShoulder", "x": 0.42, "y": 0.31, "z": -0.03, "score": 0.91},
-        {"name": "rightShoulder", "x": 0.57, "y": 0.31, "z": -0.01, "score": 0.92},
-        {"name": "leftHip", "x": 0.49, "y": 0.61, "z": 0.02, "score": 0.93},
-        {"name": "rightHip", "x": 0.56, "y": 0.61, "z": 0.01, "score": 0.92},
-        {"name": "leftKnee", "x": 0.49, "y": 0.83, "z": 0.05, "score": 0.95},
-        {"name": "rightKnee", "x": 0.55, "y": 0.82, "z": 0.04, "score": 0.95},
-        {"name": "leftAnkle", "x": 0.50, "y": 0.96, "z": 0.06, "score": 0.92},
-        {"name": "rightAnkle", "x": 0.53, "y": 0.96, "z": 0.05, "score": 0.91}
+        {"name":"nose","x":0.52,"y":0.138,"z":-0.027,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.265,"z":-0.037,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.265,"z":-0.027,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.595,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.595,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.818,"z":0.023,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.817,"z":0.023,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
       ]
     },
     {
       "frameIndex": 4,
-      "timestampMs": 267,
+      "timestampMs": 268,
       "lowConfidence": false,
       "mirrorApplied": false,
       "keypoints": [
-        {"name": "nose", "x": 0.48, "y": 0.22, "z": -0.02, "score": 0.95},
-        {"name": "leftShoulder", "x": 0.41, "y": 0.34, "z": -0.03, "score": 0.92},
-        {"name": "rightShoulder", "x": 0.56, "y": 0.34, "z": -0.01, "score": 0.92},
-        {"name": "leftHip", "x": 0.50, "y": 0.64, "z": 0.02, "score": 0.94},
-        {"name": "rightHip", "x": 0.55, "y": 0.64, "z": 0.01, "score": 0.93},
-        {"name": "leftKnee", "x": 0.49, "y": 0.84, "z": 0.05, "score": 0.95},
-        {"name": "rightKnee", "x": 0.54, "y": 0.83, "z": 0.04, "score": 0.95},
-        {"name": "leftAnkle", "x": 0.50, "y": 0.97, "z": 0.06, "score": 0.93},
-        {"name": "rightAnkle", "x": 0.53, "y": 0.97, "z": 0.05, "score": 0.92}
+        {"name":"nose","x":0.52,"y":0.144,"z":-0.026,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.27,"z":-0.036,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.27,"z":-0.026,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.610,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.610,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.824,"z":0.024,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.816,"z":0.024,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
       ]
     },
     {
       "frameIndex": 5,
-      "timestampMs": 333,
+      "timestampMs": 335,
       "lowConfidence": false,
       "mirrorApplied": false,
       "keypoints": [
-        {"name": "nose", "x": 0.48, "y": 0.25, "z": -0.02, "score": 0.94},
-        {"name": "leftShoulder", "x": 0.41, "y": 0.36, "z": -0.03, "score": 0.91},
-        {"name": "rightShoulder", "x": 0.56, "y": 0.36, "z": -0.01, "score": 0.91},
-        {"name": "leftHip", "x": 0.51, "y": 0.66, "z": 0.02, "score": 0.93},
-        {"name": "rightHip", "x": 0.54, "y": 0.66, "z": 0.01, "score": 0.92},
-        {"name": "leftKnee", "x": 0.49, "y": 0.85, "z": 0.05, "score": 0.94},
-        {"name": "rightKnee", "x": 0.53, "y": 0.84, "z": 0.04, "score": 0.94},
-        {"name": "leftAnkle", "x": 0.50, "y": 0.97, "z": 0.06, "score": 0.92},
-        {"name": "rightAnkle", "x": 0.52, "y": 0.97, "z": 0.05, "score": 0.91}
+        {"name":"nose","x":0.52,"y":0.150,"z":-0.025,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.275,"z":-0.035,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.275,"z":-0.025,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.625,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.625,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.830,"z":0.025,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.817,"z":0.025,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
       ]
     },
     {
       "frameIndex": 6,
-      "timestampMs": 400,
+      "timestampMs": 402,
       "lowConfidence": false,
       "mirrorApplied": false,
       "keypoints": [
-        {"name": "nose", "x": 0.49, "y": 0.23, "z": -0.02, "score": 0.94},
-        {"name": "leftShoulder", "x": 0.42, "y": 0.35, "z": -0.03, "score": 0.91},
-        {"name": "rightShoulder", "x": 0.57, "y": 0.35, "z": -0.01, "score": 0.91},
-        {"name": "leftHip", "x": 0.51, "y": 0.65, "z": 0.02, "score": 0.93},
-        {"name": "rightHip", "x": 0.54, "y": 0.65, "z": 0.01, "score": 0.92},
-        {"name": "leftKnee", "x": 0.49, "y": 0.84, "z": 0.05, "score": 0.94},
-        {"name": "rightKnee", "x": 0.53, "y": 0.83, "z": 0.04, "score": 0.94},
-        {"name": "leftAnkle", "x": 0.50, "y": 0.97, "z": 0.06, "score": 0.92},
-        {"name": "rightAnkle", "x": 0.52, "y": 0.97, "z": 0.05, "score": 0.91}
+        {"name":"nose","x":0.52,"y":0.156,"z":-0.024,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.28,"z":-0.034,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.28,"z":-0.024,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.640,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.640,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.836,"z":0.026,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.818,"z":0.026,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
       ]
     },
     {
       "frameIndex": 7,
-      "timestampMs": 467,
+      "timestampMs": 469,
       "lowConfidence": false,
       "mirrorApplied": false,
       "keypoints": [
-        {"name": "nose", "x": 0.50, "y": 0.20, "z": -0.02, "score": 0.94},
-        {"name": "leftShoulder", "x": 0.43, "y": 0.33, "z": -0.03, "score": 0.91},
-        {"name": "rightShoulder", "x": 0.57, "y": 0.33, "z": -0.01, "score": 0.91},
-        {"name": "leftHip", "x": 0.51, "y": 0.63, "z": 0.02, "score": 0.93},
-        {"name": "rightHip", "x": 0.54, "y": 0.63, "z": 0.01, "score": 0.92},
-        {"name": "leftKnee", "x": 0.49, "y": 0.83, "z": 0.05, "score": 0.94},
-        {"name": "rightKnee", "x": 0.53, "y": 0.82, "z": 0.04, "score": 0.94},
-        {"name": "leftAnkle", "x": 0.50, "y": 0.97, "z": 0.06, "score": 0.92},
-        {"name": "rightAnkle", "x": 0.52, "y": 0.97, "z": 0.05, "score": 0.91}
+        {"name":"nose","x":0.52,"y":0.162,"z":-0.023,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.285,"z":-0.033,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.285,"z":-0.023,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.655,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.655,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.842,"z":0.027,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.819,"z":0.027,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
       ]
     },
     {
       "frameIndex": 8,
-      "timestampMs": 533,
+      "timestampMs": 536,
       "lowConfidence": false,
       "mirrorApplied": false,
       "keypoints": [
-        {"name": "nose", "x": 0.51, "y": 0.18, "z": -0.02, "score": 0.93},
-        {"name": "leftShoulder", "x": 0.44, "y": 0.31, "z": -0.03, "score": 0.90},
-        {"name": "rightShoulder", "x": 0.57, "y": 0.31, "z": -0.01, "score": 0.90},
-        {"name": "leftHip", "x": 0.50, "y": 0.61, "z": 0.02, "score": 0.92},
-        {"name": "rightHip", "x": 0.54, "y": 0.61, "z": 0.01, "score": 0.91},
-        {"name": "leftKnee", "x": 0.48, "y": 0.82, "z": 0.05, "score": 0.93},
-        {"name": "rightKnee", "x": 0.53, "y": 0.81, "z": 0.04, "score": 0.93},
-        {"name": "leftAnkle", "x": 0.49, "y": 0.96, "z": 0.06, "score": 0.91},
-        {"name": "rightAnkle", "x": 0.52, "y": 0.96, "z": 0.05, "score": 0.90}
+        {"name":"nose","x":0.52,"y":0.168,"z":-0.022,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.29,"z":-0.032,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.29,"z":-0.022,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.670,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.670,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.848,"z":0.028,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.820,"z":0.028,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
       ]
     },
     {
       "frameIndex": 9,
-      "timestampMs": 600,
+      "timestampMs": 603,
       "lowConfidence": false,
       "mirrorApplied": false,
       "keypoints": [
-        {"name": "nose", "x": 0.52, "y": 0.16, "z": -0.02, "score": 0.92},
-        {"name": "leftShoulder", "x": 0.45, "y": 0.29, "z": -0.03, "score": 0.89},
-        {"name": "rightShoulder", "x": 0.58, "y": 0.29, "z": -0.01, "score": 0.89},
-        {"name": "leftHip", "x": 0.49, "y": 0.59, "z": 0.02, "score": 0.91},
-        {"name": "rightHip", "x": 0.55, "y": 0.59, "z": 0.01, "score": 0.90},
-        {"name": "leftKnee", "x": 0.47, "y": 0.81, "z": 0.05, "score": 0.92},
-        {"name": "rightKnee", "x": 0.53, "y": 0.80, "z": 0.04, "score": 0.92},
-        {"name": "leftAnkle", "x": 0.49, "y": 0.95, "z": 0.06, "score": 0.90},
-        {"name": "rightAnkle", "x": 0.52, "y": 0.95, "z": 0.05, "score": 0.89}
+        {"name":"nose","x":0.52,"y":0.174,"z":-0.021,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.295,"z":-0.031,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.295,"z":-0.021,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.685,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.685,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.854,"z":0.029,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.821,"z":0.029,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+
+    {
+      "frameIndex": 10,
+      "timestampMs": 670,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.180,"z":-0.020,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.300,"z":-0.030,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.300,"z":-0.020,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.700,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.700,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.860,"z":0.030,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.822,"z":0.030,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 11,
+      "timestampMs": 737,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.186,"z":-0.019,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.305,"z":-0.029,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.305,"z":-0.019,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.715,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.715,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.866,"z":0.031,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.823,"z":0.031,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 12,
+      "timestampMs": 804,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.192,"z":-0.018,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.310,"z":-0.028,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.310,"z":-0.018,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.730,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.730,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.872,"z":0.032,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.824,"z":0.032,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 13,
+      "timestampMs": 871,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.198,"z":-0.017,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.315,"z":-0.027,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.315,"z":-0.017,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.745,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.745,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.878,"z":0.033,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.825,"z":0.033,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 14,
+      "timestampMs": 938,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.204,"z":-0.016,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.320,"z":-0.026,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.320,"z":-0.016,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.760,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.760,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.884,"z":0.034,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.826,"z":0.034,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 15,
+      "timestampMs": 1005,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.210,"z":-0.015,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.325,"z":-0.025,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.325,"z":-0.015,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.775,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.775,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.890,"z":0.035,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.827,"z":0.035,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 16,
+      "timestampMs": 1072,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.216,"z":-0.014,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.330,"z":-0.024,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.330,"z":-0.014,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.790,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.790,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.896,"z":0.036,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.828,"z":0.036,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 17,
+      "timestampMs": 1139,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.222,"z":-0.013,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.335,"z":-0.023,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.335,"z":-0.013,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.805,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.805,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.902,"z":0.037,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.829,"z":0.037,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 18,
+      "timestampMs": 1206,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.228,"z":-0.012,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.340,"z":-0.022,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.340,"z":-0.012,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.820,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.820,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.908,"z":0.038,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.830,"z":0.038,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 19,
+      "timestampMs": 1273,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.234,"z":-0.011,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.345,"z":-0.021,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.345,"z":-0.011,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.835,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.835,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.914,"z":0.039,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.831,"z":0.039,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 20,
+      "timestampMs": 1340,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.240,"z":-0.010,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.350,"z":-0.020,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.350,"z":-0.010,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.850,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.850,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.920,"z":0.040,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.832,"z":0.040,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 21,
+      "timestampMs": 1407,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.246,"z":-0.009,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.355,"z":-0.019,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.355,"z":-0.009,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.865,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.865,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.926,"z":0.041,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.833,"z":0.041,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 22,
+      "timestampMs": 1474,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.252,"z":-0.008,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.360,"z":-0.018,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.360,"z":-0.008,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.880,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.880,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.932,"z":0.042,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.834,"z":0.042,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+
+    {
+      "frameIndex": 23,
+      "timestampMs": 1541,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.258,"z":-0.007,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.365,"z":-0.017,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.365,"z":-0.007,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.895,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.895,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.938,"z":0.043,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.835,"z":0.043,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+
+    
+    {
+      "frameIndex": 24,
+      "timestampMs": 1608,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.28,"z":-0.006,"score":0.93},
+        {"name":"leftShoulder","x":0.44,"y":0.38,"z":-0.016,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.38,"z":-0.016,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.90,"z":0.000,"score":0.94},
+        {"name":"rightHip","x":0.58,"y":0.90,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.95,"z":0.045,"score":0.94},
+        {"name":"rightKnee","x":0.56,"y":0.88,"z":0.045,"score":0.94},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.91},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.91}
+      ]
+    },
+    {
+      "frameIndex": 25,
+      "timestampMs": 1675,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.28,"z":-0.006,"score":0.93},
+        {"name":"leftShoulder","x":0.44,"y":0.38,"z":-0.016,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.38,"z":-0.016,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.90,"z":0.000,"score":0.94},
+        {"name":"rightHip","x":0.58,"y":0.90,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.95,"z":0.045,"score":0.94},
+        {"name":"rightKnee","x":0.56,"y":0.88,"z":0.045,"score":0.94},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.91},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.91}
+      ]
+    },
+    {
+      "frameIndex": 26,
+      "timestampMs": 1742,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.28,"z":-0.006,"score":0.93},
+        {"name":"leftShoulder","x":0.44,"y":0.38,"z":-0.016,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.38,"z":-0.016,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.90,"z":0.000,"score":0.94},
+        {"name":"rightHip","x":0.58,"y":0.90,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.95,"z":0.045,"score":0.94},
+        {"name":"rightKnee","x":0.56,"y":0.88,"z":0.045,"score":0.94},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.91},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.91}
+      ]
+    },
+    {
+      "frameIndex": 27,
+      "timestampMs": 1809,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.28,"z":-0.006,"score":0.93},
+        {"name":"leftShoulder","x":0.44,"y":0.38,"z":-0.016,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.38,"z":-0.016,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.90,"z":0.000,"score":0.94},
+        {"name":"rightHip","x":0.58,"y":0.90,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.95,"z":0.045,"score":0.94},
+        {"name":"rightKnee","x":0.56,"y":0.88,"z":0.045,"score":0.94},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.91},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.91}
+      ]
+    },
+    {
+      "frameIndex": 28,
+      "timestampMs": 1876,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.28,"z":-0.006,"score":0.93},
+        {"name":"leftShoulder","x":0.44,"y":0.38,"z":-0.016,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.38,"z":-0.016,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.90,"z":0.000,"score":0.94},
+        {"name":"rightHip","x":0.58,"y":0.90,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.95,"z":0.045,"score":0.94},
+        {"name":"rightKnee","x":0.56,"y":0.88,"z":0.045,"score":0.94},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.91},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.91}
+      ]
+    },
+
+    
+    {
+      "frameIndex": 29,
+      "timestampMs": 1943,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.274,"z":-0.007,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.375,"z":-0.017,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.375,"z":-0.017,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.885,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.885,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.944,"z":0.044,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.875,"z":0.044,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 30,
+      "timestampMs": 2010,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.268,"z":-0.008,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.370,"z":-0.018,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.370,"z":-0.018,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.870,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.870,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.938,"z":0.043,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.870,"z":0.043,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 31,
+      "timestampMs": 2077,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.262,"z":-0.009,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.365,"z":-0.019,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.365,"z":-0.019,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.855,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.855,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.932,"z":0.042,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.865,"z":0.042,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 32,
+      "timestampMs": 2144,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.256,"z":-0.010,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.360,"z":-0.020,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.360,"z":-0.020,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.840,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.840,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.926,"z":0.041,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.860,"z":0.041,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 33,
+      "timestampMs": 2211,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.250,"z":-0.011,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.355,"z":-0.021,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.355,"z":-0.021,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.825,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.825,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.920,"z":0.040,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.855,"z":0.040,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 34,
+      "timestampMs": 2278,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.244,"z":-0.012,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.350,"z":-0.022,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.350,"z":-0.022,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.810,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.810,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.914,"z":0.039,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.850,"z":0.039,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 35,
+      "timestampMs": 2345,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.238,"z":-0.013,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.345,"z":-0.023,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.345,"z":-0.023,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.795,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.795,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.908,"z":0.038,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.845,"z":0.038,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 36,
+      "timestampMs": 2412,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.232,"z":-0.014,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.340,"z":-0.024,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.340,"z":-0.024,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.780,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.780,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.902,"z":0.037,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.840,"z":0.037,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 37,
+      "timestampMs": 2479,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.226,"z":-0.015,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.335,"z":-0.025,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.335,"z":-0.025,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.765,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.765,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.896,"z":0.036,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.835,"z":0.036,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 38,
+      "timestampMs": 2546,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.220,"z":-0.016,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.330,"z":-0.026,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.330,"z":-0.026,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.750,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.750,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.890,"z":0.035,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.830,"z":0.035,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 39,
+      "timestampMs": 2613,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.214,"z":-0.017,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.325,"z":-0.027,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.325,"z":-0.027,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.735,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.735,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.884,"z":0.034,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.825,"z":0.034,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 40,
+      "timestampMs": 2680,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.208,"z":-0.018,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.320,"z":-0.028,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.320,"z":-0.028,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.720,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.720,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.878,"z":0.033,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.820,"z":0.033,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 41,
+      "timestampMs": 2747,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.202,"z":-0.019,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.315,"z":-0.029,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.315,"z":-0.029,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.705,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.705,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.872,"z":0.032,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.815,"z":0.032,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 42,
+      "timestampMs": 2814,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.196,"z":-0.020,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.310,"z":-0.030,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.310,"z":-0.030,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.690,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.690,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.866,"z":0.031,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.810,"z":0.031,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 43,
+      "timestampMs": 2881,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.190,"z":-0.021,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.305,"z":-0.031,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.305,"z":-0.031,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.675,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.675,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.860,"z":0.030,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.805,"z":0.030,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 44,
+      "timestampMs": 2948,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.184,"z":-0.022,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.300,"z":-0.032,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.300,"z":-0.032,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.660,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.660,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.854,"z":0.029,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.800,"z":0.029,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 45,
+      "timestampMs": 3015,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.178,"z":-0.023,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.295,"z":-0.033,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.295,"z":-0.033,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.645,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.645,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.848,"z":0.028,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.795,"z":0.028,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 46,
+      "timestampMs": 3082,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.172,"z":-0.024,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.290,"z":-0.034,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.290,"z":-0.034,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.630,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.630,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.842,"z":0.027,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.790,"z":0.027,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 47,
+      "timestampMs": 3149,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.166,"z":-0.025,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.285,"z":-0.035,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.285,"z":-0.035,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.615,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.615,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.836,"z":0.026,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.785,"z":0.026,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
+      ]
+    },
+    {
+      "frameIndex": 48,
+      "timestampMs": 3216,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name":"nose","x":0.52,"y":0.160,"z":-0.026,"score":0.94},
+        {"name":"leftShoulder","x":0.44,"y":0.280,"z":-0.036,"score":0.93},
+        {"name":"rightShoulder","x":0.60,"y":0.280,"z":-0.036,"score":0.93},
+        {"name":"leftHip","x":0.46,"y":0.600,"z":0.000,"score":0.95},
+        {"name":"rightHip","x":0.58,"y":0.600,"z":0.000,"score":0.94},
+        {"name":"leftKnee","x":0.48,"y":0.830,"z":0.025,"score":0.95},
+        {"name":"rightKnee","x":0.56,"y":0.780,"z":0.025,"score":0.95},
+        {"name":"leftAnkle","x":0.50,"y":0.95,"z":0.04,"score":0.92},
+        {"name":"rightAnkle","x":0.54,"y":0.95,"z":0.04,"score":0.92}
       ]
     }
   ]

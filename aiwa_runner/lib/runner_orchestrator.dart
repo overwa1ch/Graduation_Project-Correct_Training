@@ -21,7 +21,8 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 // 以别名引入，避免与工程内类型冲突
-import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart' as ml;
+import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart'
+    as ml;
 
 import 'package:aiwa_core/spec/rule_parser.dart';
 import 'package:aiwa_core/spec/rule_models.dart';
@@ -63,10 +64,14 @@ class RunnerOrchestrator {
     final docsDir = await getApplicationDocumentsDirectory();
     final workspace = docsDir.path;
 
-    final inputDir = Directory(p.join(workspace, 'input'))..createSync(recursive: true);
-    final rulesDir = Directory(p.join(workspace, 'rules'))..createSync(recursive: true);
-    final buildRoot = Directory(p.join(workspace, 'build', 'offline_out'))..createSync(recursive: true);
-    final logsDir = Directory(p.join(workspace, 'logs'))..createSync(recursive: true);
+    final inputDir = Directory(p.join(workspace, 'input'))
+      ..createSync(recursive: true);
+    final rulesDir = Directory(p.join(workspace, 'rules'))
+      ..createSync(recursive: true);
+    final buildRoot = Directory(p.join(workspace, 'build', 'offline_out'))
+      ..createSync(recursive: true);
+    final logsDir = Directory(p.join(workspace, 'logs'))
+      ..createSync(recursive: true);
 
     // 2) 拷贝资产（视频 & 规则）
     final videoBaseName = p.basenameWithoutExtension(videoAssetPath);
@@ -79,7 +84,8 @@ class RunnerOrchestrator {
       dstFile: File(p.join(rulesDir.path, p.basename(ruleAssetPath))),
     );
 
-    final outDir = Directory(p.join(buildRoot.path, videoBaseName))..createSync(recursive: true);
+    final outDir = Directory(p.join(buildRoot.path, videoBaseName))
+      ..createSync(recursive: true);
 
     debugPrint('[BOOT] Workspace: ${docsDir.path}');
     debugPrint('[BOOT] Input video: ${copiedVideo.path}');
@@ -87,22 +93,28 @@ class RunnerOrchestrator {
     debugPrint('[BOOT] Output dir:  ${outDir.path}');
 
     // 3) 帧目录定位：内部优先，其次外部专属目录（由 App 自己创建）
-    final internalFramesDir = Directory(p.join(inputDir.path, 'frames', videoBaseName));
+    final internalFramesDir = Directory(
+      p.join(inputDir.path, 'frames', videoBaseName),
+    );
 
     Directory? externalFramesDir;
     String? extBasePath;
     try {
-      final extBase = await getExternalStorageDirectory(); // /storage/emulated/0/Android/data/<pkg>/files
+      final extBase =
+          await getExternalStorageDirectory(); // /storage/emulated/0/Android/data/<pkg>/files
       if (extBase != null) {
         extBasePath = extBase.path;
         debugPrint('[INFO] 外部基路径：$extBasePath');
-        externalFramesDir = Directory(p.join(extBase.path, 'input', 'frames', videoBaseName))
-          ..createSync(recursive: true); // 为 adb push 准备好路径
+        externalFramesDir = Directory(
+          p.join(extBase.path, 'input', 'frames', videoBaseName),
+        )..createSync(recursive: true); // 为 adb push 准备好路径
       } else {
         debugPrint('[WARN] getExternalStorageDirectory() 返回 null，仅尝试内部目录');
       }
     } on FileSystemException catch (e) {
-      debugPrint('[ERROR] 创建外部帧目录失败: ${externalFramesDir?.path} | ${e.osError}');
+      debugPrint(
+        '[ERROR] 创建外部帧目录失败: ${externalFramesDir?.path} | ${e.osError}',
+      );
     }
 
     late final Directory framesDir;
@@ -122,12 +134,13 @@ class RunnerOrchestrator {
     }
 
     // 4) 列举帧（仅 jpg/jpeg），排序 + stride 采样
-    final allFrames = framesDir
-        .listSync()
-        .whereType<File>()
-        .where((f) => _isFrameJpg(f.path))
-        .toList()
-      ..sort((a, b) => a.path.compareTo(b.path));
+    final allFrames =
+        framesDir
+            .listSync()
+            .whereType<File>()
+            .where((f) => _isFrameJpg(f.path))
+            .toList()
+          ..sort((a, b) => a.path.compareTo(b.path));
 
     if (allFrames.isEmpty) {
       _printExtractHint(
@@ -141,7 +154,9 @@ class RunnerOrchestrator {
 
     // 推断图像尺寸（解首帧）
     final firstBytes = await allFrames.first.readAsBytes();
-    final ui.Image firstImg = await _decodeImage(Uint8List.fromList(firstBytes));
+    final ui.Image firstImg = await _decodeImage(
+      Uint8List.fromList(firstBytes),
+    );
     final width = firstImg.width;
     final height = firstImg.height;
 
@@ -205,10 +220,16 @@ class RunnerOrchestrator {
 
         final avgScore = mapped.isEmpty
             ? 0.0
-            : mapped.map((e) => (e['score'] as num?)?.toDouble() ?? 0.0).reduce((a, b) => a + b) / mapped.length;
+            : mapped
+                      .map((e) => (e['score'] as num?)?.toDouble() ?? 0.0)
+                      .reduce((a, b) => a + b) /
+                  mapped.length;
 
         final lowConf = avgScore < 0.7; // 简单阈值，仅作标记
-        if (!lowConf) usableCount++; else lowConfCount++;
+        if (!lowConf)
+          usableCount++;
+        else
+          lowConfCount++;
 
         frameJson = {
           'frameIndex': frameIndex,
@@ -224,11 +245,19 @@ class RunnerOrchestrator {
       // 每 ~2 秒输出进度
       final nowMs = progressSw.elapsedMilliseconds;
       if (nowMs - lastProgMs >= 2000 || i + samplingStride >= total) {
-        final avgMs = inferTimes.isEmpty ? 0 : inferTimes.reduce((a, b) => a + b) ~/ inferTimes.length;
-        final usableRatio = framesOut.isEmpty ? 0 : (usableCount * 100 ~/ framesOut.length);
-        final lowConfRatio = framesOut.isEmpty ? 0 : (lowConfCount * 100 ~/ framesOut.length);
-        debugPrint('[PROG] frames ${framesOut.length}/${(total / samplingStride).ceil()} | '
-            'avg ${avgMs} ms | usable ${usableRatio}% | lowConf ${lowConfRatio}%');
+        final avgMs = inferTimes.isEmpty
+            ? 0
+            : inferTimes.reduce((a, b) => a + b) ~/ inferTimes.length;
+        final usableRatio = framesOut.isEmpty
+            ? 0
+            : (usableCount * 100 ~/ framesOut.length);
+        final lowConfRatio = framesOut.isEmpty
+            ? 0
+            : (lowConfCount * 100 ~/ framesOut.length);
+        debugPrint(
+          '[PROG] frames ${framesOut.length}/${(total / samplingStride).ceil()} | '
+          'avg ${avgMs} ms | usable ${usableRatio}% | lowConf ${lowConfRatio}%',
+        );
         lastProgMs = nowMs;
       }
     }
@@ -260,7 +289,9 @@ class RunnerOrchestrator {
     // 写 neutral_keypoints.json
     final neutralFile = File(p.join(outDir.path, 'neutral_keypoints.json'));
     neutralFile.createSync(recursive: true);
-    await neutralFile.writeAsString(const JsonEncoder.withIndent('  ').convert(neutralRoot));
+    await neutralFile.writeAsString(
+      const JsonEncoder.withIndent('  ').convert(neutralRoot),
+    );
 
     // 8) 离线管线（Milestone A）
     final ruleStr = await File(copiedRule.path).readAsString();
@@ -280,19 +311,29 @@ class RunnerOrchestrator {
     final anglesCsvFile = File(p.join(outDir.path, 'angles.csv'));
     await anglesCsvFile.writeAsString(out.anglesCsv);
 
-    final resultMap = json.decode(json.encode(out.resultJson)) as Map<String, dynamic>;
+    final resultMap =
+        json.decode(json.encode(out.resultJson)) as Map<String, dynamic>;
     resultMap['engine'] = engineName;
     resultMap['engineVersion'] = engineSdkVersion;
     resultMap['inputResolution'] = inputResolutionLabel;
     resultMap['samplingStride'] = samplingStride;
 
     final resultFile = File(p.join(outDir.path, 'result.json'));
-    await resultFile.writeAsString(const JsonEncoder.withIndent('  ').convert(resultMap));
+    await resultFile.writeAsString(
+      const JsonEncoder.withIndent('  ').convert(resultMap),
+    );
 
     // 10) 写性能日志 logs/perf.json
-    final perf = _buildPerf(inferTimes, totalFramesTried: framesOut.length, usable: usableCount, lowConf: lowConfCount);
+    final perf = _buildPerf(
+      inferTimes,
+      totalFramesTried: framesOut.length,
+      usable: usableCount,
+      lowConf: lowConfCount,
+    );
     final perfFile = File(p.join(logsDir.path, 'perf.json'));
-    await perfFile.writeAsString(const JsonEncoder.withIndent('  ').convert(perf));
+    await perfFile.writeAsString(
+      const JsonEncoder.withIndent('  ').convert(perf),
+    );
 
     debugPrint('[OUT] neutral_keypoints.json → ${neutralFile.path}');
     debugPrint('[DONE] Output dir: ${outDir.path}');
@@ -301,7 +342,9 @@ class RunnerOrchestrator {
     try {
       final extBase = await getExternalStorageDirectory();
       if (extBase != null) {
-        final mirrorDir = Directory(p.join(extBase.path, 'export', videoBaseName))..createSync(recursive: true);
+        final mirrorDir = Directory(
+          p.join(extBase.path, 'export', videoBaseName),
+        )..createSync(recursive: true);
         for (final f in Directory(outDir.path).listSync().whereType<File>()) {
           final dst = File(p.join(mirrorDir.path, p.basename(f.path)));
           await dst.writeAsBytes(await f.readAsBytes(), flush: true);
@@ -331,7 +374,10 @@ class RunnerOrchestrator {
     return c.future;
   }
 
-  Future<File> _copyAssetIfNeeded({required String assetPath, required File dstFile}) async {
+  Future<File> _copyAssetIfNeeded({
+    required String assetPath,
+    required File dstFile,
+  }) async {
     if (dstFile.existsSync()) return dstFile;
     try {
       final data = await rootBundle.load(assetPath);
@@ -357,10 +403,14 @@ class RunnerOrchestrator {
       debugPrint('  外部：<未能获取 getExternalStorageDirectory()>');
     }
     debugPrint('请先抽帧（30 fps），命名为 frame_00001.jpg, frame_00002.jpg, ...');
-    final extHint = externalBasePath ?? '/storage/emulated/0/Android/data/$kDefaultPackageName/files';
+    final extHint =
+        externalBasePath ??
+        '/storage/emulated/0/Android/data/$kDefaultPackageName/files';
     debugPrint('示例命令（电脑端 ffmpeg → adb push 到外部专属目录）：');
-    debugPrint('  ffmpeg -y -i "$videoAbsPath" '
-        '-vf "fps=30,scale=1280:720:force_original_aspect_ratio=decrease" -qscale:v 2 frame_%05d.jpg');
+    debugPrint(
+      '  ffmpeg -y -i "$videoAbsPath" '
+      '-vf "fps=30,scale=1280:720:force_original_aspect_ratio=decrease" -qscale:v 2 frame_%05d.jpg',
+    );
     debugPrint('  adb push frame_*.jpg "$extHint/input/frames/$basename/"');
   }
 
@@ -506,7 +556,7 @@ class RunnerOrchestrator {
 
     final kp = [
       for (final n in names)
-        {'name': n, 'x': 0.0, 'y': 0.0, 'z': 0.0, 'score': 0.0}
+        {'name': n, 'x': 0.0, 'y': 0.0, 'z': 0.0, 'score': 0.0},
     ];
 
     return {
@@ -526,9 +576,13 @@ class RunnerOrchestrator {
   }) {
     ms.sort();
     final avg = ms.isEmpty ? 0 : ms.reduce((a, b) => a + b) ~/ ms.length;
-    final p95 = ms.isEmpty ? 0 : ms[(ms.length * 95 ~/ 100).clamp(0, ms.length - 1)];
+    final p95 = ms.isEmpty
+        ? 0
+        : ms[(ms.length * 95 ~/ 100).clamp(0, ms.length - 1)];
     final usableRatio = totalFramesTried == 0 ? 0.0 : usable / totalFramesTried;
-    final lowConfRatio = totalFramesTried == 0 ? 0.0 : lowConf / totalFramesTried;
+    final lowConfRatio = totalFramesTried == 0
+        ? 0.0
+        : lowConf / totalFramesTried;
     return {
       'avgInferenceMs': avg,
       'p95InferenceMs': p95,

@@ -1,0 +1,59 @@
+[
+  {
+    "type": "segment",
+    "timestampMs": 1675,
+    "frameIndex": 1,
+    "repIndex": 1,
+    "cues": [
+      "tempo_ok",
+      "phase_boundary",
+      "good_form"
+    ],
+    "thresholds": {
+      "depth_minHipAngle": 0
+    },
+    "window": {
+      "startMs": 1075,
+      "endMs": 2275
+    },
+    "snapshotPath": "",
+    "angles": {
+      "kneeValleyAngle": 53.9,
+      "minKneeOutAngle": 24.9,
+      "maxForwardLean": 0.0
+    },
+    "advice": [
+      "节奏均衡，保持同样的速度。",
+      "上升与下降切换顺畅，注意控制呼吸节奏。",
+      "动作稳定，继续保持当前节奏。"
+    ],
+    "severityMax": 1.0,
+    "cuesMeta": [
+      {
+        "cue": "tempo_ok",
+        "advice": "节奏均衡，保持同样的速度。",
+        "severity": 1.0,
+        "relatedAngles": [
+          "tempo"
+        ]
+      },
+      {
+        "cue": "phase_boundary",
+        "advice": "上升与下降切换顺畅，注意控制呼吸节奏。",
+        "severity": 1.0,
+        "relatedAngles": [
+          "kneeValleyAngle"
+        ]
+      },
+      {
+        "cue": "good_form",
+        "advice": "动作稳定，继续保持当前节奏。",
+        "severity": 0.5,
+        "relatedAngles": [
+          "kneeValleyAngle",
+          "minKneeOutAngle"
+        ]
+      }
+    ]
+  }
+]

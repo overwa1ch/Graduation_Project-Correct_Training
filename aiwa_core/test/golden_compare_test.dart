@@ -42,7 +42,8 @@ void main() {
         '--strictness',
         'relaxed',
       ]);
-      expect(proc.exitCode, 0, reason: 'python baseline failed: ${proc.stderr}');
+      expect(proc.exitCode, 0,
+          reason: 'python baseline failed: ${proc.stderr}');
 
       final baselineAngles = await File(anglesPath).readAsString();
       final baselineResult = json.decode(await File(resultPath).readAsString())
@@ -55,8 +56,8 @@ void main() {
 
       _expectScoresClose(result['scores'] as Map<String, dynamic>,
           baselineResult['scores'] as Map<String, dynamic>);
-      _expectIssuesAligned(result['issues'] as List,
-          baselineResult['issues'] as List<dynamic>);
+      _expectIssuesAligned(
+          result['issues'] as List, baselineResult['issues'] as List<dynamic>);
       _expectEvidenceAligned(result['evidence'] as List,
           baselineResult['evidence'] as List<dynamic>);
     } finally {
@@ -102,7 +103,7 @@ void _expectAnglesClose(String actualCsv, String baselineCsv) {
     }
   }
   final mae = count == 0 ? 0.0 : totalAbsError / count;
-  expect(mae <= 2.0,isTrue, reason: 'Angle MAE too large: $mae');
+  expect(mae <= 2.0, isTrue, reason: 'Angle MAE too large: $mae');
 }
 
 List<_AngleRow> _parseAngleRows(List<List<dynamic>> rows) {
@@ -128,7 +129,7 @@ void _expectScoresClose(
     final a = (actual[key] as num).toDouble();
     final b = (baseline[key] as num).toDouble();
     final diff = (a - b).abs();
-    expect(diff <= 2.0,isTrue, reason: 'Score $key differs by $diff');
+    expect(diff <= 2.0, isTrue, reason: 'Score $key differs by $diff');
   }
 }
 
@@ -148,22 +149,28 @@ void _expectIssuesAligned(List<dynamic> actual, List<dynamic> baseline) {
   for (final code in actualMap.keys) {
     final a = actualMap[code]!;
     final b = baselineMap[code]!;
-    expect(a['severity'], b['severity'],
-        reason: 'severity mismatch for $code');
-    final framesA = (a['frames'] as List).cast<num>().map((e) => e.toInt()).toList()
+    expect(a['severity'], b['severity'], reason: 'severity mismatch for $code');
+    final framesA = (a['frames'] as List)
+        .cast<num>()
+        .map((e) => e.toInt())
+        .toList()
       ..sort();
-    final framesB = (b['frames'] as List).cast<num>().map((e) => e.toInt()).toList()
+    final framesB = (b['frames'] as List)
+        .cast<num>()
+        .map((e) => e.toInt())
+        .toList()
       ..sort();
     expect(framesA.length, framesB.length,
         reason: 'frame count mismatch for $code');
     for (var i = 0; i < framesA.length; i++) {
       final diff = (framesA[i] - framesB[i]).abs();
-      expect(diff <= 33,isTrue,
-          reason: 'issue $code frame mismatch (>33ms): ${framesA[i]} vs ${framesB[i]}');
+      expect(diff <= 33, isTrue,
+          reason:
+              'issue $code frame mismatch (>33ms): ${framesA[i]} vs ${framesB[i]}');
     }
     if (a.containsKey('worst') && b.containsKey('worst')) {
       final worstDiff = ((a['worst'] as num) - (b['worst'] as num)).abs();
-      expect(worstDiff <= 2.0,isTrue,
+      expect(worstDiff <= 2.0, isTrue,
           reason: 'issue $code worst value mismatch: diff=$worstDiff');
     }
   }
@@ -186,9 +193,9 @@ void _expectEvidenceAligned(List<dynamic> actual, List<dynamic> baseline) {
       final startDiff =
           ((a[i]['startMs'] as num) - (b[i]['startMs'] as num)).abs();
       final endDiff = ((a[i]['endMs'] as num) - (b[i]['endMs'] as num)).abs();
-      expect(startDiff <= 33,isTrue,
+      expect(startDiff <= 33, isTrue,
           reason: '$type start mismatch (>33ms): ${a[i]} vs ${b[i]}');
-      expect(endDiff <= 33,isTrue,
+      expect(endDiff <= 33, isTrue,
           reason: '$type end mismatch (>33ms): ${a[i]} vs ${b[i]}');
     }
   }
@@ -206,13 +213,14 @@ void _expectEvidenceAligned(List<dynamic> actual, List<dynamic> baseline) {
     final b = repsB[i];
     for (final key in const ['startMs', 'valleyMs', 'endMs']) {
       final diff = ((a[key] as num) - (b[key] as num)).abs();
-      expect(diff <= 33,isTrue,
-          reason: 'rep ${a['index']} $key mismatch (>33ms): ${a[key]} vs ${b[key]}');
+      expect(diff <= 33, isTrue,
+          reason:
+              'rep ${a['index']} $key mismatch (>33ms): ${a[key]} vs ${b[key]}');
     }
     if (a.containsKey('kneeValleyAngle') && b.containsKey('kneeValleyAngle')) {
       final angleDiff =
           ((a['kneeValleyAngle'] as num) - (b['kneeValleyAngle'] as num)).abs();
-      expect(angleDiff <= 2.0,isTrue,
+      expect(angleDiff <= 2.0, isTrue,
           reason:
               'rep ${a['index']} kneeValleyAngle mismatch: diff=$angleDiff');
     }
@@ -229,7 +237,7 @@ void _expectEvidenceAligned(List<dynamic> actual, List<dynamic> baseline) {
     final b = issuesB[i];
     expect(a['code'], b['code']);
     final frameDiff = ((a['frameMs'] as num) - (b['frameMs'] as num)).abs();
-    expect(frameDiff <= 33,isTrue,
+    expect(frameDiff <= 33, isTrue,
         reason: 'issue evidence frame mismatch: ${a['code']} diff=$frameDiff');
   }
 }

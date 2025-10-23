@@ -12,7 +12,8 @@ double _ensureNum(Object? v, String path) {
 }
 
 Map<String, dynamic> _ensureMap(Object? v, String path) {
-  expect(v is Map<String, dynamic>, '$path must be a map, got ${v.runtimeType}');
+  expect(
+      v is Map<String, dynamic>, '$path must be a map, got ${v.runtimeType}');
   return v as Map<String, dynamic>;
 }
 
@@ -59,7 +60,8 @@ void validateRuleMap(Map<String, dynamic> m) {
 
   expect(m.containsKey('counts'), 'counts missing');
   final counts = _ensureMap(m['counts'], 'counts');
-  final minInterval = _ensureNum(counts['minIntervalMs'], 'counts.minIntervalMs');
+  final minInterval =
+      _ensureNum(counts['minIntervalMs'], 'counts.minIntervalMs');
   final windowMs = _ensureNum(counts['windowMs'], 'counts.windowMs');
   expect(minInterval > 0, 'counts.minIntervalMs must be > 0');
   expect(windowMs > 0, 'counts.windowMs must be > 0');
@@ -76,7 +78,8 @@ void validateRuleMap(Map<String, dynamic> m) {
   final metrics = _ensureMap(m['metrics'], 'metrics');
 
   final depth = _ensureMap(metrics['depth'], 'metrics.depth');
-  expect(depth.containsKey('kneeAngleMin'), 'metrics.depth.kneeAngleMin missing');
+  expect(
+      depth.containsKey('kneeAngleMin'), 'metrics.depth.kneeAngleMin missing');
   _validateStrictnessMap(
       _ensureMap(depth['kneeAngleMin'], 'metrics.depth.kneeAngleMin'),
       'metrics.depth.kneeAngleMin',
@@ -110,7 +113,8 @@ void validateRuleMap(Map<String, dynamic> m) {
 
   final tempo = _ensureMap(metrics['tempo'], 'metrics.tempo');
   expect(tempo.containsKey('eccentricMs'), 'metrics.tempo.eccentricMs missing');
-  final eccentric = _ensureList(tempo['eccentricMs'], 'metrics.tempo.eccentricMs');
+  final eccentric =
+      _ensureList(tempo['eccentricMs'], 'metrics.tempo.eccentricMs');
   expect(eccentric.length == 2, 'metrics.tempo.eccentricMs must have length 2');
   final eccLow = _ensureNum(eccentric[0], 'metrics.tempo.eccentricMs[0]');
   final eccHigh = _ensureNum(eccentric[1], 'metrics.tempo.eccentricMs[1]');
@@ -128,7 +132,8 @@ void validateRuleMap(Map<String, dynamic> m) {
       'metrics.tempo.ratio lower bound must be <= upper bound');
 
   if (tempo.containsKey('concentricMs')) {
-    final concentric = _ensureList(tempo['concentricMs'], 'metrics.tempo.concentricMs');
+    final concentric =
+        _ensureList(tempo['concentricMs'], 'metrics.tempo.concentricMs');
     expect(concentric.length == 2,
         'metrics.tempo.concentricMs must have length 2 when provided');
     final conLow = _ensureNum(concentric[0], 'metrics.tempo.concentricMs[0]');
@@ -155,8 +160,8 @@ void validateRuleMap(Map<String, dynamic> m) {
   for (final k in ['relaxed', 'strict']) {
     expect(strictness.containsKey(k), 'strictness.$k missing');
     final profile = _ensureMap(strictness[k], 'strictness.$k');
-    final minValley =
-        _ensureNum(profile['minValleyKneeAngle'], 'strictness.$k.minValleyKneeAngle');
+    final minValley = _ensureNum(
+        profile['minValleyKneeAngle'], 'strictness.$k.minValleyKneeAngle');
     expect(minValley >= 0 && minValley <= 180,
         'strictness.$k.minValleyKneeAngle must be within [0,180]');
   }

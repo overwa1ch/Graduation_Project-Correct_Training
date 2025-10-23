@@ -99,33 +99,39 @@ class NeutralKeypointParseError implements Exception {
 
 double _asDouble(Object? value, String path) {
   if (value is num) return value.toDouble();
-  throw NeutralKeypointParseError('Expected number at $path, got ${value.runtimeType}');
+  throw NeutralKeypointParseError(
+      'Expected number at $path, got ${value.runtimeType}');
 }
 
 int _asInt(Object? value, String path) {
   if (value is int) return value;
   if (value is num) return value.toInt();
-  throw NeutralKeypointParseError('Expected integer at $path, got ${value.runtimeType}');
+  throw NeutralKeypointParseError(
+      'Expected integer at $path, got ${value.runtimeType}');
 }
 
 bool _asBool(Object? value, String path) {
   if (value is bool) return value;
-  throw NeutralKeypointParseError('Expected bool at $path, got ${value.runtimeType}');
+  throw NeutralKeypointParseError(
+      'Expected bool at $path, got ${value.runtimeType}');
 }
 
 String _asString(Object? value, String path) {
   if (value is String) return value;
-  throw NeutralKeypointParseError('Expected string at $path, got ${value.runtimeType}');
+  throw NeutralKeypointParseError(
+      'Expected string at $path, got ${value.runtimeType}');
 }
 
 Map<String, dynamic> _asMap(Object? value, String path) {
   if (value is Map<String, dynamic>) return value;
-  throw NeutralKeypointParseError('Expected object at $path, got ${value.runtimeType}');
+  throw NeutralKeypointParseError(
+      'Expected object at $path, got ${value.runtimeType}');
 }
 
 List<dynamic> _asList(Object? value, String path) {
   if (value is List) return value;
-  throw NeutralKeypointParseError('Expected array at $path, got ${value.runtimeType}');
+  throw NeutralKeypointParseError(
+      'Expected array at $path, got ${value.runtimeType}');
 }
 
 NeutralKeypointSeries parseNeutralKeypointSeries(String jsonStr) {
@@ -208,7 +214,8 @@ NeutralKeypointSeries parseNeutralKeypointSeriesFromMap(
     final mirrorApplied =
         _asBool(frameMap['mirrorApplied'], 'frames[$i].mirrorApplied');
 
-    final keypointsList = _asList(frameMap['keypoints'], 'frames[$i].keypoints');
+    final keypointsList =
+        _asList(frameMap['keypoints'], 'frames[$i].keypoints');
     final keypoints = <NeutralKeypointValue>[];
     for (var j = 0; j < keypointsList.length; j++) {
       final kpMap = _asMap(keypointsList[j], 'frames[$i].keypoints[$j]');
@@ -263,7 +270,9 @@ NeutralKeypointSeries parseNeutralKeypointSeriesFromMap(
   );
 }
 
-Map<String, dynamic> neutralKeypointSeriesToJson(NeutralKeypointSeries series) => {
+Map<String, dynamic> neutralKeypointSeriesToJson(
+        NeutralKeypointSeries series) =>
+    {
       'version': series.version,
       'video': {
         'basename': series.video.basename,

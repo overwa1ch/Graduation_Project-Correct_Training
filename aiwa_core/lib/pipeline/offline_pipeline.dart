@@ -75,10 +75,10 @@ class OfflinePipeline {
     final counts = rules.counts;
     final minIntervalMs = (counts['minIntervalMs'] as num?)?.toInt() ?? 600;
     final windowMs = (counts['windowMs'] as num?)?.toInt() ?? 150;
-    final strictProfile =
-        (rules.strictness[strictness.value] as Map?) ?? const <String, dynamic>{};
-    final minValley =
-        (strictProfile['minValleyKneeAngle'] as num?) ?? (strictness == Strictness.strict ? 80 : 90);
+    final strictProfile = (rules.strictness[strictness.value] as Map?) ??
+        const <String, dynamic>{};
+    final minValley = (strictProfile['minValleyKneeAngle'] as num?) ??
+        (strictness == Strictness.strict ? 80 : 90);
 
     final reps = countReps(
       tMs: tMs,
@@ -118,9 +118,8 @@ class OfflinePipeline {
     final tempoEccentric = (tempoSpec['eccentricMs'] as List)
         .map((e) => (e as num).toDouble())
         .toList();
-    final tempoRatio = (tempoSpec['ratio'] as List)
-        .map((e) => (e as num).toDouble())
-        .toList();
+    final tempoRatio =
+        (tempoSpec['ratio'] as List).map((e) => (e as num).toDouble()).toList();
 
     final repMetrics = reps.isEmpty
         ? <_RepMetrics>[]
@@ -285,7 +284,8 @@ class _IssueAccumulator {
     double? measured,
     required bool higherIsWorse,
   }) {
-    final summary = _issues.putIfAbsent(code, () => _IssueSummary(code, severity));
+    final summary =
+        _issues.putIfAbsent(code, () => _IssueSummary(code, severity));
     summary.frames.add(frameMs);
     if (measured != null) {
       summary.updateWorst(measured, higherIsWorse: higherIsWorse);
@@ -353,7 +353,8 @@ List<_RepMetrics> _collectRepMetrics({
     final rep = reps[i];
     final valleyAngle = _angleAt(mainKnee, tMs, rep.valleyMs);
     if (valleyAngle == null) {
-      throw MetricsComputeFailed('Missing knee angle at valley for rep ${i + 1}.');
+      throw MetricsComputeFailed(
+          'Missing knee angle at valley for rep ${i + 1}.');
     }
 
     final indices = _indicesBetween(tMs, rep.startMs, rep.endMs);
@@ -367,7 +368,8 @@ List<_RepMetrics> _collectRepMetrics({
     for (final idx in indices) {
       final trunkAngle = trunk[idx];
       if (trunkAngle != null) {
-        maxTrunk = maxTrunk == null ? trunkAngle : math.max(maxTrunk, trunkAngle);
+        maxTrunk =
+            maxTrunk == null ? trunkAngle : math.max(maxTrunk, trunkAngle);
       }
     }
 
@@ -391,14 +393,17 @@ List<_RepMetrics> _collectRepMetrics({
       if (right != null) candidates.add(right);
       if (candidates.isEmpty) continue;
       final frameMin = candidates.reduce(math.min);
-      minKneeOut = minKneeOut == null ? frameMin : math.min(minKneeOut, frameMin);
+      minKneeOut =
+          minKneeOut == null ? frameMin : math.min(minKneeOut, frameMin);
     }
 
     if (maxTrunk == null) {
-      throw MetricsComputeFailed('Unable to determine trunk angle for rep ${i + 1}.');
+      throw MetricsComputeFailed(
+          'Unable to determine trunk angle for rep ${i + 1}.');
     }
     if (minKneeOut == null) {
-      throw MetricsComputeFailed('Unable to determine knee valgus for rep ${i + 1}.');
+      throw MetricsComputeFailed(
+          'Unable to determine knee valgus for rep ${i + 1}.');
     }
 
     final eccentricMs = rep.valleyMs - rep.startMs;
@@ -472,7 +477,8 @@ Map<String, double> _computeScores({
   final formScore = _average([_average(depthScores), _average(trunkScores)]);
   final stabilityScore = _average(valgusScores);
 
-  final avgEccentric = _average(repMetrics.map((m) => m.eccentricMs.toDouble()).toList());
+  final avgEccentric =
+      _average(repMetrics.map((m) => m.eccentricMs.toDouble()).toList());
   final avgRatio = _average(repMetrics.map((m) => m.ratio).toList());
   final tempoScoreEcc = _scoreRange(
     value: avgEccentric,
@@ -507,9 +513,8 @@ Map<String, double> _computeScoresNoReps({
   required Map<String, num> weights,
 }) {
   final trunkValues = trunk.whereType<double>().toList();
-  final maxTrunk = trunkValues.isEmpty
-      ? 0.0
-      : trunkValues.reduce((a, b) => a > b ? a : b);
+  final maxTrunk =
+      trunkValues.isEmpty ? 0.0 : trunkValues.reduce((a, b) => a > b ? a : b);
   final trunkDeficit = math.max(0.0, maxTrunk - trunkThreshold);
   // Without detected reps we cannot measure depth coverage against valleys, so
   // the depth component stays neutral while trunk lean still reduces the form
@@ -520,10 +525,9 @@ Map<String, double> _computeScoresNoReps({
   double stabilityPenalty = 0.0;
   if (mainKnee.length >= 5 && kneeValues.isNotEmpty) {
     final mean = kneeValues.reduce((a, b) => a + b) / kneeValues.length;
-    final variance = kneeValues
-            .map((v) => (v - mean) * (v - mean))
-            .reduce((a, b) => a + b) /
-        kneeValues.length;
+    final variance =
+        kneeValues.map((v) => (v - mean) * (v - mean)).reduce((a, b) => a + b) /
+            kneeValues.length;
     final stdDev = math.sqrt(variance);
     stabilityPenalty = stdDev * 2.0;
   }
@@ -575,7 +579,8 @@ double _scoreFromBounds({
   }
 }
 
-double _scoreRange({required double value, required double min, required double max}) {
+double _scoreRange(
+    {required double value, required double min, required double max}) {
   var low = min;
   var high = max;
   if (low > high) {
@@ -613,9 +618,7 @@ double _average(List<double> values) {
 }
 
 ({List<double?> kneeL, List<double?> kneeR, List<double?> trunk}) _smoothAngles(
-
   double fps,
-
   ({List<double?> kneeL, List<double?> kneeR, List<double?> trunk}) raw,
 ) {
   final kneeL = <double?>[];
@@ -636,27 +639,22 @@ double _average(List<double> values) {
     if (left != null) {
       kneeL.add(kneeLFilter.filter(kneeLT, left));
       kneeLT += step;
-
     } else {
       kneeL.add(null);
     }
 
     final right = raw.kneeR[i];
     if (right != null) {
-
       kneeR.add(kneeRFilter.filter(kneeRT, right));
       kneeRT += step;
-
     } else {
       kneeR.add(null);
     }
 
     final trunkValue = raw.trunk[i];
     if (trunkValue != null) {
-
       trunk.add(trunkFilter.filter(trunkT, trunkValue));
       trunkT += step;
-
     } else {
       trunk.add(null);
     }
@@ -665,8 +663,8 @@ double _average(List<double> values) {
   return (kneeL: kneeL, kneeR: kneeR, trunk: trunk);
 }
 
-({List<double?> kneeL, List<double?> kneeR, List<double?> trunk}) _computeAngles(
-    List<Map<String, _PoseCoord?>> filteredPts) {
+({List<double?> kneeL, List<double?> kneeR, List<double?> trunk})
+    _computeAngles(List<Map<String, _PoseCoord?>> filteredPts) {
   final kneeL = <double?>[];
   final kneeR = <double?>[];
   final trunk = <double?>[];
@@ -686,8 +684,8 @@ class _PoseCoord {
   const _PoseCoord(this.x, this.y);
 }
 
-double? _kneeAngle(Map<String, _PoseCoord?> pts, String hip, String knee,
-    String ankle) {
+double? _kneeAngle(
+    Map<String, _PoseCoord?> pts, String hip, String knee, String ankle) {
   try {
     final hipPt = pts[hip];
     final kneePt = pts[knee];
@@ -704,8 +702,8 @@ double? _kneeAngle(Map<String, _PoseCoord?> pts, String hip, String knee,
   }
 }
 
-double? _kneeOutAngle(Map<String, _PoseCoord?> pts, String hip, String knee,
-    String ankle) {
+double? _kneeOutAngle(
+    Map<String, _PoseCoord?> pts, String hip, String knee, String ankle) {
   try {
     final hipPt = pts[hip];
     final kneePt = pts[knee];
@@ -729,7 +727,9 @@ double? _trunkAngle(Map<String, _PoseCoord?> pts) {
     final rightShoulder = pts[kRightShoulder];
     final leftHip = pts[kLeftHip];
     final rightHip = pts[kRightHip];
-    if (leftShoulder == null || rightShoulder == null || leftHip == null ||
+    if (leftShoulder == null ||
+        rightShoulder == null ||
+        leftHip == null ||
         rightHip == null) {
       return null;
     }
@@ -830,7 +830,8 @@ List<_PoseCoord?> _interpolateCoords(List<_PoseCoord?> values,
     }
 
     int? nextIdx = index;
-    while (nextIdx != null && nextIdx < result.length && result[nextIdx] == null) {
+    while (
+        nextIdx != null && nextIdx < result.length && result[nextIdx] == null) {
       nextIdx++;
     }
     if (nextIdx != null && nextIdx >= result.length) {

@@ -38,10 +38,12 @@ List<List<double>> _normalizePts(Object? raw, String path) {
       for (var i = 0; i < raw.length; i++) {
         final e = raw[i];
         if (e is! List) {
-          throw InputKpInvalid('pts[$i] expected List at $path, got ${e.runtimeType}');
+          throw InputKpInvalid(
+              'pts[$i] expected List at $path, got ${e.runtimeType}');
         }
         if (e.length < 2) {
-          throw InputKpInvalid('pts[$i] requires at least [x,y,(score)], got length ${e.length}');
+          throw InputKpInvalid(
+              'pts[$i] requires at least [x,y,(score)], got length ${e.length}');
         }
         final x = _asDouble(e[0], '$path[$i][0]');
         final y = _asDouble(e[1], '$path[$i][1]');
@@ -56,16 +58,20 @@ List<List<double>> _normalizePts(Object? raw, String path) {
       for (var i = 0; i < raw.length; i++) {
         final e = raw[i];
         if (e is! Map) {
-          throw InputKpInvalid('pts[$i] expected Map at $path, got ${e.runtimeType}');
+          throw InputKpInvalid(
+              'pts[$i] expected Map at $path, got ${e.runtimeType}');
         }
         final x = _asDouble(e['x'], '$path[$i].x');
         final y = _asDouble(e['y'], '$path[$i].y');
-        final s = e.containsKey('score') ? _asDouble(e['score'], '$path[$i].score') : 0.0;
+        final s = e.containsKey('score')
+            ? _asDouble(e['score'], '$path[$i].score')
+            : 0.0;
         out.add([x, y, s]);
       }
       return out;
     }
-    throw InputKpInvalid('Unsupported pts list element type at $path: ${raw.first.runtimeType}');
+    throw InputKpInvalid(
+        'Unsupported pts list element type at $path: ${raw.first.runtimeType}');
   }
 
   // 形态 C: {"0":[x,y,s], "1":[x,y,s], ...}
@@ -83,7 +89,8 @@ List<List<double>> _normalizePts(Object? raw, String path) {
     for (final k in keys) {
       final e = raw[k.toString()];
       if (e is! List || e.length < 2) {
-        throw InputKpInvalid('pts["$k"] must be [x,y,(score)] at $path, got ${e.runtimeType}');
+        throw InputKpInvalid(
+            'pts["$k"] must be [x,y,(score)] at $path, got ${e.runtimeType}');
       }
       final x = _asDouble(e[0], '$path["$k"][0]');
       final y = _asDouble(e[1], '$path["$k"][1]');
@@ -134,7 +141,8 @@ KeypointSeries parseKeypointSeriesFromMap(Map<String, dynamic> m) {
     final tMs = _asIntMs(f['t'], 'frames[$i].t');
     if (tMs < 0) throw InputKpInvalid('frames[$i].t must be >= 0');
     if (lastT != null && tMs < lastT) {
-      throw InputKpInvalid('frames[$i].t is not monotonic (previous=$lastT, current=$tMs)');
+      throw InputKpInvalid(
+          'frames[$i].t is not monotonic (previous=$lastT, current=$tMs)');
     }
     lastT = tMs;
 

@@ -14,51 +14,36 @@ import 'package:aiwa_core/pose/pose_engine.dart';
 /// 该映射仅负责“名称统一”，不改变坐标系与尺度。
 const Map<PoseLandmarkType, String> _mlkitTypeToNeutralName = {
   PoseLandmarkType.nose: 'nose',
-
   PoseLandmarkType.leftEyeInner: 'leftEyeInner',
   PoseLandmarkType.leftEye: 'leftEye',
   PoseLandmarkType.leftEyeOuter: 'leftEyeOuter',
-
   PoseLandmarkType.rightEyeInner: 'rightEyeInner',
   PoseLandmarkType.rightEye: 'rightEye',
   PoseLandmarkType.rightEyeOuter: 'rightEyeOuter',
-
   PoseLandmarkType.leftEar: 'leftEar',
   PoseLandmarkType.rightEar: 'rightEar',
-
   PoseLandmarkType.leftMouth: 'leftMouth',
   PoseLandmarkType.rightMouth: 'rightMouth',
-
   PoseLandmarkType.leftShoulder: 'leftShoulder',
   PoseLandmarkType.rightShoulder: 'rightShoulder',
-
   PoseLandmarkType.leftElbow: 'leftElbow',
   PoseLandmarkType.rightElbow: 'rightElbow',
-
   PoseLandmarkType.leftWrist: 'leftWrist',
   PoseLandmarkType.rightWrist: 'rightWrist',
-
   PoseLandmarkType.leftPinky: 'leftPinky',
   PoseLandmarkType.rightPinky: 'rightPinky',
-
   PoseLandmarkType.leftIndex: 'leftIndex',
   PoseLandmarkType.rightIndex: 'rightIndex',
-
   PoseLandmarkType.leftThumb: 'leftThumb',
   PoseLandmarkType.rightThumb: 'rightThumb',
-
   PoseLandmarkType.leftHip: 'leftHip',
   PoseLandmarkType.rightHip: 'rightHip',
-
   PoseLandmarkType.leftKnee: 'leftKnee',
   PoseLandmarkType.rightKnee: 'rightKnee',
-
   PoseLandmarkType.leftAnkle: 'leftAnkle',
   PoseLandmarkType.rightAnkle: 'rightAnkle',
-
   PoseLandmarkType.leftHeel: 'leftHeel',
   PoseLandmarkType.rightHeel: 'rightHeel',
-
   PoseLandmarkType.leftFootIndex: 'leftFootIndex',
   PoseLandmarkType.rightFootIndex: 'rightFootIndex',
 };
@@ -220,7 +205,6 @@ List<NeutralKeypoint> adaptMlKitPose({
         x: _clampUnit(landmark.x / w),
         y: _clampUnit(landmark.y / h),
         z: keepZ ? landmark.z : null,
-        
         score: _clampUnit(_extractLikelihood(landmark) ?? 1.0),
       ));
     }

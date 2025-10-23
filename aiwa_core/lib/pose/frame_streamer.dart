@@ -134,7 +134,8 @@ class FrameStreamer {
       await _engine.close();
     }
 
-    final totalDurationMs = outputs.isEmpty ? 0 : timestampAccumulatorMs.round();
+    final totalDurationMs =
+        outputs.isEmpty ? 0 : timestampAccumulatorMs.round();
 
     return FrameStreamResult(
       config: _config,

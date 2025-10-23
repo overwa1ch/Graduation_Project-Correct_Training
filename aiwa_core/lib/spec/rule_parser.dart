@@ -9,11 +9,12 @@ RuleSet parseRuleSet(String jsonStr) {
     validateRuleMap(m); // 若无效抛 RulesParseError
     return RuleSet(
       template: m['template'],
-      version:  m['version'],
-      counts:   m['counts'],
-      phases:   m['phases'] ?? {},
-      metrics:  m['metrics'],
-      scoreWeights: (m['scoreWeights'] as Map).map((k,v)=> MapEntry(k, (v as num))),
+      version: m['version'],
+      counts: m['counts'],
+      phases: m['phases'] ?? {},
+      metrics: m['metrics'],
+      scoreWeights:
+          (m['scoreWeights'] as Map).map((k, v) => MapEntry(k, (v as num))),
       strictness: m['strictness'],
     );
   } catch (e) {

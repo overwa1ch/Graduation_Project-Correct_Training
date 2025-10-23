@@ -51,7 +51,8 @@ class MlKitPoseEngine implements PoseEngine {
 
     final Uint8List? bytes = input.imageBytes;
     if (bytes == null) {
-      throw ArgumentError('MlKitPoseEngine requires imageBytes in PoseEngineInput.');
+      throw ArgumentError(
+          'MlKitPoseEngine requires imageBytes in PoseEngineInput.');
     }
 
     // 选择格式 + 计算 bytesPerRow
@@ -65,8 +66,7 @@ class MlKitPoseEngine implements PoseEngine {
     // - NV21（Y 平面）通常 bytesPerRow ~= width
     // - BGRA8888 每像素 4 字节，bytesPerRow = width * 4
     // 如果你从 camera 的 plane 直接拿到 bytesPerRow，请以相机返回的为准。
-    final int bytesPerRow =
-        Platform.isIOS ? (input.width * 4) : input.width;
+    final int bytesPerRow = Platform.isIOS ? (input.width * 4) : input.width;
 
     final inputImage = InputImage.fromBytes(
       bytes: bytes,
@@ -102,20 +102,18 @@ class MlKitPoseEngine implements PoseEngine {
     );
     final processed = input.mirrorHorizontally
         ? keypoints
-            .map((kp) =>
-                kp.copyWith(x: (1.0 - kp.x).clamp(0.0, 1.0).toDouble()))
+            .map(
+                (kp) => kp.copyWith(x: (1.0 - kp.x).clamp(0.0, 1.0).toDouble()))
             .toList(growable: false)
         : List<NeutralKeypoint>.from(keypoints, growable: false);
 
     final filtered =
         processed.where((kp) => kp.score >= 0.3).toList(growable: false);
-    final highConfidenceCount =
-        processed.where((kp) => kp.score >= 0.5).length;
+    final highConfidenceCount = processed.where((kp) => kp.score >= 0.5).length;
     final highConfidenceRatio = kMlKitNeutralKeypointCount == 0
         ? 0.0
         : highConfidenceCount / kMlKitNeutralKeypointCount;
-    final bool lowConfidence =
-        processed.isEmpty || highConfidenceRatio < 0.7;
+    final bool lowConfidence = processed.isEmpty || highConfidenceRatio < 0.7;
 
     return NeutralFrame(
       frameIndex: input.frameIndex,

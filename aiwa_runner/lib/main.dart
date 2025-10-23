@@ -10,10 +10,12 @@ void main() {
   print('>>> MAIN ENTERED <<<');
 
   // 用一个最简单但稳定的 UI，确保 Activity 不会被奇怪 ROM 回收
-  runApp(const MaterialApp(
-    debugShowCheckedModeBanner: false,
-    home: ColoredBox(color: Colors.black), // 黑屏占位，窗口常驻
-  ));
+  runApp(
+    const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: ColoredBox(color: Colors.black), // 黑屏占位，窗口常驻
+    ),
+  );
 
   SchedulerBinding.instance.addPostFrameCallback((_) async {
     print('''[BOOT] AIWA Runner (Milestone B / vB1.1)

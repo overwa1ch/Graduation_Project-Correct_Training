@@ -1,0 +1,39 @@
+{
+  "runId": "2025-10-23T01:06:23.539524Z-neutral_keypoints",
+  "timestamp": "2025-10-23T01:06:23.539524Z",
+  "timingsMs": {
+    "engineInit": 0,
+    "adapter": 7,
+    "inferenceTotal": 10,
+    "filtering": 5,
+    "angles": 0,
+    "phaseSeg": 4,
+    "scoring": 1,
+    "quality": 0,
+    "hybridTrigger": 1,
+    "cloudMerge": 0,
+    "evidenceSelect": 1,
+    "overlayExport": 0
+  },
+  "perf": {
+    "inferenceFps": 15.0,
+    "pipelineRtf": 0.005,
+    "cpuUtilAvgPct": 0.0,
+    "memPeakMB": 204,
+    "jankCount": 0,
+    "videoDurationMs": 3283,
+    "framesProcessed": 49
+  },
+  "thermal": {
+    "throttled": false,
+    "tempC_max": 0.0
+  },
+  "evidence": {
+    "generatedCount": 1,
+    "keptCount": 1,
+    "droppedCount": 0,
+    "overlay": {
+      "generated": false
+    }
+  }
+}
