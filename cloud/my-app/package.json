@@ -1,0 +1,37 @@
+{
+  "name": "my-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "drizzle:generate": "drizzle-kit generate --config=drizzle.config.ts",
+    "drizzle:push": "drizzle-kit push --config=drizzle.config.ts",
+    "drizzle:studio": "drizzle-kit studio --config=drizzle.config.ts",
+    "drizzle:introspect": "drizzle-kit introspect --config=drizzle.config.ts"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "dotenv": "17.2.3",
+    "drizzle-kit": "0.31.5",
+    "drizzle-orm": "0.44.7",
+    "lucide-react": "^0.548.0",
+    "next": "16.0.0",
+    "postgres": "3.4.7",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "tailwind-merge": "^3.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.0.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
