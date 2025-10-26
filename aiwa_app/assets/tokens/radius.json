@@ -1,0 +1,17 @@
+{
+  "radius": {
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "full": 999
+  },
+  "borderRadius": {
+    "button": 8,
+    "card": 8,
+    "input": 8,
+    "dialog": 12
+  }
+}
+
+

@@ -1,0 +1,33 @@
+{
+  "analysis": {
+    "strictness": "relaxed",
+    "engine": "mlkit",
+    "model": "blazepose-full"
+  },
+  "thresholds": {
+    "posture": {
+      "relaxed": 70,
+      "strict": 85
+    },
+    "stability": {
+      "relaxed": 75,
+      "strict": 90
+    },
+    "rhythm": {
+      "relaxed": 70,
+      "strict": 85
+    }
+  },
+  "camera": {
+    "resolution": "720p",
+    "fps": 30,
+    "samplingStride": 2,
+    "mirror": false
+  },
+  "sync": {
+    "cloudBackupEnabled": false,
+    "autoSync": false
+  }
+}
+
+

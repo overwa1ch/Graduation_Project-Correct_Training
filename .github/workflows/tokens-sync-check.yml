@@ -1,0 +1,97 @@
+name: Tokens Sync Check
+
+on:
+  # 当 tokens 文件被修改时触发
+  push:
+    branches:
+      - main
+      - master
+      - develop
+    paths:
+      - 'aiwa_app/lib/theme/tokens/**'
+      - 'aiwa_app/assets/tokens/**'
+
+  pull_request:
+    branches:
+      - main
+      - master
+      - develop
+    paths:
+      - 'aiwa_app/lib/theme/tokens/**'
+      - 'aiwa_app/assets/tokens/**'
+
+  workflow_dispatch:
+
+jobs:
+  check-tokens-sync:
+    name: 🔄 Check Tokens Synchronization
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 'stable'
+
+      - name: 📦 Get sync script dependencies
+        working-directory: aiwa_app/tool
+        run: dart pub get
+
+      - name: 🔄 Run tokens sync validation
+        working-directory: aiwa_app
+        run: |
+          echo "::group::Tokens Sync Validation"
+          dart tool/sync_tokens.dart --tokens-dir=lib/theme/tokens --dry-run --verbose
+          echo "::endgroup::"
+
+      - name: 🔍 Compare lib and assets tokens
+        working-directory: aiwa_app
+        run: |
+          echo "Comparing lib/theme/tokens/ with assets/tokens/..."
+          
+          MISMATCH=0
+          
+          for file in colors.json typography.json spacing.json radius.json; do
+            echo "Checking $file..."
+            
+            if ! cmp -s "lib/theme/tokens/$file" "assets/tokens/$file"; then
+              echo "❌ Mismatch: $file"
+              echo "lib/theme/tokens/$file and assets/tokens/$file are different"
+              MISMATCH=1
+            else
+              echo "✅ Match: $file"
+            fi
+          done
+          
+          if [ $MISMATCH -eq 1 ]; then
+            echo ""
+            echo "❌ Tokens are out of sync!"
+            echo "Please run: cd aiwa_app && dart tool/sync_tokens.dart"
+            exit 1
+          fi
+          
+          echo ""
+          echo "✅ All tokens are synchronized"
+
+      - name: ✅ Tokens are synchronized
+        if: success()
+        run: |
+          echo "✅ lib/theme/tokens/ and assets/tokens/ are in sync"
+          echo "No action needed"
+
+      - name: ❌ Tokens are out of sync
+        if: failure()
+        run: |
+          echo "❌ Tokens synchronization check failed"
+          echo ""
+          echo "To fix this issue:"
+          echo "  1. cd aiwa_app"
+          echo "  2. dart tool/sync_tokens.dart"
+          echo "  3. git add lib/theme/tokens/ assets/tokens/"
+          echo "  4. git commit -m 'chore: sync tokens'"
+          exit 1
+

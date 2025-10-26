@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:aiwa_app/theme/theme.dart';
 
 void main() => runApp(const MyApp());
 
@@ -9,13 +10,17 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'AIWA',
+      // 🎨 应用 Figma 设计语言
+      theme: createLightTheme(),
+      darkTheme: createDarkTheme(),
+      themeMode: ThemeMode.system, // 跟随系统设置（可改为 ThemeMode.light 或 ThemeMode.dark）
       home: const _CounterPage(),
     );
   }
 }
 
 class _CounterPage extends StatefulWidget {
-  const _CounterPage({super.key});
+  const _CounterPage();
   @override
   State<_CounterPage> createState() => _CounterPageState();
 }

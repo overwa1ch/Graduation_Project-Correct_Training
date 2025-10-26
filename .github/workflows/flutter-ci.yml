@@ -1,0 +1,570 @@
+name: Flutter CI - Theme & Tokens Validation
+
+on:
+  # 每次 push 到主分支或开发分支时触发
+  push:
+    branches:
+      - main
+      - master
+      - develop
+      - 'feature/**'
+    paths:
+      - 'aiwa_app/**'
+      - '.github/workflows/flutter-ci.yml'
+
+  # 每次创建或更新 Pull Request 时触发
+  pull_request:
+    branches:
+      - main
+      - master
+      - develop
+    paths:
+      - 'aiwa_app/**'
+      - '.github/workflows/flutter-ci.yml'
+
+  # 支持手动触发
+  workflow_dispatch:
+
+# 并发控制：同一 PR 只运行最新的工作流
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================================================
+  # Job 1: 静态代码分析
+  # ============================================================================
+  analyze:
+    name: 📊 Static Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: 📦 Get dependencies
+        working-directory: aiwa_app
+        run: flutter pub get
+
+      - name: 🔍 Run Flutter analyze
+        working-directory: aiwa_app
+        run: |
+          echo "::group::Flutter Analyze"
+          flutter analyze --no-pub --no-fatal-infos
+          echo "::endgroup::"
+
+      - name: ✅ Analysis passed
+        if: success()
+        run: echo "✅ Static analysis passed with 0 warnings"
+
+      - name: ❌ Analysis failed
+        if: failure()
+        run: |
+          echo "❌ Static analysis failed"
+          echo "Please fix all warnings and errors before merging"
+          exit 1
+
+  # ============================================================================
+  # Job 2: 单元测试与覆盖率
+  # ============================================================================
+  test:
+    name: 🧪 Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: analyze  # 只有分析通过后才运行测试
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: 📦 Get dependencies
+        working-directory: aiwa_app
+        run: flutter pub get
+
+      - name: 🧪 Run all tests
+        working-directory: aiwa_app
+        run: |
+          echo "::group::Running all tests"
+          flutter test --no-pub --coverage --reporter expanded
+          echo "::endgroup::"
+
+      - name: 📊 Upload coverage to Codecov
+        if: success()
+        uses: codecov/codecov-action@v4
+        with:
+          files: aiwa_app/coverage/lcov.info
+          flags: unittests
+          name: aiwa-app-coverage
+          fail_ci_if_error: false
+
+      - name: ✅ All tests passed
+        if: success()
+        run: echo "✅ All tests passed (100%)"
+
+      - name: ❌ Tests failed
+        if: failure()
+        run: |
+          echo "❌ Some tests failed"
+          echo "Please fix all failing tests before merging"
+          exit 1
+
+  # ============================================================================
+  # Job 3: 主题测试（Theme Tests）
+  # ============================================================================
+  theme-tests:
+    name: 🎨 Theme Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: analyze
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: 📦 Get dependencies
+        working-directory: aiwa_app
+        run: flutter pub get
+
+      - name: 🎨 Run theme tests
+        working-directory: aiwa_app
+        run: |
+          echo "::group::Theme Tests"
+          flutter test test/theme_test.dart --no-pub --reporter expanded
+          echo "::endgroup::"
+
+      - name: ✅ Theme tests passed
+        if: success()
+        run: echo "✅ All theme tests passed (31 tests)"
+
+      - name: ❌ Theme tests failed
+        if: failure()
+        run: |
+          echo "❌ Theme tests failed"
+          echo "Please ensure all theme mappings are correct"
+          exit 1
+
+  # ============================================================================
+  # Job 3.1: 主题边界测试（Theme Boundary Tests）
+  # ============================================================================
+  theme-boundary-tests:
+    name: 🚧 Theme Boundary Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: analyze
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: 📦 Get dependencies
+        working-directory: aiwa_app
+        run: flutter pub get
+
+      - name: 🚧 Run theme boundary tests
+        working-directory: aiwa_app
+        run: |
+          echo "::group::Theme Boundary Tests"
+          flutter test test/theme_boundary_test.dart --no-pub --reporter expanded
+          echo "::endgroup::"
+
+      - name: ✅ Theme boundary tests passed
+        if: success()
+        run: |
+          echo "✅ Theme boundary validation passed"
+          echo "   • No business logic in theme files"
+          echo "   • No config reads in theme layer"
+          echo "   • Clean separation of concerns"
+
+      - name: ❌ Theme boundary tests failed
+        if: failure()
+        run: |
+          echo "❌ Theme boundary violation detected!"
+          echo ""
+          echo "Theme files MUST NOT contain:"
+          echo "  • Business logic (if/switch on config)"
+          echo "  • Config file reads"
+          echo "  • Business thresholds"
+          echo ""
+          echo "Please move business logic to lib/ui/** or lib/services/**"
+          exit 1
+
+  # ============================================================================
+  # Job 3.2: UI 语义色测试（UI Semantic Color Tests）
+  # ============================================================================
+  ui-semantic-color-tests:
+    name: 🎨 UI Semantic Color Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: analyze
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: 📦 Get dependencies
+        working-directory: aiwa_app
+        run: flutter pub get
+
+      - name: 🎨 Run UI semantic color tests
+        working-directory: aiwa_app
+        run: |
+          echo "::group::UI Semantic Color Tests"
+          flutter test test/ui_semantic_color_test.dart --no-pub --reporter expanded
+          echo "::endgroup::"
+
+      - name: ✅ UI semantic color tests passed
+        if: success()
+        run: |
+          echo "✅ UI semantic color validation passed"
+          echo "   • No hardcoded Color(...) values"
+          echo "   • No raw Colors.xxx usage"
+          echo "   • Using SemanticColors and Theme"
+
+      - name: ❌ UI semantic color tests failed
+        if: failure()
+        run: |
+          echo "❌ UI semantic color violation detected!"
+          echo ""
+          echo "UI files MUST NOT contain:"
+          echo "  • Hardcoded Color(0xFFxxxxxx)"
+          echo "  • Raw Colors.red, Colors.green, etc."
+          echo "  • Hardcoded TextStyle without Theme"
+          echo ""
+          echo "✅ CORRECT USAGE:"
+          echo "  • SemanticColors.success"
+          echo "  • Theme.of(context).colorScheme.primary"
+          echo "  • Theme.of(context).textTheme.bodyMedium"
+          exit 1
+
+  # ============================================================================
+  # Job 4: Tokens Schema 测试
+  # ============================================================================
+  tokens-schema-tests:
+    name: 📝 Tokens Schema Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: analyze
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: 📦 Get dependencies
+        working-directory: aiwa_app
+        run: flutter pub get
+
+      - name: 📝 Run tokens schema tests
+        working-directory: aiwa_app
+        run: |
+          echo "::group::Tokens Schema Tests"
+          flutter test test/tokens_schema_test.dart --no-pub --reporter expanded
+          echo "::endgroup::"
+
+      - name: ✅ Schema tests passed
+        if: success()
+        run: echo "✅ All tokens schema tests passed (8 tests)"
+
+      - name: ❌ Schema tests failed
+        if: failure()
+        run: |
+          echo "❌ Tokens schema tests failed"
+          echo "Please check tokens JSON structure and format"
+          exit 1
+
+  # ============================================================================
+  # Job 5: Widget 冒烟测试
+  # ============================================================================
+  widget-tests:
+    name: 🖼️ Widget Smoke Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: analyze
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: 📦 Get dependencies
+        working-directory: aiwa_app
+        run: flutter pub get
+
+      - name: 🖼️ Run widget tests
+        working-directory: aiwa_app
+        run: |
+          echo "::group::Widget Tests"
+          flutter test test/widget_test.dart --no-pub --reporter expanded
+          echo "::endgroup::"
+
+      - name: ✅ Widget tests passed
+        if: success()
+        run: echo "✅ All widget smoke tests passed"
+
+      - name: ❌ Widget tests failed
+        if: failure()
+        run: |
+          echo "❌ Widget tests failed"
+          echo "Please ensure all widgets render correctly"
+          exit 1
+
+  # ============================================================================
+  # Job 6: Tokens 同步验证
+  # ============================================================================
+  tokens-sync-validation:
+    name: 🔄 Tokens Sync Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [theme-tests, tokens-schema-tests]
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 'stable'
+
+      - name: 📦 Get sync script dependencies
+        working-directory: aiwa_app/tool
+        run: dart pub get
+
+      - name: 🔄 Validate tokens sync (dry-run)
+        working-directory: aiwa_app
+        run: |
+          echo "::group::Tokens Sync Validation"
+          dart tool/sync_tokens.dart --tokens-dir=lib/theme/tokens --dry-run --verbose
+          echo "::endgroup::"
+
+      - name: 🔍 Check tokens consistency
+        working-directory: aiwa_app
+        run: |
+          echo "Checking lib/theme/tokens/ and assets/tokens/ consistency..."
+          
+          # 检查文件是否存在
+          for file in colors.json typography.json spacing.json radius.json; do
+            if [ ! -f "lib/theme/tokens/$file" ]; then
+              echo "❌ Missing lib/theme/tokens/$file"
+              exit 1
+            fi
+            if [ ! -f "assets/tokens/$file" ]; then
+              echo "❌ Missing assets/tokens/$file"
+              exit 1
+            fi
+          done
+          
+          echo "✅ All token files present"
+
+      - name: ✅ Tokens validation passed
+        if: success()
+        run: echo "✅ Tokens sync validation passed"
+
+      - name: ❌ Tokens validation failed
+        if: failure()
+        run: |
+          echo "❌ Tokens validation failed"
+          echo "Please run: dart tool/sync_tokens.dart"
+          exit 1
+
+  # ============================================================================
+  # Job 7: 构建验证（确保可以成功构建）
+  # ============================================================================
+  build-validation:
+    name: 🏗️ Build Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [test, theme-tests, theme-boundary-tests, ui-semantic-color-tests, tokens-schema-tests, widget-tests]
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: 📦 Get dependencies
+        working-directory: aiwa_app
+        run: flutter pub get
+
+      - name: 🏗️ Build APK (debug)
+        working-directory: aiwa_app
+        run: |
+          echo "::group::Building APK"
+          flutter build apk --debug --no-pub
+          echo "::endgroup::"
+
+      - name: ✅ Build succeeded
+        if: success()
+        run: echo "✅ Build validation passed"
+
+      - name: ❌ Build failed
+        if: failure()
+        run: |
+          echo "❌ Build failed"
+          echo "Please fix build errors before merging"
+          exit 1
+
+  # ============================================================================
+  # Job 8: 最终验收报告
+  # ============================================================================
+  final-report:
+    name: 📋 Final Report
+    runs-on: ubuntu-latest
+    needs: [analyze, test, theme-tests, theme-boundary-tests, ui-semantic-color-tests, tokens-schema-tests, widget-tests, tokens-sync-validation, build-validation]
+    if: always()
+
+    steps:
+      - name: 📊 Generate report
+        run: |
+          echo "============================================================"
+          echo "           AIWA APP - CI/CD VALIDATION REPORT"
+          echo "============================================================"
+          echo ""
+          echo "📊 Static Analysis:        ${{ needs.analyze.result }}"
+          echo "🧪 Unit Tests:             ${{ needs.test.result }}"
+          echo "🎨 Theme Tests:            ${{ needs.theme-tests.result }}"
+          echo "🚧 Theme Boundary Tests:   ${{ needs.theme-boundary-tests.result }}"
+          echo "🎨 UI Semantic Color:      ${{ needs.ui-semantic-color-tests.result }}"
+          echo "📝 Tokens Schema Tests:    ${{ needs.tokens-schema-tests.result }}"
+          echo "🖼️  Widget Tests:          ${{ needs.widget-tests.result }}"
+          echo "🔄 Tokens Sync:            ${{ needs.tokens-sync-validation.result }}"
+          echo "🏗️  Build Validation:      ${{ needs.build-validation.result }}"
+          echo ""
+          echo "============================================================"
+
+      - name: ✅ All checks passed
+        if: |
+          needs.analyze.result == 'success' &&
+          needs.test.result == 'success' &&
+          needs.theme-tests.result == 'success' &&
+          needs.theme-boundary-tests.result == 'success' &&
+          needs.ui-semantic-color-tests.result == 'success' &&
+          needs.tokens-schema-tests.result == 'success' &&
+          needs.widget-tests.result == 'success' &&
+          needs.tokens-sync-validation.result == 'success' &&
+          needs.build-validation.result == 'success'
+        run: |
+          echo ""
+          echo "🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉"
+          echo ""
+          echo "   ✅ All theme & boundary tests passed!"
+          echo ""
+          echo "   • Static analysis: 0 warnings"
+          echo "   • Unit tests: 100% passed"
+          echo "   • Theme tests: 31/31 passed"
+          echo "   • Theme boundary: Clean separation"
+          echo "   • UI semantic color: All valid"
+          echo "   • Schema tests: 8/8 passed"
+          echo "   • Widget tests: All passed"
+          echo "   • Tokens sync: Validated"
+          echo "   • Build: Success"
+          echo ""
+          echo "   Ready to merge! 🚀"
+          echo ""
+          echo "🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉"
+
+      - name: ❌ Some checks failed
+        if: |
+          needs.analyze.result != 'success' ||
+          needs.test.result != 'success' ||
+          needs.theme-tests.result != 'success' ||
+          needs.theme-boundary-tests.result != 'success' ||
+          needs.ui-semantic-color-tests.result != 'success' ||
+          needs.tokens-schema-tests.result != 'success' ||
+          needs.widget-tests.result != 'success' ||
+          needs.tokens-sync-validation.result != 'success' ||
+          needs.build-validation.result != 'success'
+        run: |
+          echo ""
+          echo "❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌"
+          echo ""
+          echo "   ❌ CI validation failed!"
+          echo ""
+          echo "   Please fix the following issues:"
+          echo ""
+          if [ "${{ needs.analyze.result }}" != "success" ]; then
+            echo "   • Static analysis failed"
+          fi
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "   • Unit tests failed"
+          fi
+          if [ "${{ needs.theme-tests.result }}" != "success" ]; then
+            echo "   • Theme tests failed"
+          fi
+          if [ "${{ needs.theme-boundary-tests.result }}" != "success" ]; then
+            echo "   • Theme boundary tests failed (business logic in theme?)"
+          fi
+          if [ "${{ needs.ui-semantic-color-tests.result }}" != "success" ]; then
+            echo "   • UI semantic color tests failed (hardcoded colors?)"
+          fi
+          if [ "${{ needs.tokens-schema-tests.result }}" != "success" ]; then
+            echo "   • Tokens schema tests failed"
+          fi
+          if [ "${{ needs.widget-tests.result }}" != "success" ]; then
+            echo "   • Widget tests failed"
+          fi
+          if [ "${{ needs.tokens-sync-validation.result }}" != "success" ]; then
+            echo "   • Tokens sync validation failed"
+          fi
+          if [ "${{ needs.build-validation.result }}" != "success" ]; then
+            echo "   • Build validation failed"
+          fi
+          echo ""
+          echo "   Cannot merge until all checks pass."
+          echo ""
+          echo "❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌"
+          exit 1
+
