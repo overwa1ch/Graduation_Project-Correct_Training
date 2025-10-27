@@ -9,8 +9,8 @@ class AppColors {
   AppColors._();
 
   // Brand Colors
-  static const Color brandPrimary = Color(0xFF70AB34);
-  static const Color brandPrimaryVariant = Color(0xFF5A8A2A);
+  static const Color brandPrimary = Color(0xFF5A8A2A);
+  static const Color brandPrimaryVariant = Color(0xFF4A7220);
 
   // Surface Colors
   static const Color surfacePrimary = Color(0xFF212121);
