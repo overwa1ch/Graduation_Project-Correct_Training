@@ -47,3 +47,5 @@
 - 默认 `privacy=keypoints_only`；
 - 若包含视频，则审计文件中需记录 `consent=true` 与体积信息。
 
+
+

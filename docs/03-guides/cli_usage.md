@@ -29,3 +29,5 @@ HYBRID on | reasons=[coverage<.70,jitter>8] | cloudEnhanced | finalCount=12 (loc
 * `offline_out/overlay.mp4`
 * `logs/perf.json.evidence`
 
+
+

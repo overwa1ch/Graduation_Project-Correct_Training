@@ -1,0 +1,38 @@
+{
+  "version": "2.0",
+  "scores": {
+    "form": 85,
+    "stability": 90,
+    "tempo": 88,
+    "overall": 87
+  },
+  "repCount": 12,
+  "quality": {
+    "lowConfidence": false,
+    "coverage": 0.92
+  },
+  "evidence": [
+    {
+      "snapshotPath": "evidence/frame_612.jpg",
+      "window": {
+        "startMs": 20400,
+        "endMs": 21200
+      },
+      "angles": {
+        "knee_left": 87.5,
+        "knee_right": 89.2
+      },
+      "advice": [
+        "Keep your back straight",
+        "Lower your hips slightly"
+      ]
+    }
+  ],
+  "meta": {
+    "template": "squat",
+    "strictness": "strict",
+    "engine": "MoveNet",
+    "fps": 30
+  }
+}
+

@@ -120,3 +120,5 @@ build/offline_out/
 - 校验脚本可用 Python 或 Dart 解析 JSON 后按清单逐项核对。  
 - 若与 Python baseline 比对，应确保时间戳与帧索引一致。
 
+
+

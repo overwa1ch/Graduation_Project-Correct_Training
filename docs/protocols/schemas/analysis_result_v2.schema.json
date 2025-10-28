@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AnalysisResult v2.0",
+  "type": "object",
+  "required": [
+    "version",
+    "scores",
+    "repCount",
+    "meta"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "scores": {
+      "type": "object",
+      "required": [
+        "form",
+        "stability",
+        "tempo",
+        "overall"
+      ],
+      "properties": {
+        "form": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "stability": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "tempo": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "overall": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "repCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "quality": {
+      "type": "object",
+      "properties": {
+        "lowConfidence": {
+          "type": "boolean"
+        },
+        "coverage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "snapshotPath": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "window": {
+            "type": "object",
+            "properties": {
+              "startMs": {
+                "type": "number"
+              },
+              "endMs": {
+                "type": "number"
+              }
+            }
+          },
+          "angles": {
+            "type": "object"
+          },
+          "advice": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "properties": {
+        "template": {
+          "type": "string"
+        },
+        "strictness": {
+          "type": "string"
+        },
+        "engine": {
+          "type": "string"
+        },
+        "fps": {
+          "type": "integer"
+        }
+      }
+    }
+  }
+}

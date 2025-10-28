@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PerformanceMetrics v1",
+  "type": "object",
+  "required": [
+    "frames_total",
+    "ms_per_frame"
+  ],
+  "properties": {
+    "frames_total": {
+      "type": "integer"
+    },
+    "stride": {
+      "type": "integer"
+    },
+    "ms_per_frame": {
+      "type": "object",
+      "properties": {
+        "p50": {
+          "type": "number"
+        },
+        "p90": {
+          "type": "number"
+        },
+        "p95": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number"
+        }
+      }
+    },
+    "stages": {
+      "type": "object"
+    },
+    "device": {
+      "type": "object"
+    }
+  }
+}

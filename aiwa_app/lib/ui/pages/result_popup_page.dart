@@ -1,6 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:aiwa_app/theme/colors.dart';
 import 'package:aiwa_app/theme/typography.dart';
+import 'package:aiwa_app/adapters/result_adapter.dart';
+import 'package:aiwa_app/adapters/evidence_resolver.dart';
 
 /// ResultPopupPage
 /// 
@@ -8,26 +11,84 @@ import 'package:aiwa_app/theme/typography.dart';
 /// 基于 Figma 设计：https://www.figma.com/design/q3hgTOdVGt42WkOfDixtsp/Graduation-Project?node-id=40-6
 /// 
 /// 包含三个板块：
-/// 1. 视频占位（顶部）
-/// 2. 打分卡片（中部）
-/// 3. 评估详情（底部，可滚动）
+/// 1. 视频/证据占位（顶部）
+/// 2. 打分卡片（中部）- 显示 posture/stability/rhythm 分数
+/// 3. 评估详情（底部，可滚动）- 显示次数、元信息、质量提示
 /// 
-/// ⚠️ BOUNDARY RULE: 无业务逻辑，仅 UI 占位
-/// 所有样式来自 Theme 和 tokens 常量
+/// ⚠️ 本版本实现数据展示：接收 AnalysisResultLite 并映射到 UI
 
 /// 显示结果弹窗的方法
-/// 使用方式：showResultPopup(context);
-void showResultPopup(BuildContext context) {
+/// 使用方式：showResultPopup(context, result, sessionRoot);
+void showResultPopup(
+  BuildContext context,
+  AnalysisResultLite result,
+  String sessionRoot,
+) {
   showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (context) => const ResultPopupPage(),
+    builder: (context) => ResultPopupPage(
+      result: result,
+      sessionRoot: sessionRoot,
+    ),
   );
 }
 
-class ResultPopupPage extends StatelessWidget {
-  const ResultPopupPage({super.key});
+class ResultPopupPage extends StatefulWidget {
+  final AnalysisResultLite result;
+  final String sessionRoot;
+
+  const ResultPopupPage({
+    super.key,
+    required this.result,
+    required this.sessionRoot,
+  });
+
+  @override
+  State<ResultPopupPage> createState() => _ResultPopupPageState();
+}
+
+class _ResultPopupPageState extends State<ResultPopupPage> {
+  // 证据时间窗（降级策略）
+  ({int startMs, int endMs})? _evidenceWindow;
+  bool _isLoadingWindow = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEvidenceWindow();
+  }
+
+  /// 加载证据时间窗（若快照路径不存在）
+  Future<void> _loadEvidenceWindow() async {
+    // 如果已有证据路径，不需要加载时间窗
+    if (widget.result.evidencePath != null && widget.result.evidencePath!.isNotEmpty) {
+      return;
+    }
+
+    setState(() => _isLoadingWindow = true);
+
+    try {
+      // 读取原始 result.json
+      final raw = await readResultJson(widget.sessionRoot);
+      
+      // 解析时间窗
+      final window = resolveEvidenceWindow(raw);
+      
+      if (mounted) {
+        setState(() {
+          _evidenceWindow = window;
+          _isLoadingWindow = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('[ResultPopup] Failed to load evidence window: $e');
+      if (mounted) {
+        setState(() => _isLoadingWindow = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -99,8 +160,16 @@ class ResultPopupPage extends StatelessWidget {
     );
   }
 
-  /// 视频占位区域（顶部）
+  /// 视频/证据占位区域（顶部）
   Widget _buildVideoPlaceholder(BuildContext context) {
+    // 证据降级策略：
+    // 1. 优先显示快照图片（evidencePath）
+    // 2. 次选显示时间窗提示（window）
+    // 3. 最后显示播放图标占位
+    
+    final evidencePath = widget.result.evidencePath;
+    final hasEvidence = evidencePath != null && evidencePath.isNotEmpty;
+
     return Container(
       width: 343,
       height: 200,
@@ -115,13 +184,115 @@ class ResultPopupPage extends StatelessWidget {
           ),
         ],
       ),
-      child: Center(
-        child: Icon(
-          Icons.play_circle_outline,
-          size: 64,
-          color: AppColors.textInvert.withOpacity(0.6),
-        ),
+      child: hasEvidence
+          ? _buildEvidenceImage(evidencePath)
+          : (_evidenceWindow != null
+              ? _buildWindowHint(_evidenceWindow!)
+              : (_isLoadingWindow
+                  ? const Center(child: CircularProgressIndicator())
+                  : _buildPlaceholder())),
+    );
+  }
+
+  /// 构建播放图标占位
+  Widget _buildPlaceholder() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.play_circle_outline,
+            size: 64,
+            color: AppColors.textInvert.withOpacity(0.6),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'No evidence snapshot',
+            style: AppTypography.bodyBase.copyWith(
+              color: AppColors.textInvert.withOpacity(0.5),
+              fontSize: 12,
+            ),
+          ),
+        ],
       ),
+    );
+  }
+
+  /// 构建时间窗提示（降级策略）
+  Widget _buildWindowHint(({int startMs, int endMs}) window) {
+    // 转换为秒
+    final startSec = (window.startMs / 1000).toStringAsFixed(1);
+    final endSec = (window.endMs / 1000).toStringAsFixed(1);
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.videocam,
+            size: 48,
+            color: AppColors.brandPrimary,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Evidence Segment',
+            style: AppTypography.bodyBold.copyWith(
+              color: AppColors.textInvert,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${startSec}s - ${endSec}s',
+            style: AppTypography.bodyBase.copyWith(
+              color: AppColors.brandPrimary,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Review this segment in the video',
+            style: AppTypography.bodyBase.copyWith(
+              color: AppColors.textInvert.withOpacity(0.7),
+              fontSize: 12,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 构建证据图片
+  Widget _buildEvidenceImage(String relativePath) {
+    final fullPath = '${widget.sessionRoot}/$relativePath';
+    final file = File(fullPath);
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: file.existsSync()
+          ? Image.file(
+              file,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Center(
+                  child: Icon(
+                    Icons.image_not_supported,
+                    size: 48,
+                    color: AppColors.textInvert.withOpacity(0.4),
+                  ),
+                );
+              },
+            )
+          : Center(
+              child: Icon(
+                Icons.image_outlined,
+                size: 48,
+                color: AppColors.textInvert.withOpacity(0.4),
+              ),
+            ),
     );
   }
 
@@ -130,23 +301,35 @@ class ResultPopupPage extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _buildScoreCard('Posture', '85'),
+        _buildScoreCard('Posture', widget.result.posture),
         const SizedBox(width: 20),
-        _buildScoreCard('Stability', '90'),
+        _buildScoreCard('Stability', widget.result.stability),
         const SizedBox(width: 20),
-        _buildScoreCard('Rhythm', '88'),
+        _buildScoreCard('Rhythm', widget.result.rhythm),
       ],
     );
   }
 
   /// 单个打分卡片
-  Widget _buildScoreCard(String label, String score) {
+  Widget _buildScoreCard(String label, int score) {
+    // 根据分数选择颜色（参见 ui_contracts.md）
+    // <60 红，60~79 黄，≥80 绿
+    final Color scoreColor;
+    if (score < 60) {
+      scoreColor = Colors.red;
+    } else if (score < 80) {
+      scoreColor = Colors.orange;
+    } else {
+      scoreColor = Colors.green;
+    }
+
     return Container(
       width: 100,
       height: 80,
       decoration: BoxDecoration(
         color: AppColors.surfaceSecondary,
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: scoreColor.withOpacity(0.5), width: 2),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.25),
@@ -170,11 +353,11 @@ class ResultPopupPage extends StatelessWidget {
           ),
           const SizedBox(height: 2),
           Text(
-            score,
+            score.toString(),
             style: AppTypography.bodyBold.copyWith(
-              color: AppColors.textInvert,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
+              color: scoreColor,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
               height: 1.5,
             ),
             textAlign: TextAlign.center,
@@ -184,8 +367,13 @@ class ResultPopupPage extends StatelessWidget {
     );
   }
 
-  /// 评估详情区域（底部，包含图片和文本）
+  /// 评估详情区域（底部，包含总分、次数、质量提示、元信息）
   Widget _buildEvaluationPanel(BuildContext context) {
+    // 质量提示判断
+    final showQualityWarning = 
+        (widget.result.lowConfidence == true) || 
+        (widget.result.coverage != null && widget.result.coverage! < 0.7);
+
     return Container(
       width: 343,
       decoration: BoxDecoration(
@@ -199,98 +387,187 @@ class ResultPopupPage extends StatelessWidget {
           ),
         ],
       ),
-      padding: const EdgeInsets.symmetric(vertical: 64, horizontal: 22),
+      padding: const EdgeInsets.all(22),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 标题（绝对定位效果，放在顶部）
-          Align(
-            alignment: Alignment.topLeft,
-            child: Text(
-              'Heading',
-              style: AppTypography.heading.copyWith(
-                color: AppColors.textInvert,
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-                height: 1.2,
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // 图片占位
-          Container(
-            width: 300,
-            height: 200,
-            decoration: BoxDecoration(
-              color: AppColors.neutralMedium,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Center(
-              child: Icon(
-                Icons.image_outlined,
-                size: 48,
-                color: AppColors.textInvert.withOpacity(0.4),
-              ),
-            ),
-          ),
+          // 总分与次数
+          _buildSummarySection(),
           
           const SizedBox(height: 24),
           
-          // 文本内容区域
-          SizedBox(
-            width: 300,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Heading
-                Text(
-                  'Heading',
-                  style: AppTypography.heading.copyWith(
-                    color: AppColors.textInvert,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w600,
-                    height: 1.2,
-                  ),
-                ),
-                
-                const SizedBox(height: 8),
-                
-                // Subheading
-                Text(
-                  'Subheading',
-                  style: AppTypography.subheading.copyWith(
-                    color: AppColors.textInvert,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w400,
-                    height: 1.2,
-                  ),
-                ),
-                
-                const SizedBox(height: 24),
-                
-                // Body text 1
-                Text(
-                  'Body text for your whole article or post. We\'ll put in some lorem ipsum to show how a filled-out page might look:',
-                  style: AppTypography.bodyBase.copyWith(
-                    color: AppColors.textInvert,
-                    fontSize: 16,
-                    height: 1.4,
-                  ),
-                ),
-                
-                const SizedBox(height: 24),
-                
-                // Body text 2
-                Text(
-                  'Excepteur efficient emerging, minim veniam anim aute carefully curated Ginza conversation exquisite perfect nostrud nisi intricate Content. Qui international first-class nulla ut. Punctual adipisicing, essential lovely queen tempor eiusmod irure. Exclusive izakaya charming Scandinavian impeccable aute quality of life soft power pariatur Melbourne occaecat discerning. Qui wardrobe aliquip, et Porter destination Toto remarkable officia Helsinki excepteur Basset hound. Zürich sleepy perfect consectetur.',
-                  style: AppTypography.bodyBase.copyWith(
-                    color: AppColors.textInvert,
-                    fontSize: 16,
-                    height: 1.4,
-                  ),
-                ),
-              ],
+          // 质量提示（黄条）
+          if (showQualityWarning)
+            _buildQualityWarning(),
+          
+          if (showQualityWarning)
+            const SizedBox(height: 24),
+          
+          // 元信息（可折叠）
+          _buildMetaSection(),
+        ],
+      ),
+    );
+  }
+
+  /// 构建总分与次数区域
+  Widget _buildSummarySection() {
+    // 总分颜色
+    final Color totalColor;
+    if (widget.result.total < 60) {
+      totalColor = Colors.red;
+    } else if (widget.result.total < 80) {
+      totalColor = Colors.orange;
+    } else {
+      totalColor = Colors.green;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 总分标题
+        Text(
+          'Overall Score',
+          style: AppTypography.heading.copyWith(
+            color: AppColors.textInvert,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            height: 1.2,
+          ),
+        ),
+        const SizedBox(height: 8),
+        
+        // 总分数值
+        Text(
+          '${widget.result.total}/100',
+          style: AppTypography.heading.copyWith(
+            color: totalColor,
+            fontSize: 32,
+            fontWeight: FontWeight.w800,
+            height: 1.2,
+          ),
+        ),
+        
+        const SizedBox(height: 16),
+        
+        // 次数
+        Row(
+          children: [
+            Icon(
+              Icons.repeat,
+              color: AppColors.textInvert,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Repetitions: ${widget.result.reps}',
+              style: AppTypography.bodyBase.copyWith(
+                color: AppColors.textInvert,
+                fontSize: 16,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// 构建质量警告提示
+  Widget _buildQualityWarning() {
+    String message;
+    if (widget.result.lowConfidence == true) {
+      message = '⚠️ Low confidence detected. Results may be less accurate.';
+    } else if (widget.result.coverage != null && widget.result.coverage! < 0.7) {
+      message = '⚠️ Low coverage (${(widget.result.coverage! * 100).toInt()}%). Some frames may be missing.';
+    } else {
+      message = '⚠️ Quality issue detected.';
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.orange, width: 1),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.warning, color: Colors.orange, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: AppTypography.bodyBase.copyWith(
+                color: Colors.orange,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 构建元信息区域
+  Widget _buildMetaSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Analysis Details',
+          style: AppTypography.heading.copyWith(
+            color: AppColors.textInvert,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            height: 1.2,
+          ),
+        ),
+        const SizedBox(height: 12),
+        
+        // 模板名称
+        if (widget.result.templateName != null)
+          _buildMetaRow('Template', widget.result.templateName!),
+        
+        // 严格度
+        if (widget.result.strictness != null)
+          _buildMetaRow('Strictness', widget.result.strictness!),
+        
+        // 推理引擎
+        if (widget.result.engine != null)
+          _buildMetaRow('Engine', widget.result.engine!),
+        
+        // 帧率
+        if (widget.result.fps != null)
+          _buildMetaRow('FPS', '${widget.result.fps}'),
+        
+        // 覆盖率
+        if (widget.result.coverage != null)
+          _buildMetaRow('Coverage', '${(widget.result.coverage! * 100).toInt()}%'),
+      ],
+    );
+  }
+
+  /// 构建单行元信息
+  Widget _buildMetaRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: AppTypography.bodyBase.copyWith(
+              color: AppColors.textInvert.withOpacity(0.7),
+              fontSize: 14,
+            ),
+          ),
+          Text(
+            value,
+            style: AppTypography.bodyBase.copyWith(
+              color: AppColors.textInvert,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

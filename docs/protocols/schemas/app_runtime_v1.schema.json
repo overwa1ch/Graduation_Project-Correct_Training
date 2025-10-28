@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AppRuntimeConfig v1",
+  "type": "object",
+  "required": [
+    "engine",
+    "strictness"
+  ],
+  "properties": {
+    "engine": {
+      "type": "string",
+      "enum": [
+        "MoveNet",
+        "MLKit",
+        "MediaPipe",
+        "Auto"
+      ]
+    },
+    "strictness": {
+      "type": "string",
+      "enum": [
+        "strict",
+        "relaxed"
+      ]
+    },
+    "stride": {
+      "type": "integer",
+      "default": 2
+    },
+    "targetFps": {
+      "type": "integer",
+      "default": 30
+    },
+    "resolution": {
+      "type": "string",
+      "default": "1280x720"
+    },
+    "privacy": {
+      "type": "object",
+      "properties": {
+        "upload": {
+          "type": "string",
+          "enum": [
+            "none",
+            "keypoints-only",
+            "video+keypoints"
+          ]
+        },
+        "confirmVideoUpload": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "cleanup": {
+      "type": "object",
+      "properties": {
+        "days": {
+          "type": "integer",
+          "default": 7
+        }
+      }
+    },
+    "logs": {
+      "type": "object",
+      "properties": {
+        "level": {
+          "type": "string",
+          "default": "info"
+        }
+      }
+    }
+  }
+}
