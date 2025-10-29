@@ -1,0 +1,16 @@
+{
+  "scores": {
+    "form": 72,
+    "stability": 70,
+    "tempo": 68,
+    "overall": 70
+  },
+  "repCount": 10,
+  "meta": {
+    "template": "squat",
+    "strictness": "strict",
+    "engine": "MoveNet",
+    "fps": 30
+  }
+}
+

@@ -122,7 +122,7 @@ class _SettingsPageState extends State<SettingsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to load settings: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.surfaceSecondary,
           ),
         );
       }
@@ -138,7 +138,7 @@ class _SettingsPageState extends State<SettingsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('请修正表单错误后再保存'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.surfaceSecondary,
         ),
       );
       return;
@@ -185,7 +185,7 @@ class _SettingsPageState extends State<SettingsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('已保存，下次分析生效'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.brandPrimaryVariant,
             duration: Duration(seconds: 2),
           ),
         );
@@ -198,7 +198,7 @@ class _SettingsPageState extends State<SettingsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('保存失败: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.surfaceSecondary,
             duration: const Duration(seconds: 3),
           ),
         );
@@ -347,7 +347,7 @@ class _SettingsPageState extends State<SettingsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Local data cleaned up successfully!'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.brandPrimaryVariant,
           ),
         );
       }
@@ -358,7 +358,7 @@ class _SettingsPageState extends State<SettingsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to cleanup: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.surfaceSecondary,
           ),
         );
       }
@@ -503,7 +503,7 @@ class _SettingsPageState extends State<SettingsPage> {
                             child: ElevatedButton(
                               onPressed: (_isSaving || !_hasChanges) ? null : _saveConfig,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.brandPrimary,
+                                backgroundColor: AppColors.brandPrimaryVariant,
                                 foregroundColor: AppColors.textInvert,
                                 padding: EdgeInsets.symmetric(
                                   vertical: AppSpacing.lg,
@@ -515,7 +515,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                       width: 20,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.textPrimary),
                                       ),
                                     )
                                   : const Text('保存设置'),
@@ -539,7 +539,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           },
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.textInvert,
-                            side: BorderSide(color: AppColors.brandPrimary),
+                            side: BorderSide(color: AppColors.brandPrimaryVariant),
                             padding: EdgeInsets.symmetric(
                               vertical: AppSpacing.lg,
                             ),
@@ -869,7 +869,7 @@ class _SettingsPageState extends State<SettingsPage> {
             child: ElevatedButton(
               onPressed: _cleanupSessions,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.brandPrimary,
+                backgroundColor: AppColors.brandPrimaryVariant,
                 foregroundColor: AppColors.textInvert,
                 padding: EdgeInsets.symmetric(
                   vertical: AppSpacing.md,
@@ -984,10 +984,10 @@ class _SettingsPageState extends State<SettingsPage> {
           vertical: AppSpacing.md,
         ),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.brandPrimary : Colors.transparent,
+          color: isSelected ? AppColors.brandPrimaryVariant : Colors.transparent,
           borderRadius: AppRadius.buttonRadius,
           border: Border.all(
-            color: isSelected ? AppColors.brandPrimary : AppColors.neutralLight,
+            color: isSelected ? AppColors.brandPrimaryVariant : AppColors.neutralLight,
             width: 1,
           ),
         ),
@@ -1021,7 +1021,7 @@ class _SettingsPageState extends State<SettingsPage> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color: isSelected ? AppColors.brandPrimary : AppColors.textPrimary,
+                color: isSelected ? AppColors.brandPrimaryVariant : AppColors.textPrimary,
                 width: 2,
               ),
             ),
@@ -1032,7 +1032,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       height: 12,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: AppColors.brandPrimary,
+                        color: AppColors.brandPrimaryVariant,
                       ),
                     ),
                   )

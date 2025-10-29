@@ -1,0 +1,18 @@
+{
+  "engine": "MoveNet",
+  "strictness": "strict",
+  "stride": 2,
+  "targetFps": 30,
+  "resolution": "1280x720",
+  "privacy": {
+    "upload": "keypoints-only",
+    "confirmVideoUpload": true
+  },
+  "cleanup": {
+    "days": 7
+  },
+  "logs": {
+    "level": "info"
+  }
+}
+

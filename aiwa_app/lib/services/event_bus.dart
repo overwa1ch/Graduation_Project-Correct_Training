@@ -95,7 +95,7 @@ class CliExitException implements Exception {
 ///
 /// 行为:
 /// - 忽略空白行
-/// - 非 JSON 行记录调试日志但不抛异常
+/// - JSON 解析错误会触发 ERROR 事件并关闭流
 /// - 收到 DONE 或 ERROR 后自动关闭流
 /// - 取消订阅时关闭文件句柄
 Stream<Map<String, dynamic>> analysisEventsFromJsonlFile(

@@ -3,6 +3,7 @@ import 'package:aiwa_app/theme/spacing.dart';
 import 'package:aiwa_app/theme/colors.dart';
 import 'package:aiwa_app/ui/app_shell.dart';
 import 'package:aiwa_app/ui/pages/result_popup_page.dart';
+import 'package:aiwa_app/adapters/result_adapter.dart';
 
 /// HomePage
 /// 
@@ -56,11 +57,30 @@ class HomePage extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         // 点击卡片弹出结果页面
-        showResultPopup(context);
+        // Create mock result data for demo
+        final mockResult = AnalysisResultLite(
+          posture: 84,
+          stability: 77,
+          rhythm: 71,
+          total: 78,
+          reps: 12,
+          evidencePath: 'evidence/frame_612.jpg',
+          lowConfidence: false,
+          coverage: 0.76,
+          templateName: 'squat',
+          strictness: 'strict',
+          engine: 'MoveNet',
+          fps: 30,
+        );
+
+        // Mock session root (empty string since we're using relative path)
+        const mockSessionRoot = 'dev';
+
+        showResultPopup(context, mockResult, mockSessionRoot);
       },
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.brandPrimary,
+          color: AppColors.brandPrimaryVariant,
           borderRadius: AppRadius.cardRadius,
         ),
         padding: EdgeInsets.all(AppSpacing.lg),

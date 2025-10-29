@@ -195,7 +195,7 @@ class _CustomBottomNavigationBar extends StatelessWidget {
         color: AppColors.surfaceSecondary,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.25),
+            color: AppColors.surfaceSecondary.withOpacity(0.25),
             offset: const Offset(0, -2),
             blurRadius: 8,
           ),
@@ -238,7 +238,7 @@ class _CustomBottomNavigationBar extends StatelessWidget {
         width: 72,
         height: 72,
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.brandPrimary : Colors.transparent,
+          color: isSelected ? AppColors.brandPrimaryVariant : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(

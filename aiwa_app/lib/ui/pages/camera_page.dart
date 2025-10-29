@@ -365,11 +365,11 @@ class _CameraPageState extends State<CameraPage> {
         width: 250,
         height: 70,
         decoration: BoxDecoration(
-          color: AppColors.brandPrimary,
+          color: AppColors.brandPrimaryVariant,
           borderRadius: BorderRadius.circular(8),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.25),
+              color: AppColors.surfaceSecondary.withOpacity(0.25),
               offset: const Offset(0, 4),
               blurRadius: 4,
             ),
@@ -404,7 +404,7 @@ class _CameraPageState extends State<CameraPage> {
                         height: 1.4,
                         shadows: [
                           Shadow(
-                            color: Colors.black.withOpacity(0.25),
+                            color: AppColors.surfaceSecondary.withOpacity(0.25),
                             offset: const Offset(0, 4),
                             blurRadius: 4,
                           ),
@@ -436,7 +436,7 @@ class _CameraPageState extends State<CameraPage> {
           borderRadius: BorderRadius.circular(8),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.25),
+              color: AppColors.surfaceSecondary.withOpacity(0.25),
               offset: const Offset(0, 4),
               blurRadius: 4,
             ),
@@ -509,19 +509,19 @@ class _CameraPageState extends State<CameraPage> {
             margin: const EdgeInsets.only(bottom: 16),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.2),
+              color: AppColors.surfaceSecondary.withOpacity(0.2),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.orange, width: 1),
+              border: Border.all(color: AppColors.surfaceSecondary, width: 1),
             ),
             child: Row(
               children: [
-                const Icon(Icons.warning, color: Colors.orange, size: 20),
+                Icon(Icons.warning, color: AppColors.surfaceSecondary, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     _qualityMessage!,
                     style: AppTypography.bodyBase.copyWith(
-                      color: Colors.orange,
+                      color: AppColors.surfaceSecondary,
                       fontSize: 14,
                     ),
                   ),
@@ -543,7 +543,7 @@ class _CameraPageState extends State<CameraPage> {
                   borderRadius: BorderRadius.circular(999),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.25),
+                      color: AppColors.surfaceSecondary.withOpacity(0.25),
                       offset: const Offset(0, 4),
                       blurRadius: 4,
                       spreadRadius: 0,
@@ -560,17 +560,17 @@ class _CameraPageState extends State<CameraPage> {
                 bottom: 0,
                 child: Container(
                   width: progressWidth.clamp(0, progressBarWidth),
-                  decoration: BoxDecoration(
-                    color: AppColors.brandPrimary,
-                    borderRadius: BorderRadius.circular(999),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.25),
-                        offset: const Offset(0, 4),
-                        blurRadius: 4,
-                      ),
-                    ],
-                  ),
+                    decoration: BoxDecoration(
+                      color: AppColors.brandPrimaryVariant,
+                      borderRadius: BorderRadius.circular(999),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.surfaceSecondary.withOpacity(0.25),
+                          offset: const Offset(0, 4),
+                          blurRadius: 4,
+                        ),
+                      ],
+                    ),
                 ),
               ),
             ],
@@ -626,21 +626,21 @@ class _CameraPageState extends State<CameraPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.1),
+        color: AppColors.surfaceSecondary.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.red, width: 1),
+        border: Border.all(color: AppColors.surfaceSecondary, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.error, color: Colors.red, size: 24),
+              Icon(Icons.error, color: AppColors.surfaceSecondary, size: 24),
               const SizedBox(width: 8),
               Text(
                 'Error: $_errorCode',
                 style: AppTypography.bodyBold.copyWith(
-                  color: Colors.red,
+                  color: AppColors.surfaceSecondary,
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                 ),
@@ -651,7 +651,7 @@ class _CameraPageState extends State<CameraPage> {
           Text(
             _errorMessage ?? 'Unknown error',
             style: AppTypography.bodyBase.copyWith(
-              color: Colors.red,
+              color: AppColors.surfaceSecondary,
               fontSize: 14,
             ),
           ),
@@ -659,7 +659,7 @@ class _CameraPageState extends State<CameraPage> {
           ElevatedButton(
             onPressed: _retry,
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.brandPrimary,
+              backgroundColor: AppColors.brandPrimaryVariant,
               foregroundColor: AppColors.textInvert,
             ),
             child: const Text('Retry'),

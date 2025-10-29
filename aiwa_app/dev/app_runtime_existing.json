@@ -1,0 +1,8 @@
+{
+  "engine": "MLKit",
+  "stride": 1,
+  "privacy": {
+    "upload": "none"
+  }
+}
+

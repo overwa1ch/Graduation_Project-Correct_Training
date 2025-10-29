@@ -1,0 +1,24 @@
+{
+  "scores": {
+    "form": 60,
+    "stability": 58,
+    "tempo": 65,
+    "overall": 61
+  },
+  "repCount": 8,
+  "meta": {
+    "template": "squat",
+    "strictness": "relaxed",
+    "engine": "MLKit",
+    "fps": 30
+  },
+  "evidence": [
+    {
+      "window": {
+        "startMs": 12000,
+        "endMs": 12750
+      }
+    }
+  ]
+}
+

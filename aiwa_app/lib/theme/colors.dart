@@ -8,8 +8,7 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  // Brand Colors
-  static const Color brandPrimary = Color(0xFF5A8A2A);
+  // Brand Colors (简化后只保留一个绿色)
   static const Color brandPrimaryVariant = Color(0xFF4A7220);
 
   // Surface Colors
@@ -21,14 +20,9 @@ class AppColors {
   static const Color textPrimary = Color(0xFFFFFFFF);
   static const Color textInvert = Color(0xFFFFFFFF);
   static const Color textOnSurface = Color(0xFF000000);
-
-  // Error Colors
-  static const Color errorPrimary = Color(0xFFFF5252);
-  static const Color errorContainer = Color(0xFFFFCDD2);
-
-  // Neutral Colors
+  
+  // Neutral Colors (保留用于UI组件)
   static const Color neutralLight = Color(0xFFD9D9D9);
-  static const Color neutralMedium = Color(0xFFE3E3E3);
 }
 
 /// Semantic Colors for Business Logic
@@ -40,135 +34,46 @@ class AppColors {
 class SemanticColors {
   SemanticColors._();
 
-  // Status Colors
-  static const Color success = Color(0xFF70AB34);     // Green for good performance
-  static const Color warning = Color(0xFFFFA726);     // Orange for moderate performance
-  static const Color error = Color(0xFFFF5252);       // Red for poor performance
-  static const Color info = Color(0xFF42A5F5);        // Blue for informational states
+  // Status Colors (简化后只有两种颜色)
+  static const Color success = AppColors.brandPrimaryVariant;  // 成功/高分 - 深绿色
+  static const Color warning = AppColors.surfaceSecondary;      // 警告/中分 - 深灰色
+  static const Color error = AppColors.surfaceSecondary;        // 错误/低分 - 深灰色
   
-  // Cloud/AI Enhancement Indicators
-  static const Color cloudEnhanced = Color(0xFF9C27B0);  // Purple for AI-enhanced features
-  static const Color cloudProcessing = Color(0xFF78909C); // Gray for processing state
+  // Data Visualization (保留用于图表组件)
+  static const Color dataHighlight = AppColors.brandPrimaryVariant;
+  static const Color dataBackground = AppColors.neutralLight;
   
-  // Action Colors
-  static const Color actionPrimary = Color(0xFF70AB34);
-  static const Color actionSecondary = Color(0xFF5A8A2A);
-  static const Color actionDisabled = Color(0xFFD9D9D9);
-  
-  // State Colors
-  static const Color stateActive = Color(0xFF70AB34);
-  static const Color stateInactive = Color(0xFFD9D9D9);
-  static const Color stateSelected = Color(0xFF5A8A2A);
-  
-  // Data Visualization (for charts, etc.)
-  static const Color dataHighlight = Color(0xFF70AB34);
-  static const Color dataSecondary = Color(0xFF42A5F5);
-  static const Color dataTertiary = Color(0xFFFFA726);
-  static const Color dataBackground = Color(0xFFE3E3E3);
+  // Cloud/AI Enhancement Indicators (保留用于UI组件)
+  static const Color cloudEnhanced = AppColors.brandPrimaryVariant;
+  static const Color cloudProcessing = AppColors.surfaceSecondary;
 }
 
-/// Material 3 ColorScheme mapping
-/// Maps design tokens to Material Design 3 semantic color roles
+/// Material 3 ColorScheme mapping (简化版本)
+/// 不再支持主题切换，使用固定的深色主题配色
 ColorScheme createLightColorScheme() {
   return ColorScheme.light(
-    // Primary colors
-    primary: AppColors.brandPrimary,
+    primary: AppColors.brandPrimaryVariant,
     onPrimary: AppColors.textInvert,
-    primaryContainer: AppColors.brandPrimaryVariant,
-    onPrimaryContainer: AppColors.textInvert,
-
-    // Secondary colors (using surface variants)
     secondary: AppColors.surfaceSecondary,
     onSecondary: AppColors.textPrimary,
-    secondaryContainer: AppColors.surfaceTertiary,
-    onSecondaryContainer: AppColors.textOnSurface,
-
-    // Tertiary colors (using brand variants)
-    tertiary: AppColors.brandPrimaryVariant,
-    onTertiary: AppColors.textInvert,
-    tertiaryContainer: AppColors.brandPrimary,
-    onTertiaryContainer: AppColors.textInvert,
-
-    // Error colors
-    error: AppColors.errorPrimary,
+    error: AppColors.surfaceSecondary,
     onError: AppColors.textInvert,
-    errorContainer: AppColors.errorContainer,
-    onErrorContainer: AppColors.errorPrimary,
-
-    // Surface colors
     surface: AppColors.surfaceTertiary,
     onSurface: AppColors.textOnSurface,
-    surfaceContainerHighest: AppColors.surfaceSecondary,
-    onSurfaceVariant: AppColors.textPrimary,
-
-    // Background (deprecated but still used)
-    background: AppColors.surfaceTertiary,
-    onBackground: AppColors.textOnSurface,
-
-    // Outline
-    outline: AppColors.neutralLight,
-    outlineVariant: AppColors.neutralMedium,
-
-    // Shadow
-    shadow: Colors.black,
-    scrim: Colors.black54,
-
-    // Inverse colors
-    inverseSurface: AppColors.surfacePrimary,
-    onInverseSurface: AppColors.textPrimary,
-    inversePrimary: AppColors.brandPrimary,
+    shadow: AppColors.surfaceSecondary,
   );
 }
 
 ColorScheme createDarkColorScheme() {
   return ColorScheme.dark(
-    // Primary colors
-    primary: AppColors.brandPrimary,
+    primary: AppColors.brandPrimaryVariant,
     onPrimary: AppColors.textInvert,
-    primaryContainer: AppColors.brandPrimaryVariant,
-    onPrimaryContainer: AppColors.textInvert,
-
-    // Secondary colors
     secondary: AppColors.surfaceSecondary,
     onSecondary: AppColors.textPrimary,
-    secondaryContainer: AppColors.surfaceTertiary,
-    onSecondaryContainer: AppColors.textOnSurface,
-
-    // Tertiary colors
-    tertiary: AppColors.brandPrimaryVariant,
-    onTertiary: AppColors.textInvert,
-    tertiaryContainer: AppColors.brandPrimary,
-    onTertiaryContainer: AppColors.textInvert,
-
-    // Error colors
-    error: AppColors.errorPrimary,
+    error: AppColors.surfaceSecondary,
     onError: AppColors.textInvert,
-    errorContainer: AppColors.errorContainer,
-    onErrorContainer: AppColors.errorPrimary,
-
-    // Surface colors
     surface: AppColors.surfacePrimary,
     onSurface: AppColors.textPrimary,
-    surfaceContainerHighest: AppColors.surfaceSecondary,
-    onSurfaceVariant: AppColors.textPrimary,
-
-    // Background (deprecated but still used)
-    background: AppColors.surfacePrimary,
-    onBackground: AppColors.textPrimary,
-
-    // Outline
-    outline: AppColors.neutralLight,
-    outlineVariant: AppColors.neutralMedium,
-
-    // Shadow
-    shadow: Colors.black,
-    scrim: Colors.black87,
-
-    // Inverse colors
-    inverseSurface: AppColors.surfaceTertiary,
-    onInverseSurface: AppColors.textOnSurface,
-    inversePrimary: AppColors.brandPrimary,
+    shadow: AppColors.surfaceSecondary,
   );
 }
-
-

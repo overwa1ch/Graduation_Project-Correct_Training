@@ -1,6 +1,5 @@
 {
   "brand": {
-    "primary": "#5A8A2A",
     "primaryVariant": "#4A7220"
   },
   "surface": {
@@ -12,15 +11,5 @@
     "primary": "#FFFFFF",
     "invert": "#FFFFFF",
     "onSurface": "#000000"
-  },
-  "error": {
-    "primary": "#FF5252",
-    "container": "#FFCDD2"
-  },
-  "neutral": {
-    "light": "#D9D9D9",
-    "medium": "#E3E3E3"
   }
 }
-
-

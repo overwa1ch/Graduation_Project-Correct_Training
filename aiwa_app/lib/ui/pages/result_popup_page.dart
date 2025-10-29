@@ -178,7 +178,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.25),
+            color: AppColors.surfaceSecondary.withOpacity(0.25),
             offset: const Offset(0, 4),
             blurRadius: 4,
           ),
@@ -231,7 +231,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
           Icon(
             Icons.videocam,
             size: 48,
-            color: AppColors.brandPrimary,
+            color: AppColors.brandPrimaryVariant,
           ),
           const SizedBox(height: 16),
           Text(
@@ -246,7 +246,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
           Text(
             '${startSec}s - ${endSec}s',
             style: AppTypography.bodyBase.copyWith(
-              color: AppColors.brandPrimary,
+              color: AppColors.brandPrimaryVariant,
               fontSize: 20,
               fontWeight: FontWeight.w700,
             ),
@@ -313,14 +313,14 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
   /// 单个打分卡片
   Widget _buildScoreCard(String label, int score) {
     // 根据分数选择颜色（参见 ui_contracts.md）
-    // <60 红，60~79 黄，≥80 绿
+    // <60 灰，60~79 灰，≥80 绿
     final Color scoreColor;
     if (score < 60) {
-      scoreColor = Colors.red;
+      scoreColor = AppColors.surfaceSecondary;
     } else if (score < 80) {
-      scoreColor = Colors.orange;
+      scoreColor = AppColors.surfaceSecondary;
     } else {
-      scoreColor = Colors.green;
+      scoreColor = AppColors.brandPrimaryVariant;
     }
 
     return Container(
@@ -332,7 +332,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
         border: Border.all(color: scoreColor.withOpacity(0.5), width: 2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.25),
+            color: AppColors.surfaceSecondary.withOpacity(0.25),
             offset: const Offset(0, 4),
             blurRadius: 4,
           ),
@@ -381,7 +381,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.25),
+            color: AppColors.surfaceSecondary.withOpacity(0.25),
             offset: const Offset(0, 4),
             blurRadius: 4,
           ),
@@ -415,11 +415,11 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
     // 总分颜色
     final Color totalColor;
     if (widget.result.total < 60) {
-      totalColor = Colors.red;
+      totalColor = AppColors.surfaceSecondary;
     } else if (widget.result.total < 80) {
-      totalColor = Colors.orange;
+      totalColor = AppColors.surfaceSecondary;
     } else {
-      totalColor = Colors.green;
+      totalColor = AppColors.brandPrimaryVariant;
     }
 
     return Column(
@@ -487,19 +487,19 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.orange.withOpacity(0.2),
+        color: AppColors.surfaceSecondary.withOpacity(0.2),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.orange, width: 1),
+        border: Border.all(color: AppColors.surfaceSecondary, width: 1),
       ),
       child: Row(
         children: [
-          const Icon(Icons.warning, color: Colors.orange, size: 20),
+          Icon(Icons.warning, color: AppColors.surfaceSecondary, size: 20),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               message,
               style: AppTypography.bodyBase.copyWith(
-                color: Colors.orange,
+                color: AppColors.surfaceSecondary,
                 fontSize: 14,
               ),
             ),

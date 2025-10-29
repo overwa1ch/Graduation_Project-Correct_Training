@@ -1,0 +1,4 @@
+{"event":"START","sessionId":"bad_demo","input":{"path":"test.mp4"},"params":{"engine":"MoveNet"}}
+{this is not json at all}
+{"event":"DONE","artifacts":{"root":"build/offline_out/bad_demo/"}}
+

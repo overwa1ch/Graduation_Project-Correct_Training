@@ -1,9 +1,7 @@
 {"event":"START","sessionId":"demo_session_001","input":{"path":"(mock)/squat.mp4","durationMs":32000,"fps":30,"resolution":"1280x720"},"params":{"stride":2,"engine":"MoveNet","strictness":"strict"}}
-{"event":"PHASE","sessionId":"demo_session_001","phase":"decode"}
-{"event":"PROGRESS","sessionId":"demo_session_001","phase":"infer","processed":240,"total":960,"p95MsPerFrame":32,"etaSec":18}
-{"event":"PROGRESS","sessionId":"demo_session_001","phase":"infer","processed":480,"total":960,"p95MsPerFrame":33,"etaSec":9}
-{"event":"PROGRESS","sessionId":"demo_session_001","phase":"analyze","processed":720,"total":960,"p95MsPerFrame":31,"etaSec":5}
-{"event":"METRIC","sessionId":"demo_session_001","lowConfidenceRatio":0.24,"usableFrameRatio":0.76}
-{"event":"EVIDENCE","sessionId":"demo_session_001","frame":612,"t":"00:00:20.4","files":["evidence/frame_612.jpg"]}
-{"event":"PROGRESS","sessionId":"demo_session_001","phase":"analyze","processed":960,"total":960,"p95MsPerFrame":32,"etaSec":0}
-{"event":"DONE","sessionId":"demo_session_001","artifacts":{"root":"build/offline_out/demo_session_001/","files":["result.json","logs/perf.json"]}}
+{"event":"PHASE","phase":"decode"}
+{"event":"PROGRESS","phase":"infer","processed":240,"total":960,"p95MsPerFrame":32,"etaSec":18}
+{"event":"PROGRESS","phase":"analyze","processed":480,"total":960,"p95MsPerFrame":33,"etaSec":9}
+{"event":"METRIC","lowConfidenceRatio":0.24,"usableFrameRatio":0.76}
+{"event":"EVIDENCE","frame":612,"t":"00:00:20.4","files":["evidence/frame_612.jpg"]}
+{"event":"DONE","artifacts":{"root":"build/offline_out/2025_demo_session/","files":["result.json","logs/perf.json"]}}
