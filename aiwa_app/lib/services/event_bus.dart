@@ -45,6 +45,7 @@ import 'dart:math';
 
 import 'package:aiwa_app/services/video_analysis_service.dart';
 import 'package:aiwa_app/services/cancellation_token.dart';
+import 'package:aiwa_core/spec/rule_models.dart';
 
 // ============================================================================
 // 异常类型（契约违反/解析错误/CLI 异常）
@@ -463,6 +464,7 @@ Stream<Map<String, dynamic>> analysisEventsFromIsolate({
   required String sessionRoot,
   required String configPath,
   String? sessionId,
+  Strictness? strictness,
   void Function(String msg)? debugLog,
 }) {
   // 注意: ML Kit 和 VideoPlayer 需要主 Isolate，所以这里不使用真正的 Isolate
@@ -479,9 +481,14 @@ Stream<Map<String, dynamic>> analysisEventsFromIsolate({
     sessionId: currentSessionId,
   );
   
+  // 使用传入的 strictness，或默认为 relaxed
+  final effectiveStrictness = strictness ?? Strictness.relaxed;
+  debugLog?.call('[VideoAnalysis] Using strictness: ${effectiveStrictness.value}');
+  
   // ✅ VideoAnalysisService.analyzeVideo() 现在返回 record，需要提取 stream
   final result = VideoAnalysisService.analyzeVideo(
     token: token,
+    strictness: effectiveStrictness,
     videoPath: inputPath,
     sessionRoot: sessionRoot,
     configPath: configPath,

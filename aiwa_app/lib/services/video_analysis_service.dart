@@ -53,6 +53,7 @@ class VideoAnalysisService {
   /// 返回: (stream: 事件流, task: 分析任务的 Future)
   static ({Stream<Map<String, dynamic>> stream, Future<void> task}) analyzeVideo({
     required CancellationToken token,
+    required Strictness strictness,
     required String videoPath,
     required String sessionRoot,
     required String configPath,
@@ -66,6 +67,7 @@ class VideoAnalysisService {
         // 启动分析任务并保存 Future
         _runVideoAnalysis(
           token: token,
+          strictness: strictness,
           controller: controller,
           videoPath: videoPath,
           sessionRoot: sessionRoot,
@@ -106,6 +108,7 @@ class VideoAnalysisService {
   /// 执行完整的视频分析流程
   static Future<void> _runVideoAnalysis({
     required CancellationToken token,
+    required Strictness strictness,
     required StreamController<Map<String, dynamic>> controller,
     required String videoPath,
     required String sessionRoot,
@@ -264,7 +267,7 @@ class VideoAnalysisService {
 
       // 运行分析管道
       final poseSeries = poseSeriesFromNeutral(neutralSeries);
-      final pipeline = OfflinePipeline(ruleSet, Strictness.relaxed);
+      final pipeline = OfflinePipeline(ruleSet, strictness);
       final result = await pipeline.run(poseSeries);
 
       debugPrint('[VideoAnalysis] Pipeline complete');

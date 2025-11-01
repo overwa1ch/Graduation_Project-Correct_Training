@@ -32,6 +32,8 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:aiwa_app/services/video_analysis_service.dart';
 import 'package:aiwa_app/services/cancellation_token.dart';
+import 'package:aiwa_app/services/config_sync.dart';
+import 'package:aiwa_core/spec/rule_models.dart';
 
 // ============================================================================
 // 状态类型定义（sealed class hierarchy）
@@ -267,35 +269,61 @@ class AnalysisSession {
     // 发出准备中状态
     onStateChange(const AnalysisStatePreparing(currentPhase: 'Initializing...'));
 
-    // 创建事件流和任务 Future
-    final result = VideoAnalysisService.analyzeVideo(
-      token: _token,
-      videoPath: videoPath,
-      sessionRoot: sessionRoot,
-      configPath: configPath,
-      sessionId: sessionId,
-    );
-    
-    // ✅ 保存任务 Future
-    _analysisFuture = result.task;
+    // 异步启动分析（读取配置）
+    _startAsync();
+  }
 
-    // 订阅事件流
-    _eventSubscription = result.stream.listen(
-      _handleEvent,
-      onError: (Object err) {
-        debugPrint('[AnalysisSession] Stream error: $err');
-        onError('500_INTERNAL', 'Stream error: $err');
-        _complete();
-      },
-      onDone: () {
-        debugPrint('[AnalysisSession] Stream done');
-        if (!_isCompleted) {
-          onDone();
-          _complete();
+  /// 异步启动分析（读取配置并创建事件流）
+  Future<void> _startAsync() async {
+    try {
+      // 从配置服务读取 strictness
+      Strictness strictness = Strictness.relaxed; // 默认值
+      try {
+        final config = await readAppRuntimeConfig();
+        final strictnessStr = config['strictness'] as String?;
+        if (strictnessStr == 'strict') {
+          strictness = Strictness.strict;
         }
-      },
-      cancelOnError: true,
-    );
+        debugPrint('[AnalysisSession] Using strictness: ${strictness.value}');
+      } catch (e) {
+        debugPrint('[AnalysisSession] Failed to read strictness config, using default: $e');
+      }
+
+      // 创建事件流和任务 Future
+      final result = VideoAnalysisService.analyzeVideo(
+        token: _token,
+        strictness: strictness,
+        videoPath: videoPath,
+        sessionRoot: sessionRoot,
+        configPath: configPath,
+        sessionId: sessionId,
+      );
+      
+      // ✅ 保存任务 Future
+      _analysisFuture = result.task;
+
+      // 订阅事件流
+      _eventSubscription = result.stream.listen(
+        _handleEvent,
+        onError: (Object err) {
+          debugPrint('[AnalysisSession] Stream error: $err');
+          onError('500_INTERNAL', 'Stream error: $err');
+          _complete();
+        },
+        onDone: () {
+          debugPrint('[AnalysisSession] Stream done');
+          if (!_isCompleted) {
+            onDone();
+            _complete();
+          }
+        },
+        cancelOnError: true,
+      );
+    } catch (e) {
+      debugPrint('[AnalysisSession] Failed to start analysis: $e');
+      onError('500_INTERNAL', 'Failed to start analysis: $e');
+      _complete();
+    }
   }
 
   void _handleEvent(Map<String, dynamic> event) {

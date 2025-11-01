@@ -1,16 +1,61 @@
 import 'package:flutter/material.dart';
 import 'package:aiwa_app/theme/spacing.dart';
+import 'package:aiwa_app/theme/colors.dart';
 import 'package:aiwa_app/ui/app_shell.dart';
+import 'package:aiwa_app/services/config_sync.dart';
+import 'package:aiwa_core/spec/rule_models.dart';
 
 /// WelcomePage
 /// 
-/// 欢迎/启动页面，无底部导航
+/// 欢迎/模式选择页面，无底部导航
 /// 
-/// ⚠️ BOUNDARY RULE: 无业务逻辑，仅 UI 占位
-/// 所有样式来自 Theme 和 tokens 常量
+/// 功能：
+/// - 显示欢迎信息
+/// - 让用户选择评估模式（Relaxed/Strict）
+/// - 保存选择到 ConfigSync
+/// - 导航到 Home 页面
 
-class WelcomePage extends StatelessWidget {
+class WelcomePage extends StatefulWidget {
   const WelcomePage({super.key});
+
+  @override
+  State<WelcomePage> createState() => _WelcomePageState();
+}
+
+class _WelcomePageState extends State<WelcomePage> {
+  // 当前选择的模式（默认 relaxed）
+  Strictness _selectedStrictness = Strictness.relaxed;
+
+  /// 保存配置并导航到首页
+  Future<void> _onStartPressed() async {
+    try {
+      // 保存选择的模式到配置服务
+      final config = await readAppRuntimeConfig();
+      config['strictness'] = _selectedStrictness.value;
+      await writeAppRuntimeConfig(config);
+      
+      debugPrint('[WelcomePage] Saved strictness: ${_selectedStrictness.value}');
+      
+      // 导航到首页
+      if (mounted) {
+        Navigator.pushReplacementNamed(
+          context,
+          '/home',
+          arguments: {'noAnimation': true},
+        );
+      }
+    } catch (e) {
+      debugPrint('[WelcomePage] Failed to save config: $e');
+      // 即使保存失败，也继续导航（使用默认值）
+      if (mounted) {
+        Navigator.pushReplacementNamed(
+          context,
+          '/home',
+          arguments: {'noAnimation': true},
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,74 +64,187 @@ class WelcomePage extends StatelessWidget {
     return AppShellSimple(
       child: Center(
         child: PageContainer(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Logo 占位
-              Icon(
-                Icons.fitness_center,
-                size: 120,
-                color: theme.colorScheme.primary,
-              ),
-              
-              SizedBox(height: AppSpacing.xl),
-              
-              // 标题
-              Text(
-                'AIWA',
-                style: theme.textTheme.displayLarge?.copyWith(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Logo 占位
+                Icon(
+                  Icons.fitness_center,
+                  size: 100,
                   color: theme.colorScheme.primary,
                 ),
-              ),
-              
-              SizedBox(height: AppSpacing.md),
-              
-              // 副标题
-              Text(
-                'AI-Powered Workout Assistant',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              
-              SizedBox(height: AppSpacing.xxxl),
-              
-              // 开始按钮
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pushReplacementNamed(
-                    context, 
-                    '/home',
-                    arguments: {'noAnimation': true},
-                  );
-                },
-                // ✅ 样式来自 theme.elevatedButtonTheme
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: AppSpacing.xl,
-                    vertical: AppSpacing.sm,
+                
+                const SizedBox(height: AppSpacing.lg),
+                
+                // 标题
+                Text(
+                  'AIWA',
+                  style: theme.textTheme.displayLarge?.copyWith(
+                    color: theme.colorScheme.primary,
                   ),
-                  child: Text('开始使用'),
                 ),
-              ),
-              
-              SizedBox(height: AppSpacing.lg),
-              
-              // 跳过按钮
-              TextButton(
-                onPressed: () {
-                  Navigator.pushReplacementNamed(
-                    context, 
-                    '/home',
-                    arguments: {'noAnimation': true},
-                  );
-                },
-                // ✅ 样式来自 theme.textButtonTheme
-                child: const Text('跳过介绍'),
-              ),
-            ],
+                
+                const SizedBox(height: AppSpacing.sm),
+                
+                // 副标题
+                Text(
+                  'AI-Powered Workout Assistant',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                
+                const SizedBox(height: AppSpacing.xxxl),
+                
+                // 选择标题
+                Text(
+                  '选择评估模式',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                
+                const SizedBox(height: AppSpacing.lg),
+                
+                // 新手模式卡片
+                _buildModeCard(
+                  context: context,
+                  strictness: Strictness.relaxed,
+                  icon: Icons.sentiment_satisfied_rounded,
+                  iconColor: SemanticColors.success,
+                  title: '新手模式 (Relaxed)',
+                  description: '标准宽松，更容易获得反馈\n推荐给刚开始练习的用户',
+                  isSelected: _selectedStrictness == Strictness.relaxed,
+                  onTap: () {
+                    setState(() {
+                      _selectedStrictness = Strictness.relaxed;
+                    });
+                  },
+                ),
+                
+                const SizedBox(height: AppSpacing.lg),
+                
+                // 严格模式卡片
+                _buildModeCard(
+                  context: context,
+                  strictness: Strictness.strict,
+                  icon: Icons.emoji_events_rounded,
+                  iconColor: SemanticColors.warning,
+                  title: '严格模式 (Strict)',
+                  description: '专业标准，挑战更高分\n推荐给已掌握基本动作的用户',
+                  isSelected: _selectedStrictness == Strictness.strict,
+                  onTap: () {
+                    setState(() {
+                      _selectedStrictness = Strictness.strict;
+                    });
+                  },
+                ),
+                
+                const SizedBox(height: AppSpacing.xxxl),
+                
+                // 开始按钮
+                ElevatedButton(
+                  onPressed: _onStartPressed,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.xl,
+                      vertical: AppSpacing.sm,
+                    ),
+                    child: Text(
+                      '开始使用 (${_selectedStrictness == Strictness.relaxed ? '新手模式' : '严格模式'})',
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
+        ),
+      ),
+    );
+  }
+
+  /// 构建模式选择卡片
+  Widget _buildModeCard({
+    required BuildContext context,
+    required Strictness strictness,
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String description,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        decoration: BoxDecoration(
+          color: isSelected 
+              ? theme.colorScheme.primary.withOpacity(0.1)
+              : Colors.transparent,
+          border: Border.all(
+            color: isSelected 
+                ? theme.colorScheme.primary
+                : theme.colorScheme.outline.withOpacity(0.3),
+            width: isSelected ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Row(
+          children: [
+            // 图标
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                icon,
+                size: 32,
+                color: iconColor,
+              ),
+            ),
+            
+            const SizedBox(width: AppSpacing.lg),
+            
+            // 文字内容
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: theme.colorScheme.onSurface,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    description,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // 选中标记
+            if (isSelected)
+              Icon(
+                Icons.check_circle,
+                color: theme.colorScheme.primary,
+                size: 24,
+              ),
+          ],
         ),
       ),
     );
