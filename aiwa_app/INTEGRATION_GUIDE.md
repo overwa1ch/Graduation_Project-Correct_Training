@@ -1,29 +1,166 @@
-# 状态机接线完成指南
+# Phase 4 Functional Integration - 实施指南
 
-本文档说明如何使用已完成的状态机接线功能。
+**状态：** ✅ 已完成  
+**版本：** v1.1  
+**更新日期：** 2025-10-30
+
+本文档说明 Phase 4 功能集成的实际实现状态和使用方法。
 
 ---
 
-## 📦 新增文件
+## 📋 实施概览
 
-### 1. 服务层
-- **`lib/services/session_manager.dart`** - 会话目录管理
-  - 创建唯一会话目录
-  - 清理过期会话
-  - 列出所有会话
+Phase 4 已完成以下核心功能：
 
-### 2. 演示数据
+1. ✅ **CLI 调用 & 事件流** - `lib/services/event_bus.dart`
+2. ✅ **结果适配 & 字段映射** - `lib/adapters/result_adapter.dart`
+3. ✅ **运行时配置** - `lib/services/config_sync.dart`
+4. ✅ **错误处理 & 恢复** - `lib/services/error_code_mapper.dart` + Camera 页面
+5. ✅ **会话管理** - `lib/services/session_manager.dart`
+6. ✅ **最小契约测试** - `test/result_adapter_test.dart`, `test/config_sync_test.dart`, `test/services/event_bus_jsonl_test.dart`
+7. ✅ **CI Schema 校验** - `.github/workflows/flutter-ci.yml`
+
+---
+
+## 📦 核心文件
+
+### 1. 服务层（Services）
+- **`lib/services/event_bus.dart`** - 事件流服务（三种事件源：JSONL/CLI/Isolate）
+- **`lib/services/config_sync.dart`** - 配置同步层（Settings ↔ app_runtime.json）
+- **`lib/services/session_manager.dart`** - 会话目录管理（创建/清理/列表）
+- **`lib/services/error_code_mapper.dart`** - 错误码归一化与 UI 行为映射
+
+### 2. 适配层（Adapters）
+- **`lib/adapters/result_adapter.dart`** - 结果适配器（result.json → UI 模型）
+- **`lib/adapters/evidence_resolver.dart`** - 证据解析器（降级策略）
+
+### 3. UI 页面（Pages）
+- **`lib/ui/pages/camera_page.dart`** - 状态机 + 事件监听 + 进度展示
+- **`lib/ui/pages/result_popup_page.dart`** - 结果弹窗（分数/证据展示）
+- **`lib/ui/pages/settings_page.dart`** - 配置双向同步
+
+### 4. 演示数据（Dev）
 - **`dev/stdout_demo.jsonl`** - 演示事件流（JSONL 格式）
 - **`dev/result_demo.json`** - 演示结果数据（JSON 格式）
+- **`dev/app_runtime_default.json`** - 默认运行时配置
 
-### 3. 改造的页面
-- **`lib/ui/pages/camera_page.dart`** - 状态机 + 事件监听 + 进度展示
-- **`lib/ui/pages/result_popup_page.dart`** - 接收并展示 `AnalysisResultLite`
-- **`lib/ui/pages/settings_page.dart`** - 配置双向同步
+### 5. 测试（Tests）
+- **`test/result_adapter_test.dart`** - 结果适配器测试（字段映射 & 证据回退）
+- **`test/config_sync_test.dart`** - 配置同步测试（读写 & 必填校验）
+- **`test/services/event_bus_jsonl_test.dart`** - 事件流测试（事件顺序 & 关键字段）
 
 ---
 
 ## 🎯 核心功能
+
+### 1️⃣ CLI 调用 & 事件流
+
+**实现文件：** `lib/services/event_bus.dart`
+
+**三种事件源：**
+1. **JSONL 文件** - 离线演示/测试
+2. **CLI 子进程** - 开发/桌面平台
+3. **Isolate** - 移动端（桩实现）
+
+**契约校验：**
+- 自动校验所有事件的必填字段
+- 禁止 NaN/Infinity
+- 自动注入 sessionId
+
+**错误处理：**
+- 统一的 ERROR 事件格式
+- 三种异常类型：`EventParseException`, `ContractViolation`, `CliExitException`
+- stderr 缓冲（CLI 模式）
+
+---
+
+### 2️⃣ 结果适配 & 字段映射
+
+**实现文件：** `lib/adapters/result_adapter.dart`
+
+**字段映射（基于 `docs/protocols/ui_contracts.md`）：**
+```dart
+posture   ← scores.form       // 姿势得分
+stability ← scores.stability  // 稳定性得分
+rhythm    ← scores.tempo      // 节奏得分
+total     ← scores.overall    // 综合得分
+reps      ← repCount          // 动作次数
+evidencePath ← evidence[0].snapshotPath  // 证据快照路径
+```
+
+**证据降级策略：**
+1. **优先级 1：** 显示证据快照（`evidencePath`）
+2. **优先级 2：** 显示时间窗提示（`window.startMs ~ endMs`）
+3. **优先级 3：** 显示占位图标（"No evidence snapshot"）
+
+---
+
+### 3️⃣ 运行时配置
+
+**实现文件：** `lib/services/config_sync.dart`
+
+**职责：**
+1. Settings 表单 ↔ `configs/app_runtime.json` 的双向同步（全局）
+2. 每次分析时生成会话级只读快照 `configs_snapshot.json`
+3. 产出 CLI/Isolate 可用的参数三元组
+
+**配置字段（基于 `docs/protocols/schemas/app_runtime_v1.schema.json`）：**
+- `engine`: MoveNet / MLKit / MediaPipe / Auto
+- `strictness`: strict / relaxed
+- `stride`: 抽样步长（默认 2）
+- `targetFps`: 目标帧率（默认 30）
+- `resolution`: 分辨率（默认 1280x720）
+- `privacy.upload`: none / keypoints-only / video+keypoints
+- `cleanup.days`: 清理天数（默认 7）
+- `logs.level`: 日志级别（默认 info）
+
+---
+
+### 4️⃣ 错误处理 & 恢复
+
+**实现文件：** `lib/services/error_code_mapper.dart` + `lib/ui/pages/camera_page.dart`
+
+**错误码归一化：**
+将历史错误码或变体映射为标准错误码（基于 `docs/protocols/ERROR_TO_ACTION.md` v1.1）
+
+**标准错误码：**
+- `400_PARSE` - JSON 解析失败
+- `404_FILE_NOT_FOUND` - 文件不存在
+- `408_WARMUP_TIMEOUT` - CLI 启动超时
+- `422_CONTRACT` - 事件契约违反
+- `422_SCHEMA_MISMATCH` - result.json 结构不符
+- `500_CLI_EXIT_<code>` - CLI 异常退出
+- `500_INTERNAL` - 内部错误
+- `500_RESULT_READ` - 读取 result.json 失败
+- `501_NOT_IMPLEMENTED` - 功能未实现
+
+**UI 行为映射：**
+每个错误码对应特定的 UI 响应（错误弹窗/警告 toast/重试按钮/查看日志/清理空间）
+
+---
+
+### 5️⃣ 会话管理
+
+**实现文件：** `lib/services/session_manager.dart`
+
+**职责：**
+1. 创建唯一会话目录（格式: `build/offline_out/yyyyMMdd_HHmmss_<rand>`）
+2. 清理过期会话（根据 `cleanup.days` 配置）
+3. 列出所有会话
+
+**会话目录结构：**
+```
+build/offline_out/
+  └── 20251030_143052_a7f3/
+      ├── result.json
+      ├── configs_snapshot.json
+      ├── evidence/
+      │   └── frame_612.jpg
+      └── logs/
+          └── run.log
+```
+
+---
 
 ### Camera Page（相机页）
 
@@ -39,7 +176,7 @@ idle → preparing → running → parsing → success/error
 4. ✅ 显示 ETA 和性能指标（etaSec, p95MsPerFrame）
 5. ✅ 质量警告提示（低置信度/低覆盖率）
 6. ✅ 证据缓存（首条 EVIDENCE 事件）
-7. ✅ 错误处理（显示错误码和消息）
+7. ✅ 错误处理（显示错误码和消息，支持归一化）
 8. ✅ 取消/重试按钮
 
 **事件源切换：**

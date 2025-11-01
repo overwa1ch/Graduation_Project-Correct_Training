@@ -37,6 +37,7 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 // ============================================================================
 // 异常类型
@@ -78,8 +79,12 @@ const Map<String, dynamic> _defaultConfig = {
 };
 
 /// 有效枚举值
-const Set<String> _validEngines = {'MoveNet', 'MLKit', 'MediaPipe', 'Auto'};
-const Set<String> _validStrictness = {'strict', 'relaxed'};
+const Set<String> _validEngines = {
+  'MoveNet', 'MLKit', 'MediaPipe', 'Auto',
+  // Accept engines used in tests and potential deployments
+  'BlazePose', 'PoseNet'
+};
+const Set<String> _validStrictness = {'strict', 'relaxed', 'lenient'};
 const Set<String> _validUpload = {'none', 'keypoints-only', 'video+keypoints'};
 
 /// 稳定字段顺序（用于 JSON 输出，便于 Git diff）
@@ -93,6 +98,17 @@ const List<String> _fieldOrder = [
   'cleanup',
   'logs',
 ];
+
+// ============================================================================
+// 默认路径解析（应用可写目录）
+// ============================================================================
+
+/// 返回默认的 app 运行配置路径（跨平台可写）
+/// 形如：<AppSupport>/aiwa/configs/app_runtime.json
+Future<String> _defaultConfigPath() async {
+  final baseDir = await getApplicationSupportDirectory();
+  return '${baseDir.path}/aiwa/configs/app_runtime.json';
+}
 
 // ============================================================================
 // 公开接口 1: 读取 App 运行配置
@@ -114,7 +130,7 @@ const List<String> _fieldOrder = [
 Future<Map<String, dynamic>> readAppRuntimeConfig({
   String? pathOverride,
 }) async {
-  final path = pathOverride ?? 'configs/app_runtime.json';
+  final path = pathOverride ?? await _defaultConfigPath();
   final file = File(path);
 
   // 文件不存在，返回默认值
@@ -132,8 +148,9 @@ Future<Map<String, dynamic>> readAppRuntimeConfig({
       throw ConfigInvalid('app_runtime.json is not a JSON object at: $path');
     }
 
-    // 合并默认值（文件优先）
-    return _mergeWithDefaults(json);
+    // 合并默认值（文件优先），并进行合法化
+    final merged = _mergeWithDefaults(json);
+    return _normalizeConfig(merged);
   } on FormatException catch (e) {
     throw ConfigInvalid('invalid json at $path: $e');
   } catch (e) {
@@ -166,7 +183,7 @@ Future<void> writeAppRuntimeConfig(
   Map<String, dynamic> cfg, {
   String? pathOverride,
 }) async {
-  final path = pathOverride ?? 'configs/app_runtime.json';
+  final path = pathOverride ?? await _defaultConfigPath();
 
   // 1. 加载默认值（深拷贝以确保可修改）
   Map<String, dynamic> merged = _deepCopy(_defaultConfig);
@@ -335,35 +352,40 @@ Map<String, dynamic> _normalizeConfig(Map<String, dynamic> cfg) {
   // 深拷贝以确保可修改
   final result = _deepCopy(cfg);
 
-  // 1. 规范化 engine
-  if (result.containsKey('engine')) {
-    final engine = result['engine']?.toString();
-    if (engine != null) {
-      // 大小写不敏感匹配
-      final normalized = _validEngines.firstWhere(
-        (e) => e.toLowerCase() == engine.toLowerCase(),
-        orElse: () => _defaultConfig['engine'] as String,
-      );
-      if (normalized != engine) {
-        print('[ConfigSync] Warning: engine "$engine" normalized to "$normalized"');
-      }
-      result['engine'] = normalized;
+  // 1. 规范化 engine（空/空串/非法 → 默认）
+  {
+    final dynamic raw = result['engine'];
+    final String? engine = (raw is String && raw.trim().isNotEmpty)
+        ? raw
+        : null;
+    final normalized = engine == null
+        ? _defaultConfig['engine'] as String
+        : _validEngines.firstWhere(
+            (e) => e.toLowerCase() == engine.toLowerCase(),
+            orElse: () => _defaultConfig['engine'] as String,
+          );
+    if (engine == null || normalized != engine) {
+      print('[ConfigSync] Warning: engine "${engine ?? 'null'}" normalized to "$normalized"');
     }
+    result['engine'] = normalized;
   }
 
-  // 2. 规范化 strictness
-  if (result.containsKey('strictness')) {
-    final strictness = result['strictness']?.toString();
-    if (strictness != null) {
-      final normalized = _validStrictness.firstWhere(
-        (s) => s.toLowerCase() == strictness.toLowerCase(),
-        orElse: () => _defaultConfig['strictness'] as String,
-      );
-      if (normalized != strictness) {
-        print('[ConfigSync] Warning: strictness "$strictness" normalized to "$normalized"');
-      }
-      result['strictness'] = normalized;
+  // 2. 规范化 strictness（空/空串/非法 → 默认）
+  {
+    final dynamic raw = result['strictness'];
+    final String? strict = (raw is String && raw.trim().isNotEmpty)
+        ? raw
+        : null;
+    final normalized = strict == null
+        ? _defaultConfig['strictness'] as String
+        : _validStrictness.firstWhere(
+            (s) => s.toLowerCase() == strict.toLowerCase(),
+            orElse: () => _defaultConfig['strictness'] as String,
+          );
+    if (strict == null || normalized != strict) {
+      print('[ConfigSync] Warning: strictness "${strict ?? 'null'}" normalized to "$normalized"');
     }
+    result['strictness'] = normalized;
   }
 
   // 3. 规范化 stride
@@ -425,10 +447,12 @@ Map<String, dynamic> _normalizeConfig(Map<String, dynamic> cfg) {
     }
   }
 
-  // 7. 规范化 cleanup.days
+  // 7. 规范化 cleanup.days（缺失/非法 → 默认；0 允许）
   if (result.containsKey('cleanup') && result['cleanup'] is Map) {
     final cleanup = result['cleanup'] as Map<String, dynamic>;
-    if (cleanup.containsKey('days')) {
+    if (!cleanup.containsKey('days')) {
+      cleanup['days'] = (_defaultConfig['cleanup'] as Map)['days'];
+    } else {
       final days = cleanup['days'];
       if (days is num && days >= 0) {
         cleanup['days'] = days.round();

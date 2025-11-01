@@ -230,8 +230,25 @@ class _CustomBottomNavigationBar extends StatelessWidget {
     required int index,
   }) {
     final isSelected = currentIndex == index;
+    
+    // Assign stable keys for testing
+    final String keyName;
+    switch (index) {
+      case 0:
+        keyName = 'nav.home.icon';
+        break;
+      case 1:
+        keyName = 'nav.camera.icon';
+        break;
+      case 2:
+        keyName = 'nav.settings.icon';
+        break;
+      default:
+        keyName = 'nav.unknown.$index';
+    }
 
     return GestureDetector(
+      key: ValueKey(keyName),
       onTap: () => onTap(index),
       behavior: HitTestBehavior.opaque,
       child: Container(
@@ -245,6 +262,7 @@ class _CustomBottomNavigationBar extends StatelessWidget {
           isSelected ? selectedIcon : icon,
           color: AppColors.textInvert,
           size: 32,
+          key: ValueKey('$keyName.inner'),
         ),
       ),
     );

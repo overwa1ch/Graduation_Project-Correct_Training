@@ -63,7 +63,6 @@ my-app/
 │   │   └── signup/              # 注册页
 │   ├── (dashboard)/             # 仪表板页面（带导航）
 │   │   ├── admin-users/         # 管理员管理
-│   │   ├── books/               # 单词书管理（待实现）
 │   │   └── layout.tsx           # 仪表板布局
 │   ├── actions/                 # Server Actions
 │   │   ├── admin-users.ts       # 管理员操作
@@ -138,7 +137,6 @@ npm run drizzle:studio   # 打开 Drizzle Studio
 
 ## 待开发功能
 
-- [ ] 单词书管理功能实现
 - [ ] 用户训练数据管理
 - [ ] 数据统计与可视化
 - [ ] 导出功能

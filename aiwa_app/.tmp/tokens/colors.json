@@ -1,0 +1,15 @@
+{
+  "brand": {
+    "primaryVariant": "#4A7220"
+  },
+  "surface": {
+    "primary": "#212121",
+    "secondary": "#2B2B2B",
+    "tertiary": "#F4F0EB"
+  },
+  "text": {
+    "primary": "#FFFFFF",
+    "invert": "#FFFFFF",
+    "onSurface": "#000000"
+  }
+}

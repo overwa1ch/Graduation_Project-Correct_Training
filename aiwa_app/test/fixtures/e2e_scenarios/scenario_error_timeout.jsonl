@@ -1,0 +1,9 @@
+# Error scenario: Analysis timeout during inference phase
+{"event":"START","sessionId":"test_error_001","input":{"videoPath":"test_video.mp4"},"params":{"engine":"MoveNet","strictness":"strict"}}
+{"event":"PHASE","phase":"extract","message":"Extracting frames from video"}
+{"event":"PROGRESS","phase":"extract","processed":100,"total":100,"eta_sec":0,"p95_ms":14}
+{"event":"PHASE","phase":"infer","message":"Running pose inference"}
+{"event":"PROGRESS","phase":"infer","processed":10,"total":100,"eta_sec":30,"p95_ms":120}
+{"event":"PROGRESS","phase":"infer","processed":15,"total":100,"eta_sec":45,"p95_ms":150}
+{"event":"ERROR","code":"408_INFER_TIMEOUT","message":"Inference phase timed out after 60 seconds","context":{"phase":"infer","processed":15,"total":100}}
+

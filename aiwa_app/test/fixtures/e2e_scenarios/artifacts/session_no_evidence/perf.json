@@ -1,0 +1,22 @@
+{
+  "phases": {
+    "extract": {
+      "duration_ms": 1100,
+      "frames_processed": 285
+    },
+    "infer": {
+      "duration_ms": 6840,
+      "frames_processed": 285,
+      "avg_ms_per_frame": 24.0,
+      "p95_ms": 28,
+      "p99_ms": 35
+    },
+    "analyze": {
+      "duration_ms": 720,
+      "reps_detected": 10
+    }
+  },
+  "total_duration_ms": 8660,
+  "memory_peak_mb": 198
+}
+

@@ -1,15 +1,22 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 
-// 使用环境变量或回退到硬编码配置
-const client = process.env.DATABASE_URL 
+// 必须通过环境变量配置数据库连接，不允许硬编码
+if (!process.env.DATABASE_URL && !process.env.DB_HOST) {
+	throw new Error(
+		'DATABASE_URL or DB_HOST must be set in environment variables. ' +
+		'Please configure your database connection in .env file.'
+	);
+}
+
+const client = process.env.DATABASE_URL
 	? postgres(process.env.DATABASE_URL, { ssl: { rejectUnauthorized: false } })
 	: postgres({
-		host: process.env.DB_HOST || 'db.wnobgdvinewicxgswtng.supabase.co',
+		host: process.env.DB_HOST!,
 		port: parseInt(process.env.DB_PORT || '5432'),
 		database: process.env.DB_NAME || 'postgres',
 		username: process.env.DB_USER || 'postgres',
-		password: process.env.DB_PASSWORD || 'a-2087632828',
+		password: process.env.DB_PASSWORD!,
 		ssl: { rejectUnauthorized: false },
 	});
 

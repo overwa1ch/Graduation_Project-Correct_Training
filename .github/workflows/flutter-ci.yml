@@ -103,6 +103,13 @@ jobs:
           flutter test --no-pub --coverage --reporter expanded
           echo "::endgroup::"
 
+      - name: 📊 Check coverage thresholds
+        working-directory: aiwa_app
+        run: |
+          echo "::group::Coverage Analysis"
+          dart tool/check_coverage.dart --threshold=85
+          echo "::endgroup::"
+
       - name: 📊 Upload coverage to Codecov
         if: success()
         uses: codecov/codecov-action@v4
@@ -416,13 +423,183 @@ jobs:
           exit 1
 
   # ============================================================================
+  # Job 6.3: Schema 契约校验 (Schema Contract Validation)
+  # ============================================================================
+  schema-validation:
+    name: 📋 Schema Contract Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: analyze
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js (for JSON schema validation)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 📦 Install ajv-cli (JSON Schema validator)
+        run: npm install -g ajv-cli
+
+      - name: 📋 Validate result.sample.json against schema
+        working-directory: aiwa_app
+        run: |
+          echo "::group::Schema Validation - result.json"
+          
+          # 验证 result_demo.json 符合 analysis_result_v2.schema.json
+          ajv validate \
+            -s ../docs/protocols/schemas/analysis_result_v2.schema.json \
+            -d dev/result_demo.json \
+            --strict=false \
+            --verbose
+          
+          echo "✅ result_demo.json is valid"
+          echo "::endgroup::"
+
+      - name: 📋 Validate app_runtime.json against schema
+        working-directory: aiwa_app
+        run: |
+          echo "::group::Schema Validation - app_runtime.json"
+          
+          # 验证 app_runtime_default.json 符合 app_runtime_v1.schema.json
+          ajv validate \
+            -s ../docs/protocols/schemas/app_runtime_v1.schema.json \
+            -d dev/app_runtime_default.json \
+            --strict=false \
+            --verbose
+          
+          echo "✅ app_runtime_default.json is valid"
+          echo "::endgroup::"
+
+      - name: ✅ Schema validation passed
+        if: success()
+        run: |
+          echo "✅ All schema validations passed"
+          echo "   • result.json schema: valid"
+          echo "   • app_runtime.json schema: valid"
+
+      - name: ❌ Schema validation failed
+        if: failure()
+        run: |
+          echo "❌ Schema validation failed!"
+          echo ""
+          echo "Contract broken: result.json or app_runtime.json does not match schema"
+          echo ""
+          echo "If you changed docs/protocols/schemas/*.json:"
+          echo "  1. Update corresponding sample files in aiwa_app/dev/"
+          echo "  2. Ensure backward compatibility or update version"
+          echo ""
+          exit 1
+
+  # ============================================================================
+  # Job 6.5: 性能基准测试 (Performance Benchmarks)
+  # ============================================================================
+  performance-tests:
+    name: ⚡ Performance Benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: test
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: 📦 Get dependencies
+        working-directory: aiwa_app
+        run: flutter pub get
+
+      - name: ⚡ Run performance benchmarks
+        working-directory: aiwa_app
+        run: |
+          echo "::group::Performance Benchmarks"
+          flutter test test/performance/benchmark_test.dart --no-pub --reporter expanded > perf_output.txt 2>&1 || true
+          cat perf_output.txt
+          echo "::endgroup::"
+
+      - name: 📊 Generate performance report
+        working-directory: aiwa_app
+        run: |
+          dart tool/generate_perf_report.dart perf_output.txt perf_report.json
+          cat perf_report.json
+
+      - name: 📤 Upload performance report
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-report-${{ github.run_number }}
+          path: aiwa_app/perf_report.json
+          retention-days: 90
+
+      - name: 💾 Archive performance output
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-output-${{ github.run_number }}
+          path: aiwa_app/perf_output.txt
+          retention-days: 30
+
+      - name: 📊 Comment performance summary on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const reportPath = 'aiwa_app/perf_report.json';
+            
+            if (fs.existsSync(reportPath)) {
+              const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+              const metrics = report.metrics;
+              const summary = report.summary;
+              
+              let comment = '## ⚡ Performance Benchmark Results\n\n';
+              comment += '| Metric | Value | Status |\n';
+              comment += '|--------|-------|--------|\n';
+              
+              if (metrics.event_parsing_eps) {
+                const status = metrics.event_parsing_eps >= 10000 ? '✅' : '❌';
+                comment += `| Event Parsing | ${Math.round(metrics.event_parsing_eps)} events/sec | ${status} |\n`;
+              }
+              
+              if (metrics.result_popup_render_ms) {
+                const status = metrics.result_popup_render_ms < 100 ? '✅' : '❌';
+                comment += `| ResultPopup Render | ${Math.round(metrics.result_popup_render_ms)}ms | ${status} |\n`;
+              }
+              
+              if (metrics.camera_page_render_ms) {
+                const status = metrics.camera_page_render_ms < 150 ? '✅' : '❌';
+                comment += `| CameraPage Render | ${Math.round(metrics.camera_page_render_ms)}ms | ${status} |\n`;
+              }
+              
+              comment += `\n**Health Score:** ${summary.overall_health}/100\n`;
+              comment += `\n📊 [Full Report](https://github.com/${{github.repository}}/actions/runs/${{github.run_id}})\n`;
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            }
+
+      - name: ✅ Performance benchmarks completed
+        if: success()
+        run: echo "✅ Performance benchmarks completed and archived"
+
+  # ============================================================================
   # Job 7: 构建验证（确保可以成功构建）
   # ============================================================================
   build-validation:
     name: 🏗️ Build Validation
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [test, theme-tests, theme-boundary-tests, ui-semantic-color-tests, tokens-schema-tests, widget-tests]
+    needs: [test, theme-tests, theme-boundary-tests, ui-semantic-color-tests, tokens-schema-tests, widget-tests, schema-validation, performance-tests]
 
     steps:
       - name: 📥 Checkout repository
@@ -463,7 +640,7 @@ jobs:
   final-report:
     name: 📋 Final Report
     runs-on: ubuntu-latest
-    needs: [analyze, test, theme-tests, theme-boundary-tests, ui-semantic-color-tests, tokens-schema-tests, widget-tests, tokens-sync-validation, build-validation]
+    needs: [analyze, test, theme-tests, theme-boundary-tests, ui-semantic-color-tests, tokens-schema-tests, widget-tests, tokens-sync-validation, schema-validation, performance-tests, build-validation]
     if: always()
 
     steps:
@@ -481,6 +658,8 @@ jobs:
           echo "📝 Tokens Schema Tests:    ${{ needs.tokens-schema-tests.result }}"
           echo "🖼️  Widget Tests:          ${{ needs.widget-tests.result }}"
           echo "🔄 Tokens Sync:            ${{ needs.tokens-sync-validation.result }}"
+          echo "📋 Schema Validation:      ${{ needs.schema-validation.result }}"
+          echo "⚡ Performance Tests:      ${{ needs.performance-tests.result }}"
           echo "🏗️  Build Validation:      ${{ needs.build-validation.result }}"
           echo ""
           echo "============================================================"
@@ -495,6 +674,8 @@ jobs:
           needs.tokens-schema-tests.result == 'success' &&
           needs.widget-tests.result == 'success' &&
           needs.tokens-sync-validation.result == 'success' &&
+          needs.schema-validation.result == 'success' &&
+          needs.performance-tests.result == 'success' &&
           needs.build-validation.result == 'success'
         run: |
           echo ""
@@ -526,6 +707,8 @@ jobs:
           needs.tokens-schema-tests.result != 'success' ||
           needs.widget-tests.result != 'success' ||
           needs.tokens-sync-validation.result != 'success' ||
+          needs.schema-validation.result != 'success' ||
+          needs.performance-tests.result != 'success' ||
           needs.build-validation.result != 'success'
         run: |
           echo ""
@@ -558,6 +741,12 @@ jobs:
           fi
           if [ "${{ needs.tokens-sync-validation.result }}" != "success" ]; then
             echo "   • Tokens sync validation failed"
+          fi
+          if [ "${{ needs.schema-validation.result }}" != "success" ]; then
+            echo "   • Schema validation failed (contract broken)"
+          fi
+          if [ "${{ needs.performance-tests.result }}" != "success" ]; then
+            echo "   • Performance tests failed"
           fi
           if [ "${{ needs.build-validation.result }}" != "success" ]; then
             echo "   • Build validation failed"

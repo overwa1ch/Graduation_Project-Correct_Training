@@ -79,6 +79,8 @@ class OfflinePipeline {
         const <String, dynamic>{};
     final minValley = (strictProfile['minValleyKneeAngle'] as num?) ??
         (strictness == Strictness.strict ? 80 : 90);
+    final detectionThreshold = (strictProfile['detectionThreshold'] as num?) ??
+        (strictness == Strictness.strict ? 100 : 120);
 
     final reps = countReps(
       tMs: tMs,
@@ -87,8 +89,11 @@ class OfflinePipeline {
       minIntervalMs: minIntervalMs,
       windowMs: windowMs,
       minValleyKneeAngle: minValley,
+      detectionThreshold: detectionThreshold,
     );
     timer?.lap('scoring');
+
+    final qualifiedReps = reps.where((rep) => rep.qualified).toList();
 
     final quality = computeQualityFromKeypoints(frames);
     timer?.lap('quality');
@@ -121,7 +126,7 @@ class OfflinePipeline {
     final tempoRatio =
         (tempoSpec['ratio'] as List).map((e) => (e as num).toDouble()).toList();
 
-    final repMetrics = reps.isEmpty
+    final allRepMetrics = reps.isEmpty
         ? <_RepMetrics>[]
         : _collectRepMetrics(
             tMs: tMs,
@@ -132,22 +137,33 @@ class OfflinePipeline {
             valgusWindowMs: valgusWindowMs,
           );
 
+    final qualifiedRepMetrics = <_RepMetrics>[];
+    for (var i = 0; i < reps.length; i++) {
+      if (reps[i].qualified && i < allRepMetrics.length) {
+        qualifiedRepMetrics.add(allRepMetrics[i]);
+      }
+    }
+
     final repSummaries = reps.asMap().entries.map((entry) {
       final idx = entry.key;
       final rep = entry.value;
-      final metric = repMetrics[idx];
+      final metric = idx < allRepMetrics.length ? allRepMetrics[idx] : null;
       return {
         'index': idx + 1,
         'startMs': rep.startMs,
         'valleyMs': rep.valleyMs,
         'endMs': rep.endMs,
-        'kneeValleyAngle': round1(metric.kneeValleyAngle),
-        'minKneeOutAngle': round1(metric.minKneeOutAngle),
-        'maxForwardLean': round1(metric.maxForwardLean),
-        'tempo': {
-          'eccentricMs': metric.eccentricMs,
-          'concentricMs': metric.concentricMs,
-          'ratio': _round2(metric.ratio),
+        'qualified': rep.qualified,
+        'valleyAngle': round1(rep.valleyAngle),
+        if (metric != null) ...{
+          'kneeValleyAngle': round1(metric.kneeValleyAngle),
+          'minKneeOutAngle': round1(metric.minKneeOutAngle),
+          'maxForwardLean': round1(metric.maxForwardLean),
+          'tempo': {
+            'eccentricMs': metric.eccentricMs,
+            'concentricMs': metric.concentricMs,
+            'ratio': _round2(metric.ratio),
+          },
         },
       };
     }).toList();
@@ -166,10 +182,14 @@ class OfflinePipeline {
 
     final issuesCollector = _IssueAccumulator(evidence);
 
-    if (repMetrics.isNotEmpty) {
-      for (var i = 0; i < repMetrics.length; i++) {
-        final metric = repMetrics[i];
+    if (qualifiedRepMetrics.isNotEmpty) {
+      var qualifiedIndex = 0;
+      for (var i = 0;
+          i < reps.length && qualifiedIndex < qualifiedRepMetrics.length;
+          i++) {
         final rep = reps[i];
+        if (!rep.qualified) continue;
+        final metric = qualifiedRepMetrics[qualifiedIndex++];
         if (metric.kneeValleyAngle > depthIssueThreshold + 1e-6) {
           issuesCollector.add(
             code: 'DEPTH_INSUFFICIENT',
@@ -203,16 +223,21 @@ class OfflinePipeline {
     final issues = issuesCollector.toList();
 
     final weights = rules.scoreWeights;
-    final scores = repMetrics.isEmpty
+    final scores = qualifiedRepMetrics.isEmpty
         ? _computeScoresNoReps(
             mainKnee: mainKnee,
             trunk: angles.trunk,
             trunkThreshold:
                 strictness == Strictness.strict ? trunkStrict : trunkRelaxed,
+            allReps: reps,
+            depthTarget: minValley.toDouble(),
+            detectionThreshold: detectionThreshold.toDouble(),
+            tempoEccentric: tempoEccentric,
+            tempoRatio: tempoRatio,
             weights: weights,
           )
         : _computeScores(
-            repMetrics: repMetrics,
+            repMetrics: qualifiedRepMetrics,
             depthStrict: depthStrict,
             depthRelaxed: depthRelaxed,
             trunkStrict: trunkStrict,
@@ -223,6 +248,14 @@ class OfflinePipeline {
             tempoRatio: tempoRatio,
             weights: weights,
           );
+
+    final feedback = _generateFeedback(
+      strictness: strictness,
+      allReps: reps,
+      qualifiedReps: qualifiedReps,
+      targetAngle: minValley.toDouble(),
+      detectionThreshold: detectionThreshold.toDouble(),
+    );
 
     final resultJson = <String, dynamic>{
       'meta': {
@@ -242,15 +275,125 @@ class OfflinePipeline {
         'coverage': quality.coverage,
         'lowConfidence': quality.lowConfidence,
       },
-      'repCount': reps.length,
+      'repCount': qualifiedReps.length,
+      'attemptsCount': reps.length,
       'reps': repSummaries,
       'scores': scores,
       'issues': issues,
       'evidence': evidence,
     };
 
+    if (feedback != null) {
+      resultJson['feedback'] = feedback;
+    }
+
     return (anglesCsv: anglesCsv, resultJson: resultJson);
   }
+}
+
+Map<String, dynamic>? _generateFeedback({
+  required Strictness strictness,
+  required List<Rep> allReps,
+  required List<Rep> qualifiedReps,
+  required double targetAngle,
+  required double detectionThreshold,
+}) {
+  final attemptsTotal = allReps.length;
+  final attemptsQualified = qualifiedReps.length;
+  final attemptsUnqualified = attemptsTotal - attemptsQualified;
+
+  if (attemptsTotal == 0) {
+    return {
+      'mode': strictness.value,
+      'attempts': {
+        'total': 0,
+        'qualified': 0,
+        'unqualified': 0,
+      },
+      'suggestions': [
+        'No squat motion detected.',
+        'Ensure your full body is visible and perform at least one complete squat during recording.',
+      ],
+    };
+  }
+
+  final avgAngle =
+      allReps.map((rep) => rep.valleyAngle).reduce((a, b) => a + b) /
+          attemptsTotal;
+
+  final feedback = <String, dynamic>{
+    'mode': strictness.value,
+    'attempts': {
+      'total': attemptsTotal,
+      'qualified': attemptsQualified,
+      'unqualified': attemptsUnqualified,
+    },
+    'avgAngle': round1(avgAngle),
+    'targetAngle': targetAngle,
+    'detectionThreshold': detectionThreshold,
+  };
+
+  final suggestions = <String>[];
+  final toneRelaxed = strictness == Strictness.relaxed;
+
+  if (attemptsQualified == 0) {
+    final gap = avgAngle - targetAngle;
+    suggestions.add(
+      'Depth insufficient: average squat depth is ${round1(avgAngle)}°, target is under ${targetAngle.toInt()}°.',
+    );
+    if (toneRelaxed) {
+      suggestions.add(
+          'Try sitting your hips back a little more, as if reaching for a low chair.');
+      suggestions.add(
+          'Slow down the descent and pause briefly at the bottom to build confidence.');
+    } else {
+      suggestions.add(
+          'Drive the knees forward slightly and keep lowering the hips until thighs are parallel to the floor.');
+      suggestions.add(
+          'Focus on stability—maintain a proud chest and keep heels grounded as you reach depth.');
+    }
+    if (gap > 0) {
+      suggestions.add(
+          'You only need to lower roughly ${gap.toInt()}° further to hit the target.');
+    }
+  } else if (attemptsQualified == attemptsTotal) {
+    suggestions.add(
+        'Great work! Every attempt met the ${strictness.value} depth requirement.');
+    if (toneRelaxed) {
+      suggestions.add(
+          'Consider switching to strict mode to challenge yourself with an 80° depth goal.');
+    } else {
+      suggestions.add(
+          'Maintain this consistency and watch for knee tracking and trunk control to keep improving.');
+    }
+  } else {
+    final unqualifiedAngles = allReps
+        .where((rep) => !rep.qualified)
+        .map((rep) => rep.valleyAngle)
+        .toList();
+    final avgUnqualified = unqualifiedAngles.isEmpty
+        ? null
+        : unqualifiedAngles.reduce((a, b) => a + b) / unqualifiedAngles.length;
+    suggestions.add(
+      '${attemptsQualified} attempts met the target, ${attemptsUnqualified} still need work.',
+    );
+    if (avgUnqualified != null) {
+      final gap = avgUnqualified - targetAngle;
+      suggestions.add(
+        'On the missed reps you averaged ${round1(avgUnqualified)}°, about ${gap.toInt()}° shy of the goal.',
+      );
+    }
+    if (toneRelaxed) {
+      suggestions.add(
+          'Stay patient—focus on repeating the successful reps and gradually deepen the remaining attempts.');
+    } else {
+      suggestions.add(
+          'Study your successful reps and replicate that depth—keep hips traveling down and back without collapsing the chest.');
+    }
+  }
+
+  feedback['suggestions'] = suggestions;
+  return feedback;
 }
 
 class _RepMetrics {
@@ -510,16 +653,37 @@ Map<String, double> _computeScoresNoReps({
   required List<double?> mainKnee,
   required List<double?> trunk,
   required double trunkThreshold,
+  required List<Rep> allReps,
+  required double depthTarget,
+  required double detectionThreshold,
+  required List<double> tempoEccentric,
+  required List<double> tempoRatio,
   required Map<String, num> weights,
 }) {
   final trunkValues = trunk.whereType<double>().toList();
   final maxTrunk =
       trunkValues.isEmpty ? 0.0 : trunkValues.reduce((a, b) => a > b ? a : b);
   final trunkDeficit = math.max(0.0, maxTrunk - trunkThreshold);
-  // Without detected reps we cannot measure depth coverage against valleys, so
-  // the depth component stays neutral while trunk lean still reduces the form
-  // score, matching the baseline fallback behavior.
-  final form = _clampScore(100.0 - (trunkDeficit * 1.5));
+  final trunkScore = _clampScore(100.0 - (trunkDeficit * 1.5));
+
+  double depthScore = 100.0;
+  if (allReps.isNotEmpty) {
+    final avgValley =
+        allReps.map((rep) => rep.valleyAngle).reduce((a, b) => a + b) /
+            allReps.length;
+    final minSeparation = 5.0;
+    final effectiveDetection = detectionThreshold <= depthTarget + minSeparation
+        ? depthTarget + minSeparation
+        : detectionThreshold;
+    depthScore = _scoreFromBounds(
+      value: avgValley,
+      a: depthTarget,
+      b: effectiveDetection,
+      lowerIsBetter: true,
+    );
+  }
+
+  final form = _average([depthScore, trunkScore]);
 
   final kneeValues = mainKnee.whereType<double>().toList();
   double stabilityPenalty = 0.0;
@@ -533,19 +697,51 @@ Map<String, double> _computeScoresNoReps({
   }
   final stability = _clampScore(100.0 - stabilityPenalty);
 
-  // No repetitions means no tempo measurement; treat as perfect tempo per
-  // baseline behavior.
-  const tempo = 100.0;
+  double tempoScore = 100.0;
+  if (allReps.isNotEmpty) {
+    final eccentricDurations = allReps
+        .map((rep) => (rep.valleyMs - rep.startMs).toDouble())
+        .where((value) => value > 0)
+        .toList();
+
+    final ratios = <double>[];
+    for (var i = 0; i < allReps.length; i++) {
+      final ecc = allReps[i].valleyMs - allReps[i].startMs;
+      final conc = allReps[i].endMs - allReps[i].valleyMs;
+      if (ecc > 0 && conc > 0) {
+        ratios.add(ecc / conc);
+      }
+    }
+
+    if (eccentricDurations.isNotEmpty) {
+      final avgEccentric = _average(eccentricDurations);
+      final tempoScoreEcc = _scoreRange(
+        value: avgEccentric,
+        min: tempoEccentric[0],
+        max: tempoEccentric[1],
+      );
+
+      final avgRatio = ratios.isNotEmpty ? _average(ratios) : null;
+      final tempoScoreRatio = avgRatio == null
+          ? 100.0
+          : _scoreRange(
+              value: avgRatio,
+              min: tempoRatio[0],
+              max: tempoRatio[1],
+            );
+      tempoScore = _average([tempoScoreEcc, tempoScoreRatio]);
+    }
+  }
 
   double weight(String key) => (weights[key] ?? 0).toDouble();
   final overall = form * weight('form') +
       stability * weight('stability') +
-      tempo * weight('tempo');
+      tempoScore * weight('tempo');
 
   return {
     'form': _roundScore(form),
     'stability': _roundScore(stability),
-    'tempo': _roundScore(tempo),
+    'tempo': _roundScore(tempoScore),
     'overall': _roundScore(overall),
   };
 }

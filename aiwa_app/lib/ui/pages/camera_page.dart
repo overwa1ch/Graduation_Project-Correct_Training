@@ -1,13 +1,18 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:aiwa_app/theme/colors.dart';
 import 'package:aiwa_app/theme/typography.dart';
 import 'package:aiwa_app/ui/app_shell.dart';
 import 'package:aiwa_app/ui/pages/result_popup_page.dart';
-import 'package:aiwa_app/services/event_bus.dart';
 import 'package:aiwa_app/adapters/result_adapter.dart';
 import 'package:aiwa_app/services/config_sync.dart';
 import 'package:aiwa_app/services/session_manager.dart';
+import 'package:aiwa_app/services/analysis_history.dart';
+import 'package:aiwa_app/services/analysis_session_manager.dart';
 
 /// CameraPage
 /// 
@@ -27,56 +32,122 @@ class CameraPage extends StatefulWidget {
   State<CameraPage> createState() => _CameraPageState();
 }
 
-class _CameraPageState extends State<CameraPage> {
-  // 状态管理
-  CameraState _state = CameraState.idle;
-  StreamSubscription<Map<String, dynamic>>? _eventSubscription;
-  bool _running = false;
+class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
+  // ✅ 使用全局 AnalysisSessionManager 替代本地状态管理
+  final _sessionManager = AnalysisSessionManager();
+  StreamSubscription<AnalysisState>? _stateSubscription;
   
-  // 进度信息
+  // UI 状态（从 AnalysisState 映射）
+  CameraState _state = CameraState.idle;
   double _progress = 0.0;
   int? _etaSec;
   int? _p95Ms;
   String? _currentPhase;
-  
-  // 会话信息
-  String? _sessionRoot;
-  
-  // 质量提示
   bool _showQualityWarning = false;
   String? _qualityMessage;
-  
-  // 证据缓存
-  Map<String, dynamic>? _firstEvidence;
-  
-  // 错误信息
   String? _errorCode;
   String? _errorMessage;
+  
+  // 会话信息（仅用于结果处理）
+  String? _sessionRoot;
+  // 注意：DiagnosticsLogger、sessionId、firstEvidence 等诊断功能暂时移除
+  // 这些功能可以在未来由 AnalysisSessionManager 统一管理
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    
+    // ✅ 监听全局状态变化
+    _stateSubscription = _sessionManager.stateStream.listen(_handleSessionState);
+  }
 
   @override
   void dispose() {
-    _eventSubscription?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    _stateSubscription?.cancel();
     super.dispose();
   }
 
-  /// 启动分析流程
-  Future<void> _startAnalysis() async {
-    // 单一运行保护
-    if (_running) return;
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    debugPrint('[Camera] App lifecycle state changed: $state');
+    
+    // 只在应用真正关闭时取消分析
+    if (state == AppLifecycleState.detached) {
+      debugPrint('[Camera] App is closing, cancelling analysis');
+      _sessionManager.cancelCurrentAnalysis();
+    }
+  }
+  
+  /// ✅ 处理全局状态变化
+  void _handleSessionState(AnalysisState state) {
+    if (!mounted) return;
+    
+    debugPrint('[Camera] _handleSessionState: ${state.runtimeType}');
     
     setState(() {
-      _running = true;
-      _state = CameraState.idle;
-      _progress = 0.0;
-      _etaSec = null;
-      _p95Ms = null;
-      _currentPhase = null;
-      _showQualityWarning = false;
-      _qualityMessage = null;
-      _firstEvidence = null;
-      _errorCode = null;
-      _errorMessage = null;
+      switch (state) {
+        case AnalysisStateIdle():
+          _state = CameraState.idle;
+          _progress = 0.0;
+          _currentPhase = null;
+          _etaSec = null;
+          _p95Ms = null;
+          _showQualityWarning = false;
+          _qualityMessage = null;
+          
+        case AnalysisStatePreparing(:final currentPhase):
+          _state = CameraState.preparing;
+          _currentPhase = currentPhase;
+          
+        case AnalysisStateRunning(:final progress, :final phase, :final etaSec, :final p95Ms, :final showQualityWarning, :final qualityMessage):
+          _state = CameraState.running;
+          _progress = progress;
+          _currentPhase = phase;
+          _etaSec = etaSec;
+          _p95Ms = p95Ms;
+          if (showQualityWarning) {
+            _showQualityWarning = true;
+            _qualityMessage = qualityMessage;
+          }
+          
+        case AnalysisStateCancelling(:final message):
+          _currentPhase = message ?? 'Cancelling...';
+          
+        case AnalysisStateParsing(:final message):
+          _state = CameraState.parsing;
+          _currentPhase = message ?? 'Parsing results...';
+          _progress = 1.0;
+          
+        case AnalysisStateSuccess(:final sessionRoot):
+          _state = CameraState.success;
+          _sessionRoot = sessionRoot;
+          // 延迟处理结果，避免阻塞状态更新
+          Future.delayed(const Duration(milliseconds: 200), _onDone);
+          
+        case AnalysisStateError(:final errorCode, :final errorMessage):
+          _setError(errorCode, errorMessage);
+      }
     });
+  }
+
+  /// 启动分析流程
+  /// 
+  /// 参数:
+  /// - [videoPath]: 视频文件路径（必需）
+  Future<void> _startAnalysis({required String videoPath}) async {
+    debugPrint('[Camera] ========================================');
+    debugPrint('[Camera] _startAnalysis called with videoPath: $videoPath');
+    
+    // ✅ 使用 Manager 检查是否有正在运行的会话
+    if (_sessionManager.hasRunningSession) {
+      debugPrint('[Camera] ⚠️ Already has running session, ignoring request');
+      debugPrint('[Camera] ========================================');
+      return;
+    }
+    
+    if (!mounted) return;
 
     try {
       // 1. 创建会话目录
@@ -87,196 +158,274 @@ class _CameraPageState extends State<CameraPage> {
       final cfg = await readAppRuntimeConfig();
       await writeRuntimeSnapshot(_sessionRoot!, cfg);
 
-      // 3. 构建 CLI 参数（演示模式：使用 JSONL 文件）
-      // 真实模式下，pickedInput 应该是用户选择的视频路径
-      buildCliArgs(
-        pickedInput: 'dev/demo_video.mp4', // TODO: 替换为实际视频选择
+      // 3. ✅ 使用 AnalysisSessionManager 启动分析
+      debugPrint('[Camera] Starting analysis via SessionManager');
+      final success = await _sessionManager.startAnalysis(
+        videoPath: videoPath,
         sessionRoot: _sessionRoot!,
       );
-
-      // 4. 启动事件流（演示模式：从 JSONL 文件读取）
-      // 真实模式下，使用 analysisEventsFromCli
-      final stream = analysisEventsFromJsonlFile(
-        'dev/stdout_demo.jsonl',
-        debugLog: (msg) => debugPrint('[EventBus] $msg'),
-      );
-
-      // 真实 CLI 模式示例：
-      // final stream = analysisEventsFromCli(
-      //   dartBin: 'dart',
-      //   args: [
-      //     'run', 'aiwa_cli/bin/aiwa_cli.dart',
-      //     '--input', args.inputPath,
-      //     '--out', args.sessionRoot,
-      //     '--config', args.configPath,
-      //   ],
-      //   debugLog: (msg) => debugPrint('[EventBus] $msg'),
-      // );
-
-      // 5. 监听事件并更新 UI 状态
-      _eventSubscription = stream.listen(
-        _handleEvent,
-        onError: (Object err, StackTrace st) {
-          debugPrint('[Camera] Stream error: $err');
-          _setError('500_INTERNAL', 'Stream error: $err');
-        },
-        onDone: () {
-          debugPrint('[Camera] Stream closed');
-          setState(() => _running = false);
-        },
-      );
+      
+      if (!success) {
+        debugPrint('[Camera] ⚠️ SessionManager rejected analysis (already running)');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Analysis already in progress'),
+              backgroundColor: AppColors.surfaceSecondary,
+            ),
+          );
+        }
+      } else {
+        debugPrint('[Camera] ✅ Analysis started successfully');
+      }
     } catch (e, st) {
       debugPrint('[Camera] Failed to start analysis: $e\n$st');
       _setError('500_INTERNAL', 'Failed to start analysis: $e');
-      setState(() => _running = false);
     }
+    
+    debugPrint('[Camera] ========================================');
   }
 
-  /// 处理事件
-  void _handleEvent(Map<String, dynamic> event) {
-    final eventName = event['event'] as String?;
-    if (eventName == null) return;
-
-    debugPrint('[Camera] Event: $eventName');
-
-    switch (eventName) {
-      case 'START':
-        setState(() {
-          _state = CameraState.preparing;
-          _currentPhase = 'Starting...';
-        });
-        break;
-
-      case 'PHASE':
-        final phase = event['phase'] as String?;
-        setState(() {
-          _currentPhase = phase ?? 'Processing...';
-        });
-        break;
-
-      case 'PROGRESS':
-        final processed = (event['processed'] ?? 0) as num;
-        final total = (event['total'] ?? 0) as num;
-        final progress = (total > 0) ? (processed / total).clamp(0.0, 1.0) : 0.0;
-        final etaSec = (event['etaSec'] as num?)?.toInt();
-        final p95Ms = (event['p95MsPerFrame'] as num?)?.toInt();
-
-        setState(() {
-          _state = CameraState.running;
-          _progress = progress.toDouble();
-          _etaSec = etaSec;
-          _p95Ms = p95Ms;
-        });
-        break;
-
-      case 'METRIC':
-        _updateQualityHint(event);
-        break;
-
-      case 'EVIDENCE':
-        _cacheEvidence(event);
-        break;
-
-      case 'DONE':
-        setState(() {
-          _state = CameraState.parsing;
-          _currentPhase = 'Parsing results...';
-        });
-        _onDone();
-        break;
-
-      case 'ERROR':
-        final code = event['code'] as String? ?? 'UNKNOWN';
-        final message = event['message'] as String? ?? 'Unknown error';
-        _setError(code, message);
-        break;
-    }
-  }
-
-  /// 更新质量提示
-  void _updateQualityHint(Map<String, dynamic> event) {
-    final lowConfidenceRatio = (event['lowConfidenceRatio'] as num?)?.toDouble();
-    final usableFrameRatio = (event['usableFrameRatio'] as num?)?.toDouble();
-
-    if (lowConfidenceRatio != null && lowConfidenceRatio > 0.3) {
-      setState(() {
-        _showQualityWarning = true;
-        _qualityMessage = 'Low confidence detected (${(lowConfidenceRatio * 100).toInt()}%)';
-      });
-    } else if (usableFrameRatio != null && usableFrameRatio < 0.7) {
-      setState(() {
-        _showQualityWarning = true;
-        _qualityMessage = 'Low coverage (${(usableFrameRatio * 100).toInt()}%)';
-      });
-    }
-  }
-
-  /// 缓存证据
-  void _cacheEvidence(Map<String, dynamic> event) {
-    if (_firstEvidence == null) {
-      _firstEvidence = event;
-      debugPrint('[Camera] Cached first evidence');
-    }
-  }
+  // ✅ 旧的事件处理逻辑已删除
+  // 现在由 AnalysisSessionManager 处理事件
+  // 通过 _handleSessionState 接收状态更新
 
   /// 处理 DONE 事件
   Future<void> _onDone() async {
+    debugPrint('[Camera] ========== _onDone 开始 ==========');
+    debugPrint('[Camera] sessionRoot: $_sessionRoot');
+    
     if (_sessionRoot == null) {
+      debugPrint('[Camera] ✗ sessionRoot 为 null');
       _setError('500_INTERNAL', 'Session root is null');
       return;
     }
 
     try {
-      // 解析 result.json
+      // ===== 步骤 1: 读取 result.json =====
+      debugPrint('[Camera] [步骤1] 开始读取 result.json');
+      debugPrint('[Camera] [步骤1] 文件路径: $_sessionRoot/result.json');
       final raw = await readResultJson(_sessionRoot!);
+      debugPrint('[Camera] [步骤1] ✓ 读取成功');
+      debugPrint('[Camera] [步骤1] JSON keys: ${raw.keys.join(", ")}');
+      
+      // 打印完整 JSON（用于诊断）
+      debugPrint('[Camera] ========== result.json 完整内容 ==========');
+      try {
+        debugPrint(const JsonEncoder.withIndent('  ').convert(raw));
+      } catch (e) {
+        debugPrint('[Camera] JSON 格式化失败: $e');
+        debugPrint('[Camera] 原始内容: $raw');
+      }
+      debugPrint('[Camera] ========== result.json 结束 ==========');
+      
+      // ===== 步骤 2: 验证 Schema =====
+      debugPrint('[Camera] [步骤2] 开始验证 Schema');
       assertResultContract(raw);
+      debugPrint('[Camera] [步骤2] ✓ Schema 验证通过');
+      
+      // ===== 步骤 3: 映射到 AnalysisResultLite =====
+      debugPrint('[Camera] [步骤3] 开始映射到 AnalysisResultLite');
       final lite = mapToLite(raw);
+      debugPrint('[Camera] [步骤3] ✓ 映射成功');
+      debugPrint('[Camera] [步骤3] 结果: total=${lite.total}, reps=${lite.reps}, posture=${lite.posture}, stability=${lite.stability}, rhythm=${lite.rhythm}');
 
-      debugPrint('[Camera] Result parsed: $lite');
-
-      // 弹出结果页面
       if (mounted) {
         setState(() => _state = CameraState.success);
-        showResultPopup(context, lite, _sessionRoot!);
+        
+        // ===== 步骤 4: 保存历史记录 =====
+        debugPrint('[Camera] [步骤4] 开始保存历史记录');
+        try {
+          await AnalysisHistoryService().saveRecord(
+            result: lite,
+            sessionRoot: _sessionRoot!,
+          );
+          debugPrint('[Camera] [步骤4] ✓ 历史记录保存成功');
+        } catch (historyError, historyStack) {
+          debugPrint('[Camera] [步骤4] ✗ 历史记录保存失败');
+          debugPrint('[Camera] [步骤4] 错误类型: ${historyError.runtimeType}');
+          debugPrint('[Camera] [步骤4] 错误信息: $historyError');
+          debugPrint('[Camera] [步骤4] 堆栈:\n$historyStack');
+          // 不抛出异常，继续显示结果
+        }
+        
+        // ===== 步骤 5: 显示结果弹窗 =====
+        debugPrint('[Camera] [步骤5] 开始显示结果弹窗');
+        try {
+          showResultPopup(context, lite, _sessionRoot!);
+          debugPrint('[Camera] [步骤5] ✓ 弹窗已调用');
+        } catch (popupError, popupStack) {
+          debugPrint('[Camera] [步骤5] ✗ 弹窗显示失败');
+          debugPrint('[Camera] [步骤5] 错误: $popupError');
+          debugPrint('[Camera] [步骤5] 堆栈:\n$popupStack');
+          rethrow; // 重新抛出，因为这是关键步骤
+        }
+      } else {
+        debugPrint('[Camera] ✗ Widget 未 mounted，跳过后续步骤');
       }
-    } on SchemaMismatch catch (e) {
-      debugPrint('[Camera] Schema mismatch: $e');
+      
+      debugPrint('[Camera] ========== _onDone 成功完成 ==========');
+      
+    } on SchemaMismatch catch (e, stackTrace) {
+      debugPrint('[Camera] ✗ Schema mismatch: $e');
+      debugPrint('[Camera] 详细堆栈:\n$stackTrace');
       _setError('422_SCHEMA_MISMATCH', 'Schema mismatch: ${e.message}');
-    } on ResultReadException catch (e) {
-      debugPrint('[Camera] Result read error: $e');
+    } on ResultReadException catch (e, stackTrace) {
+      debugPrint('[Camera] ✗ Result read error: $e');
+      debugPrint('[Camera] 详细堆栈:\n$stackTrace');
       _setError('500_RESULT_READ', 'Failed to read result: ${e.message}');
-    } catch (e) {
-      debugPrint('[Camera] Unexpected error: $e');
+    } catch (e, stackTrace) {
+      debugPrint('[Camera] ✗ Unexpected error');
+      debugPrint('[Camera] 错误类型: ${e.runtimeType}');
+      debugPrint('[Camera] 错误信息: $e');
+      debugPrint('[Camera] 详细堆栈:\n$stackTrace');
       _setError('500_INTERNAL', 'Unexpected error: $e');
-    } finally {
-      setState(() => _running = false);
     }
+    
+    debugPrint('[Camera] ========== _onDone 结束 ==========');
   }
 
   /// 设置错误状态
   void _setError(String code, String message) {
+    debugPrint('[Camera] ========== _setError ==========');
+    debugPrint('[Camera] 设置错误状态: Code=$code, Message=$message');
+    debugPrint('[Camera] 当前状态: $_state');
+    debugPrint('[Camera] SessionRoot: $_sessionRoot');
+    debugPrint('[Camera] ========== 结束 ==========');
+    
+    if (!mounted) return;
+    
     setState(() {
       _state = CameraState.error;
       _errorCode = code;
       _errorMessage = message;
-      _running = false;
     });
   }
 
-  /// 重试
-  void _retry() {
-    _startAnalysis();
-  }
-
-  /// 取消分析
+  /// ✅ 取消分析 - 使用 AnalysisSessionManager
   void _cancel() {
-    _eventSubscription?.cancel();
-    setState(() {
-      _state = CameraState.idle;
-      _running = false;
-      _progress = 0.0;
-    });
+    debugPrint('[Camera] User cancelled analysis');
+    if (!mounted) return;
+    
+    // ✅ 直接调用 Manager 取消
+    // 状态更新会通过 _handleSessionState 自动处理
+    _sessionManager.cancelCurrentAnalysis();
   }
+
+  /// 计算状态区域的预留高度，避免点击前后布局跳动
+  double _computeReservedHeight(BuildContext context) {
+    final double screenHeight = MediaQuery.of(context).size.height;
+    // 约占屏幕高度的 28%，并限制在 140..240 之间，兼顾小屏与大屏
+    final double suggested = screenHeight * 0.28;
+    if (suggested < 140) return 140;
+    if (suggested > 240) return 240;
+    return suggested;
+  }
+
+  /// 确保视频路径为文件路径（处理 content:// URI）
+  /// Android 录制的视频可能返回 content:// URI，需要转换为文件路径
+  Future<String> _ensureFilePath(XFile video) async {
+    final path = video.path;
+    
+    // 如果是 content:// URI（Android），需要复制到临时文件
+    if (path.startsWith('content://')) {
+      debugPrint('[Camera] Content URI detected, copying to temp file: $path');
+      
+      try {
+        // 使用 path_provider 获取临时目录
+        final appDir = await getApplicationDocumentsDirectory();
+        final tempDir = Directory('${appDir.path}/temp_videos');
+        await tempDir.create(recursive: true);
+        
+        // 生成唯一文件名
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final tempPath = '${tempDir.path}/video_$timestamp.mp4';
+        
+        // 复制文件
+        await video.saveTo(tempPath);
+        
+        debugPrint('[Camera] Video copied to: $tempPath');
+        return tempPath;
+      } catch (e) {
+        debugPrint('[Camera] Failed to copy content URI: $e');
+        throw Exception('Failed to process video file: $e');
+      }
+    }
+    
+    // 如果已经是文件路径，直接返回
+    debugPrint('[Camera] File path detected: $path');
+    return path;
+  }
+
+  /// 录制视频
+  /// 打开系统相机录制视频，返回视频文件路径
+  Future<String?> _recordVideo() async {
+    try {
+      final picker = ImagePicker();
+      final XFile? video = await picker.pickVideo(
+        source: ImageSource.camera,
+        maxDuration: const Duration(minutes: 2), // 限制视频时长
+      );
+      
+      if (video != null) {
+        debugPrint('[Camera] Video recorded: ${video.path}');
+        // 确保返回文件路径而非 content:// URI
+        final filePath = await _ensureFilePath(video);
+        debugPrint('[Camera] Final video path: $filePath');
+        return filePath;
+      }
+      
+      debugPrint('[Camera] Video recording cancelled');
+      return null;
+    } catch (e) {
+      debugPrint('[Camera] Failed to record video: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to record video: $e'),
+            backgroundColor: AppColors.surfaceSecondary,
+          ),
+        );
+      }
+      return null;
+    }
+  }
+
+  /// 选择视频
+  /// 从相册/文件选择器选择视频，返回视频文件路径
+  Future<String?> _pickVideo() async {
+    try {
+      final picker = ImagePicker();
+      final XFile? video = await picker.pickVideo(
+        source: ImageSource.gallery,
+      );
+      
+      if (video != null) {
+        debugPrint('[Camera] Video selected: ${video.path}');
+        // 确保返回文件路径而非 content:// URI
+        final filePath = await _ensureFilePath(video);
+        debugPrint('[Camera] Final video path: $filePath');
+        return filePath;
+      }
+      
+      debugPrint('[Camera] Video selection cancelled');
+      return null;
+    } catch (e) {
+      debugPrint('[Camera] Failed to pick video: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to select video: $e'),
+            backgroundColor: AppColors.surfaceSecondary,
+          ),
+        );
+      }
+      return null;
+    }
+  }
+
+  // ✅ Mock 事件流已删除
+  // 现在所有分析都通过 AnalysisSessionManager 处理真实视频
 
   @override
   Widget build(BuildContext context) {
@@ -288,36 +437,60 @@ class _CameraPageState extends State<CameraPage> {
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Spacer(),
-                
-                // 主要内容区域
-                Column(
+            child: LayoutBuilder(
+              builder: (ctx, constraints) {
+                final double reservedHeight = _computeReservedHeight(context);
+
+                final Widget content = Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // 标题区域
-                    _buildTitle(context),
-                    
-                    const SizedBox(height: 32),
-                    
-                    // Record New Video 按钮（演示模式：触发分析）
-                    _buildRecordButton(context),
-                    
+                    const SizedBox(height: 60),
+
+                    // 主要内容区域（严格水平居中，不改内部组件）
+                    Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 360),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // 标题区域
+                            _buildTitle(context),
+
+                            const SizedBox(height: 32),
+
+                            // Record New Video 按钮（演示模式：触发分析）
+                            _buildRecordButton(context),
+
+                            const SizedBox(height: 30),
+
+                            // Import Videos 按钮（演示模式：触发分析）
+                            _buildImportButton(context),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 40),
+
+                    // 预留固定高度的状态区域，避免点击前后跳动
+                    SizedBox(
+                      height: reservedHeight,
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        child: _buildStateSection(context),
+                      ),
+                    ),
+
                     const SizedBox(height: 30),
-                    
-                    // Import Videos 按钮（演示模式：触发分析）
-                    _buildImportButton(context),
                   ],
-                ),
-                
-                const Spacer(),
-                
-                // 状态显示区域（根据状态切换）
-                _buildStateSection(context),
-                
-                const SizedBox(height: 30),
-              ],
+                );
+
+                // 在小高度场景下允许整体滚动以避免溢出
+                return constraints.maxHeight < 640
+                    ? SingleChildScrollView(child: content)
+                    : content;
+              },
             ),
           ),
         ),
@@ -348,7 +521,7 @@ class _CameraPageState extends State<CameraPage> {
             fontWeight: FontWeight.w800,
             height: 0.875,
           ),
-          textAlign: TextAlign.left,
+          textAlign: TextAlign.center,
         ),
       ],
     );
@@ -356,12 +529,13 @@ class _CameraPageState extends State<CameraPage> {
 
   /// Record New Video 按钮（绿色大按钮）
   Widget _buildRecordButton(BuildContext context) {
-    // 按钮禁用条件：正在运行中
-    final isDisabled = _running;
+    // ✅ 按钮禁用条件：全局会话管理器有正在运行的任务
+    final isDisabled = _sessionManager.hasRunningSession;
 
     return Opacity(
       opacity: isDisabled ? 0.5 : 1.0,
       child: Container(
+        key: const ValueKey('action.record_video'),
         width: 250,
         height: 70,
         decoration: BoxDecoration(
@@ -378,25 +552,36 @@ class _CameraPageState extends State<CameraPage> {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: isDisabled ? null : _startAnalysis,
+            onTap: isDisabled ? null : () async {
+              final videoPath = await _recordVideo();
+              if (videoPath != null && mounted) {
+                await _startAnalysis(videoPath: videoPath);
+              } else if (mounted && videoPath == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Video recording cancelled'),
+                    backgroundColor: AppColors.surfaceSecondary,
+                  ),
+                );
+              }
+            },
             borderRadius: BorderRadius.circular(8),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  // 视频图标
                   Icon(
                     Icons.videocam,
                     color: AppColors.textInvert,
                     size: 30,
                   ),
                   const SizedBox(width: 8),
-                  // 文本
-                  SizedBox(
-                    width: 200,
+                  Expanded(
                     child: Text(
                       'Record New Video',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: AppTypography.button.copyWith(
                         color: AppColors.textInvert,
                         fontSize: 20,
@@ -423,12 +608,13 @@ class _CameraPageState extends State<CameraPage> {
 
   /// Import Videos 按钮（深灰色按钮）
   Widget _buildImportButton(BuildContext context) {
-    // 按钮禁用条件：正在运行中
-    final isDisabled = _running;
+    // ✅ 按钮禁用条件：全局会话管理器有正在运行的任务
+    final isDisabled = _sessionManager.hasRunningSession;
 
     return Opacity(
       opacity: isDisabled ? 0.5 : 1.0,
       child: Container(
+        key: const ValueKey('action.import_video'),
         width: 200,
         height: 48,
         decoration: BoxDecoration(
@@ -445,26 +631,40 @@ class _CameraPageState extends State<CameraPage> {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: isDisabled ? null : _startAnalysis,
+            onTap: isDisabled ? null : () async {
+              final videoPath = await _pickVideo();
+              if (videoPath != null && mounted) {
+                await _startAnalysis(videoPath: videoPath);
+              } else if (mounted && videoPath == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('No video selected'),
+                    backgroundColor: AppColors.surfaceSecondary,
+                  ),
+                );
+              }
+            },
             borderRadius: BorderRadius.circular(8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // 上传图标
                 Icon(
                   Icons.upload,
                   color: AppColors.textInvert,
                   size: 24,
                 ),
                 const SizedBox(width: 8),
-                // 文本
-                Text(
-                  'Import Videos',
-                  style: AppTypography.button.copyWith(
-                    color: AppColors.textInvert,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    height: 1.4,
+                Flexible(
+                  child: Text(
+                    'Import Videos',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.button.copyWith(
+                      color: AppColors.textInvert,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      height: 1.4,
+                    ),
                   ),
                 ),
               ],
@@ -610,6 +810,7 @@ class _CameraPageState extends State<CameraPage> {
           Padding(
             padding: const EdgeInsets.only(top: 16),
             child: TextButton(
+              key: const ValueKey('action.cancel_analysis'),
               onPressed: _cancel,
               style: TextButton.styleFrom(
                 foregroundColor: AppColors.textInvert,
@@ -624,53 +825,66 @@ class _CameraPageState extends State<CameraPage> {
   /// 错误显示区域
   Widget _buildErrorSection(BuildContext context) {
     return Container(
+      constraints: const BoxConstraints(maxHeight: 200),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surfaceSecondary.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.surfaceSecondary, width: 1),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.error, color: AppColors.surfaceSecondary, size: 24),
-              const SizedBox(width: 8),
-              Text(
-                'Error: $_errorCode',
-                style: AppTypography.bodyBold.copyWith(
-                  color: AppColors.surfaceSecondary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.error, color: AppColors.surfaceSecondary, size: 24),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Error: $_errorCode',
+                    style: AppTypography.bodyBold.copyWith(
+                      color: AppColors.surfaceSecondary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _errorMessage ?? 'Unknown error',
+              style: AppTypography.bodyBase.copyWith(
+                color: AppColors.surfaceSecondary,
+                fontSize: 14,
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _errorMessage ?? 'Unknown error',
-            style: AppTypography.bodyBase.copyWith(
-              color: AppColors.surfaceSecondary,
-              fontSize: 14,
             ),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: _retry,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.brandPrimaryVariant,
-              foregroundColor: AppColors.textInvert,
+            const SizedBox(height: 16),
+            ElevatedButton(
+              key: const ValueKey('action.dismiss_error'),
+              onPressed: () {
+                setState(() {
+                  _state = CameraState.idle;
+                  _errorCode = null;
+                  _errorMessage = null;
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.brandPrimaryVariant,
+                foregroundColor: AppColors.textInvert,
+              ),
+              child: const Text('Dismiss'),
             ),
-            child: const Text('Retry'),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   /// 构建进度文本
   String _buildProgressText() {
+    // ✅ 取消状态现在通过 _currentPhase 显示（由 _handleSessionState 设置）
     switch (_state) {
       case CameraState.preparing:
         return _currentPhase ?? 'Preparing...';

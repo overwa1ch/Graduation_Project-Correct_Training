@@ -1,8 +1,19 @@
 import 'dart:math' as math;
 
 class Rep {
-  final int startMs, valleyMs, endMs;
-  Rep(this.startMs, this.valleyMs, this.endMs);
+  final int startMs;
+  final int valleyMs;
+  final int endMs;
+  final double valleyAngle;
+  final bool qualified;
+
+  Rep(
+    this.startMs,
+    this.valleyMs,
+    this.endMs, {
+    required this.valleyAngle,
+    required this.qualified,
+  });
 }
 
 List<Rep> countReps({
@@ -12,6 +23,7 @@ List<Rep> countReps({
   required int minIntervalMs,
   required int windowMs,
   required num minValleyKneeAngle,
+  required num detectionThreshold,
 }) {
   final n = tMs.length;
   final mainAngles = List<double?>.generate(n, (i) {
@@ -64,13 +76,19 @@ List<Rep> countReps({
     }
     if (strictlyLowerExists) continue;
     if (!hasHigherLeft || !hasHigherRight) continue;
-    if (centerAngle >= minValleyKneeAngle) continue;
+    if (centerAngle >= detectionThreshold) continue;
 
     final startMs = tMs[left];
     final endMs = tMs[right];
     if (lastEnd != null && centerTime - lastEnd < minIntervalMs) continue;
 
-    reps.add(Rep(startMs, centerTime, endMs));
+    reps.add(Rep(
+      startMs,
+      centerTime,
+      endMs,
+      valleyAngle: centerAngle.toDouble(),
+      qualified: centerAngle < minValleyKneeAngle,
+    ));
     lastEnd = endMs;
   }
 

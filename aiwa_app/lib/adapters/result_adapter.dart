@@ -75,22 +75,25 @@ class ResultReadException implements Exception {
 /// - reps ← repCount (动作次数)
 /// - evidencePath ← evidence[0].snapshotPath (证据快照路径，可能为 null)
 ///
-/// 所有分数范围：0..100
+/// 所有分数范围：0..100（部分结果时可为 null）
 class AnalysisResultLite {
-  /// 姿势得分 (0..100) ← scores.form
-  final int posture;
+  /// 姿势得分 (0..100) ← scores.form（部分结果时可为 null）
+  final int? posture;
 
-  /// 稳定性得分 (0..100) ← scores.stability
-  final int stability;
+  /// 稳定性得分 (0..100) ← scores.stability（部分结果时可为 null）
+  final int? stability;
 
-  /// 节奏得分 (0..100) ← scores.tempo
-  final int rhythm;
+  /// 节奏得分 (0..100) ← scores.tempo（部分结果时可为 null）
+  final int? rhythm;
 
-  /// 综合得分 (0..100) ← scores.overall
-  final int total;
+  /// 综合得分 (0..100) ← scores.overall（部分结果时可为 null）
+  final int? total;
 
   /// 动作次数 (>=0) ← repCount
   final int reps;
+
+  /// 检测到的总尝试次数 (>=0) ← attemptsCount（若缺失，则与 reps 相同）
+  final int attempts;
 
   /// 证据快照路径（相对于 sessionRoot）← evidence[0].snapshotPath
   /// 可能为 null（证据缺失或降级）
@@ -116,12 +119,23 @@ class AnalysisResultLite {
   /// 视频帧率 ← meta.fps
   final int? fps;
 
+  // 新增：降级标记
+  /// 是否为部分结果（降级模式）
+  final bool isPartial;
+
+  /// 部分结果失败信息
+  final PartialFailureInfo? partialFailure;
+
+  /// 动作反馈（尝试明细与改进建议）
+  final AttemptFeedback? attemptFeedback;
+
   const AnalysisResultLite({
     required this.posture,
     required this.stability,
     required this.rhythm,
     required this.total,
     required this.reps,
+    this.attempts = 0,
     required this.evidencePath,
     this.lowConfidence,
     this.coverage,
@@ -129,14 +143,56 @@ class AnalysisResultLite {
     this.strictness,
     this.engine,
     this.fps,
+    this.isPartial = false,
+    this.partialFailure,
+    this.attemptFeedback,
   });
 
   @override
   String toString() {
     return 'AnalysisResultLite('
         'posture=$posture, stability=$stability, rhythm=$rhythm, '
-        'total=$total, reps=$reps, evidencePath=$evidencePath)';
+        'total=$total, reps=$reps, attempts=$attempts, partial=$isPartial, evidencePath=$evidencePath)';
   }
+}
+
+/// 尝试反馈摘要（用于 UI 展示 Coaching 建议）
+class AttemptFeedback {
+  final String mode;
+  final int total;
+  final int qualified;
+  final int unqualified;
+  final double? avgAngle;
+  final double? targetAngle;
+  final double? detectionThreshold;
+  final List<String> suggestions;
+
+  const AttemptFeedback({
+    required this.mode,
+    required this.total,
+    required this.qualified,
+    required this.unqualified,
+    this.avgAngle,
+    this.targetAngle,
+    this.detectionThreshold,
+    this.suggestions = const <String>[],
+  });
+}
+
+/// 部分结果失败信息
+class PartialFailureInfo {
+  final String code;
+  final String message;
+  final Map<String, dynamic> details;
+
+  const PartialFailureInfo({
+    required this.code,
+    required this.message,
+    required this.details,
+  });
+
+  @override
+  String toString() => 'PartialFailureInfo(code=$code, message=$message)';
 }
 
 // ============================================================================
@@ -206,7 +262,11 @@ Future<Map<String, dynamic>> readResultJson(String sessionRoot) async {
 /// - meta.* 子字段缺失视为警告（不抛错）
 /// - evidence 数组可为空或缺失（不抛错）
 /// - quality.* 子字段可缺失（不抛错）
+/// - 部分结果时 scores 可为 null
 void assertResultContract(Map<String, dynamic> raw) {
+  // 检查是否为部分结果
+  final isPartial = raw['partial'] == true;
+  
   // 1. 检查 scores 对象
   if (!raw.containsKey('scores') || raw['scores'] is! Map) {
     throw SchemaMismatch('scores object missing or invalid');
@@ -216,24 +276,58 @@ void assertResultContract(Map<String, dynamic> raw) {
 
   // 2. 检查 scores 四个子字段
   final scoreFields = ['form', 'stability', 'tempo', 'overall'];
-  for (final field in scoreFields) {
-    if (!scores.containsKey(field)) {
-      throw SchemaMismatch('scores.$field missing');
-    }
+  
+  if (isPartial) {
+    // 部分结果：scores 可以为 null，但如果存在则需验证
+    for (final field in scoreFields) {
+      if (!scores.containsKey(field)) {
+        throw SchemaMismatch('scores.$field missing');
+      }
+      
+      final value = scores[field];
+      // 部分结果允许 null
+      if (value == null) continue;
+      
+      if (value is! num) {
+        throw SchemaMismatch('scores.$field must be number or null, got: ${value.runtimeType}');
+      }
 
-    final value = scores[field];
-    if (value is! num) {
-      throw SchemaMismatch('scores.$field must be number, got: ${value.runtimeType}');
-    }
+      // 检查 NaN/Infinity
+      if (value.isNaN || value.isInfinite) {
+        throw SchemaMismatch('scores.$field is NaN or Infinity');
+      }
 
-    // 检查 NaN/Infinity
-    if (value.isNaN || value.isInfinite) {
-      throw SchemaMismatch('scores.$field is NaN or Infinity');
+      // 检查范围 0..100
+      if (value < 0 || value > 100) {
+        throw SchemaMismatch('scores.$field out of range [0,100]: $value');
+      }
     }
+    
+    // 部分结果必须有 partialReason
+    if (!raw.containsKey('partialReason')) {
+      throw SchemaMismatch('partial result must have partialReason');
+    }
+  } else {
+    // 完整结果：严格检查
+    for (final field in scoreFields) {
+      if (!scores.containsKey(field)) {
+        throw SchemaMismatch('scores.$field missing');
+      }
 
-    // 检查范围 0..100
-    if (value < 0 || value > 100) {
-      throw SchemaMismatch('scores.$field out of range [0,100]: $value');
+      final value = scores[field];
+      if (value is! num) {
+        throw SchemaMismatch('scores.$field must be number, got: ${value.runtimeType}');
+      }
+
+      // 检查 NaN/Infinity
+      if (value.isNaN || value.isInfinite) {
+        throw SchemaMismatch('scores.$field is NaN or Infinity');
+      }
+
+      // 检查范围 0..100
+      if (value < 0 || value > 100) {
+        throw SchemaMismatch('scores.$field out of range [0,100]: $value');
+      }
     }
   }
 
@@ -253,6 +347,20 @@ void assertResultContract(Map<String, dynamic> raw) {
 
   if (repCount < 0) {
     throw SchemaMismatch('repCount must be non-negative: $repCount');
+  }
+
+  if (raw.containsKey('attemptsCount')) {
+    final attemptsCount = raw['attemptsCount'];
+    if (attemptsCount is! num) {
+      throw SchemaMismatch(
+          'attemptsCount must be number, got: ${attemptsCount.runtimeType}');
+    }
+    if (attemptsCount.isNaN || attemptsCount.isInfinite) {
+      throw SchemaMismatch('attemptsCount is NaN or Infinity');
+    }
+    if (attemptsCount < 0) {
+      throw SchemaMismatch('attemptsCount must be non-negative: $attemptsCount');
+    }
   }
 
   // 4. 检查 meta 对象（必须存在，但子字段可缺失）
@@ -287,17 +395,28 @@ void assertResultContract(Map<String, dynamic> raw) {
 /// - 分数若为浮点数，使用 round() 取整
 /// - coverage 若存在，截断到 [0,1] 区间
 /// - evidencePath 保持原始相对路径（不拼接 sessionRoot）
+/// - 部分结果时 scores 可为 null
 AnalysisResultLite mapToLite(Map<String, dynamic> raw) {
+  final isPartial = raw['partial'] == true;
   final scores = raw['scores'] as Map<String, dynamic>;
 
-  // 映射分数（round 取整）
-  final posture = (scores['form'] as num).round();
-  final stability = (scores['stability'] as num).round();
-  final rhythm = (scores['tempo'] as num).round();
-  final total = (scores['overall'] as num).round();
+  // 映射分数（round 取整，部分结果时可为 null）
+  final posture = scores['form'] != null ? (scores['form'] as num).round() : null;
+  final stability = scores['stability'] != null ? (scores['stability'] as num).round() : null;
+  final rhythm = scores['tempo'] != null ? (scores['tempo'] as num).round() : null;
+  final total = scores['overall'] != null ? (scores['overall'] as num).round() : null;
 
   // 映射次数（round 取整）
   final reps = (raw['repCount'] as num).round();
+  int attempts = reps;
+  if (raw.containsKey('attemptsCount') && raw['attemptsCount'] is num) {
+    attempts = math.max(0, (raw['attemptsCount'] as num).round());
+  }
+
+  Map<String, dynamic>? rawFeedback;
+  if (raw.containsKey('feedback') && raw['feedback'] is Map) {
+    rawFeedback = (raw['feedback'] as Map).cast<String, dynamic>();
+  }
 
   // 解析证据路径（可能为 null）
   final evidencePath = _extractEvidencePath(raw);
@@ -346,12 +465,78 @@ AnalysisResultLite mapToLite(Map<String, dynamic> raw) {
     }
   }
 
+  // 解析部分结果失败信息
+  PartialFailureInfo? partialFailure;
+  if (isPartial && raw.containsKey('partialReason')) {
+    final reason = raw['partialReason'] as Map<String, dynamic>;
+    partialFailure = PartialFailureInfo(
+      code: reason['code'] as String,
+      message: reason['message'] as String,
+      details: (reason['details'] as Map<String, dynamic>?) ?? {},
+    );
+  }
+
+  AttemptFeedback? attemptFeedback;
+  if (rawFeedback != null) {
+    final attemptsInfo = rawFeedback['attempts'];
+    int totalAttempts = attempts;
+    int qualifiedAttempts = reps;
+    int unqualifiedAttempts = totalAttempts - qualifiedAttempts;
+
+    if (attemptsInfo is Map) {
+      final attemptsMap = attemptsInfo.cast<String, dynamic>();
+      if (attemptsMap['total'] is num) {
+        totalAttempts = math.max(0, (attemptsMap['total'] as num).round());
+      }
+      if (attemptsMap['qualified'] is num) {
+        qualifiedAttempts = math.max(0, (attemptsMap['qualified'] as num).round());
+      }
+      if (attemptsMap['unqualified'] is num) {
+        unqualifiedAttempts = math.max(0, (attemptsMap['unqualified'] as num).round());
+      } else {
+        unqualifiedAttempts = math.max(0, totalAttempts - qualifiedAttempts);
+      }
+    }
+
+    final suggestions = <String>[];
+    if (rawFeedback['suggestions'] is List) {
+      for (final item in rawFeedback['suggestions'] as List) {
+        if (item is String && item.trim().isNotEmpty) {
+          suggestions.add(item);
+        }
+      }
+    }
+
+    attemptFeedback = AttemptFeedback(
+      mode: rawFeedback['mode'] is String
+          ? rawFeedback['mode'] as String
+          : (strictness ?? 'relaxed'),
+      total: totalAttempts,
+      qualified: qualifiedAttempts,
+      unqualified: unqualifiedAttempts,
+      avgAngle: rawFeedback['avgAngle'] is num
+          ? (rawFeedback['avgAngle'] as num).toDouble()
+          : null,
+      targetAngle: rawFeedback['targetAngle'] is num
+          ? (rawFeedback['targetAngle'] as num).toDouble()
+          : null,
+      detectionThreshold: rawFeedback['detectionThreshold'] is num
+          ? (rawFeedback['detectionThreshold'] as num).toDouble()
+          : null,
+      suggestions: suggestions,
+    );
+
+    // 若 feedback 显示不同的总次数，使用该值覆盖 attempts
+    attempts = totalAttempts;
+  }
+
   return AnalysisResultLite(
     posture: posture,
     stability: stability,
     rhythm: rhythm,
     total: total,
     reps: reps,
+    attempts: attempts,
     evidencePath: evidencePath,
     lowConfidence: lowConfidence,
     coverage: coverage,
@@ -359,6 +544,9 @@ AnalysisResultLite mapToLite(Map<String, dynamic> raw) {
     strictness: strictness,
     engine: engine,
     fps: fps,
+    isPartial: isPartial,
+    partialFailure: partialFailure,
+    attemptFeedback: attemptFeedback,
   );
 }
 

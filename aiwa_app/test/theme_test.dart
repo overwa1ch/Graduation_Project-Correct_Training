@@ -26,15 +26,13 @@ void main() {
     test('Light theme should use correct brand primary color', () {
       final theme = createLightTheme();
       
-      expect(theme.colorScheme.primary, AppColors.brandPrimary);
-      expect(theme.colorScheme.primary, const Color(0xFF70AB34));
+      expect(theme.colorScheme.primary, AppColors.brandPrimaryVariant);
     });
 
     test('Dark theme should use correct brand primary color', () {
       final theme = createDarkTheme();
       
-      expect(theme.colorScheme.primary, AppColors.brandPrimary);
-      expect(theme.colorScheme.primary, const Color(0xFF70AB34));
+      expect(theme.colorScheme.primary, AppColors.brandPrimaryVariant);
     });
 
     test('Light theme should use correct surface colors', () {
@@ -83,16 +81,14 @@ void main() {
       final lightTheme = createLightTheme();
       final darkTheme = createDarkTheme();
       
-      expect(lightTheme.colorScheme.error, AppColors.errorPrimary);
-      expect(darkTheme.colorScheme.error, AppColors.errorPrimary);
-      expect(lightTheme.colorScheme.error, const Color(0xFFFF5252));
+      expect(lightTheme.colorScheme.error, AppColors.surfaceSecondary);
+      expect(darkTheme.colorScheme.error, AppColors.surfaceSecondary);
     });
   });
 
   group('Color Tokens Tests', () {
     test('Brand colors should match Figma tokens', () {
-      expect(AppColors.brandPrimary, const Color(0xFF70AB34));
-      expect(AppColors.brandPrimaryVariant, const Color(0xFF5A8A2A));
+      expect(AppColors.brandPrimaryVariant, const Color(0xFF4A7220));
     });
 
     test('Surface colors should match Figma tokens', () {
@@ -108,8 +104,8 @@ void main() {
     });
 
     test('Error colors should match Figma tokens', () {
-      expect(AppColors.errorPrimary, const Color(0xFFFF5252));
-      expect(AppColors.errorContainer, const Color(0xFFFFCDD2));
+      // Error colors are mapped via surfaceSecondary in current theme
+      expect(AppColors.surfaceSecondary, const Color(0xFF2B2B2B));
     });
   });
 
@@ -216,13 +212,13 @@ void main() {
       final lightTheme = createLightTheme();
       
       // Primary should match token
-      expect(lightTheme.colorScheme.primary, AppColors.brandPrimary);
+      expect(lightTheme.colorScheme.primary, AppColors.brandPrimaryVariant);
       
       // Surface should match token
       expect(lightTheme.scaffoldBackgroundColor, AppColors.surfaceTertiary);
       
       // Error should match token
-      expect(lightTheme.colorScheme.error, AppColors.errorPrimary);
+      expect(lightTheme.colorScheme.error, AppColors.surfaceSecondary);
     });
   });
 

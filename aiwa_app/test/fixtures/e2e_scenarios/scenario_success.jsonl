@@ -1,0 +1,19 @@
+# Success scenario: Complete workout analysis with all events
+{"event":"START","sessionId":"test_success_001","input":{"videoPath":"test_video.mp4"},"params":{"engine":"MoveNet","strictness":"strict"}}
+{"event":"PHASE","phase":"extract","message":"Extracting frames from video"}
+{"event":"PROGRESS","phase":"extract","processed":30,"total":100,"eta_sec":5,"p95_ms":15}
+{"event":"PROGRESS","phase":"extract","processed":60,"total":100,"eta_sec":3,"p95_ms":14}
+{"event":"PROGRESS","phase":"extract","processed":100,"total":100,"eta_sec":0,"p95_ms":14}
+{"event":"PHASE","phase":"infer","message":"Running pose inference"}
+{"event":"PROGRESS","phase":"infer","processed":40,"total":100,"eta_sec":8,"p95_ms":25}
+{"event":"PROGRESS","phase":"infer","processed":70,"total":100,"eta_sec":4,"p95_ms":24}
+{"event":"PROGRESS","phase":"infer","processed":100,"total":100,"eta_sec":0,"p95_ms":23}
+{"event":"PHASE","phase":"analyze","message":"Analyzing movement patterns"}
+{"event":"PROGRESS","phase":"analyze","processed":50,"total":100,"eta_sec":2,"p95_ms":10}
+{"event":"PROGRESS","phase":"analyze","processed":100,"total":100,"eta_sec":0,"p95_ms":10}
+{"event":"METRIC","key":"fps_actual","value":29.7}
+{"event":"METRIC","key":"coverage","value":0.89}
+{"event":"METRIC","key":"confidence","value":0.92}
+{"event":"EVIDENCE","frame":612,"timestamp_ms":20400,"snapshotPath":"evidence/frame_612.jpg"}
+{"event":"DONE","artifacts":{"root":"test/fixtures/e2e_scenarios/artifacts/session_success","result":"result.json","perf":"perf.json","keypoints":"keypoints.json","evidence":"evidence.jpg"}}
+

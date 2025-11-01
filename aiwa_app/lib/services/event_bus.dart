@@ -41,8 +41,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:isolate';
 import 'dart:math';
+
+import 'package:aiwa_app/services/video_analysis_service.dart';
+import 'package:aiwa_app/services/cancellation_token.dart';
 
 // ============================================================================
 // 异常类型（契约违反/解析错误/CLI 异常）
@@ -127,7 +129,7 @@ Stream<Map<String, dynamic>> analysisEventsFromJsonlFile(
 
         final lines = file
             .openRead()
-            .transform(utf8.decoder)
+            .transform(const Utf8Decoder(allowMalformed: true))
             .transform(const LineSplitter());
 
         lineSubscription = lines.listen(
@@ -135,8 +137,8 @@ Stream<Map<String, dynamic>> analysisEventsFromJsonlFile(
             lineNumber++;
             final trimmed = line.trim();
 
-            // 忽略空白行
-            if (trimmed.isEmpty) {
+            // 忽略空白与注释行
+            if (trimmed.isEmpty || trimmed.startsWith('#') || trimmed.startsWith('//')) {
               debugLog?.call('[JSONL] Line $lineNumber: empty, skipped');
               return;
             }
@@ -166,15 +168,9 @@ Stream<Map<String, dynamic>> analysisEventsFromJsonlFile(
                 controller.close();
               }
             } on FormatException catch (e) {
-              debugLog?.call('[JSONL] Line $lineNumber: JSON parse error: $e');
-              _emitErrorAndClose(
-                controller: controller,
-                sessionId: currentSessionId ?? _generateSessionId(),
-                code: '400_PARSE',
-                message: 'JSON parse error at line $lineNumber',
-                details: {'line': lineNumber, 'raw': trimmed, 'cause': e.toString()},
-                debugLog: debugLog,
-              );
+              // 跳过畸形 JSON 行但不关闭流
+              debugLog?.call('[JSONL] Line $lineNumber: JSON parse error, skipped: $e');
+              return;
             } on ContractViolation catch (e) {
               _emitErrorAndClose(
                 controller: controller,
@@ -299,7 +295,7 @@ Stream<Map<String, dynamic>> analysisEventsFromCli({
 
         // 监听 stdout（JSONL 事件流）
         stdoutSubscription = process!.stdout
-            .transform(utf8.decoder)
+            .transform(const Utf8Decoder(allowMalformed: true))
             .transform(const LineSplitter())
             .listen(
           (line) {
@@ -343,16 +339,9 @@ Stream<Map<String, dynamic>> analysisEventsFromCli({
                 _killProcess(process, debugLog);
               }
             } on FormatException catch (e) {
-              debugLog?.call('[CLI] Line $lineNumber: JSON parse error: $e');
-              _emitErrorAndClose(
-                controller: controller,
-                sessionId: currentSessionId ?? _generateSessionId(),
-                code: '400_PARSE',
-                message: 'JSON parse error at line $lineNumber',
-                details: {'line': lineNumber, 'raw': trimmed, 'cause': e.toString()},
-                debugLog: debugLog,
-              );
-              _killProcess(process, debugLog);
+              // 跳过畸形 JSON 行但不关闭流
+              debugLog?.call('[CLI] Line $lineNumber: JSON parse error, skipped: $e');
+              return;
             } on ContractViolation catch (e) {
               _emitErrorAndClose(
                 controller: controller,
@@ -476,88 +465,30 @@ Stream<Map<String, dynamic>> analysisEventsFromIsolate({
   String? sessionId,
   void Function(String msg)? debugLog,
 }) {
-  late StreamController<Map<String, dynamic>> controller;
-  ReceivePort? receivePort;
-  Isolate? isolate;
-  String? currentSessionId = sessionId;
-
-  controller = StreamController<Map<String, dynamic>>.broadcast(
-    onListen: () async {
-      debugLog?.call('[Isolate] Starting analysis in isolate');
-
-      try {
-        receivePort = ReceivePort();
-        currentSessionId ??= _generateSessionId();
-
-        // TODO: 替换为实际的 Isolate 入口函数
-        // 这里需要 CLI 代码提供一个静态入口函数，例如:
-        // isolate = await Isolate.spawn(
-        //   _analysisIsolateEntry,
-        //   _IsolateParams(
-        //     sendPort: receivePort!.sendPort,
-        //     inputPath: inputPath,
-        //     sessionRoot: sessionRoot,
-        //     configPath: configPath,
-        //     sessionId: currentSessionId!,
-        //   ),
-        // );
-
-        // 临时实现：发送未实现错误
-        _emitErrorAndClose(
-          controller: controller,
-          sessionId: currentSessionId!,
-          code: '501_NOT_IMPLEMENTED',
-          message: 'Isolate analysis not implemented yet. Please use CLI or JSONL mode.',
-          details: {
-            'inputPath': inputPath,
-            'sessionRoot': sessionRoot,
-            'configPath': configPath,
-          },
-          debugLog: debugLog,
-        );
-        return;
-
-        // 实际实现应该监听 receivePort:
-        // receivePort!.listen(
-        //   (message) {
-        //     if (message is Map<String, dynamic>) {
-        //       try {
-        //         _validateEvent(message);
-        //         controller.add(message);
-        //
-        //         final eventName = message['event'] as String;
-        //         if (eventName == 'DONE' || eventName == 'ERROR') {
-        //           controller.close();
-        //           _killIsolate(isolate, debugLog);
-        //         }
-        //       } catch (e) {
-        //         _emitErrorAndClose(...);
-        //         _killIsolate(isolate, debugLog);
-        //       }
-        //     }
-        //   },
-        //   onError: (error) { ... },
-        //   onDone: () { ... },
-        // );
-      } catch (e) {
-        debugLog?.call('[Isolate] Failed to spawn: $e');
-        _emitErrorAndClose(
-          controller: controller,
-          sessionId: currentSessionId ?? _generateSessionId(),
-          code: '500_INTERNAL',
-          message: 'Failed to spawn isolate: $e',
-          debugLog: debugLog,
-        );
-      }
-    },
-    onCancel: () {
-      debugLog?.call('[Isolate] Stream cancelled, cleaning up');
-      _killIsolate(isolate, debugLog);
-      receivePort?.close();
-    },
+  // 注意: ML Kit 和 VideoPlayer 需要主 Isolate，所以这里不使用真正的 Isolate
+  // 而是在主线程中异步运行，通过 VideoAnalysisService 生成事件流
+  
+  debugLog?.call('[VideoAnalysis] Starting video analysis: $inputPath');
+  
+  final currentSessionId = sessionId ?? _generateSessionId();
+  
+  // ✅ 创建临时取消令牌（用于 Isolate 模式）
+  // 注意：此模式下的取消需要通过 stream 取消订阅来触发
+  final token = CancellationToken(
+    id: currentSessionId,
+    sessionId: currentSessionId,
   );
-
-  return controller.stream;
+  
+  // ✅ VideoAnalysisService.analyzeVideo() 现在返回 record，需要提取 stream
+  final result = VideoAnalysisService.analyzeVideo(
+    token: token,
+    videoPath: inputPath,
+    sessionRoot: sessionRoot,
+    configPath: configPath,
+    sessionId: currentSessionId,
+  );
+  
+  return result.stream;
 }
 
 // ============================================================================
@@ -698,14 +629,6 @@ void _killProcess(Process? process, void Function(String msg)? debugLog) {
       debugLog?.call('[CLI] Failed to kill process: $e');
     }
   });
-}
-
-/// 强制销毁 Isolate
-void _killIsolate(Isolate? isolate, void Function(String msg)? debugLog) {
-  if (isolate == null) return;
-
-  debugLog?.call('[Isolate] Killing isolate');
-  isolate.kill(priority: Isolate.immediate);
 }
 
 // ============================================================================

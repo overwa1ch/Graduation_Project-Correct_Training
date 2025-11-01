@@ -61,18 +61,21 @@ flutter pub get
 run_test "📊 Static Analysis" "flutter analyze --no-pub --no-fatal-infos"
 
 # 4. 所有测试
-run_test "🧪 All Tests" "flutter test --no-pub --reporter expanded"
+run_test "🧪 All Tests" "flutter test --no-pub --reporter expanded --coverage"
 
-# 5. 主题测试
+# 5. 覆盖率检查
+run_test "📊 Coverage Check (>85%)" "dart tool/check_coverage.dart --threshold=85"
+
+# 6. 主题测试
 run_test "🎨 Theme Tests" "flutter test test/theme_test.dart --no-pub --reporter expanded"
 
-# 6. Tokens Schema 测试
+# 7. Tokens Schema 测试
 run_test "📝 Tokens Schema Tests" "flutter test test/tokens_schema_test.dart --no-pub --reporter expanded"
 
-# 7. Widget 测试
+# 8. Widget 测试
 run_test "🖼️  Widget Tests" "flutter test test/widget_test.dart --no-pub --reporter expanded"
 
-# 8. Tokens 同步验证
+# 9. Tokens 同步验证
 if [ -d "tool" ] && [ -f "tool/sync_tokens.dart" ]; then
     echo ""
     echo "------------------------------------------------------------"
@@ -92,7 +95,7 @@ if [ -d "tool" ] && [ -f "tool/sync_tokens.dart" ]; then
     fi
 fi
 
-# 9. 构建验证（可选，耗时较长）
+# 10. 构建验证（可选，耗时较长）
 if [ "$1" == "--with-build" ]; then
     run_test "🏗️  Build Validation" "flutter build apk --debug --no-pub"
 fi

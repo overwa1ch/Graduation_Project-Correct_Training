@@ -15,12 +15,11 @@
 - [x] Rhythm（节奏） ← `result.rhythm`
 
 **配色规则（参见 `ui_contracts.md`）：**
-- [x] < 60 分 → 红色边框 + 红色分数
-- [x] 60-79 分 → 橙色边框 + 橙色分数
-- [x] ≥ 80 分 → 绿色边框 + 绿色分数
+- [x] < 80 分 → 浅灰色分数（可读）
+- [x] ≥ 80 分 → 绿色分数
 
 **总分与次数：**
-- [x] Overall Score ← `result.total`（配色规则同上）
+- [x] Overall Score ← `result.total`（固定使用 `textInvert` 纯白显示）
 - [x] Repetitions ← `result.reps`
 
 **元信息展示：**
@@ -32,17 +31,12 @@
 
 ---
 
-### 2. 证据缺失时降级为片段回放 ✅
+### 2. 占位策略（视频方向） ✅
 
-**三级降级策略（按优先级）：**
+**两级策略（按优先级）：**
 
-#### 优先级 1：显示证据快照 ✅
-- **条件：** `result.evidencePath != null && evidencePath.isNotEmpty`
-- **显示：** 图片文件（路径: `${sessionRoot}/${evidencePath}`）
-- **降级：** 文件不存在时显示 "image_not_supported" 图标
-
-#### 优先级 2：显示时间窗提示 ✅
-- **条件：** `evidencePath == null` 且 `resolveEvidenceWindow(raw) != null`
+#### 优先级 1：显示时间窗提示 ✅
+- **条件：** `resolveEvidenceWindow(raw) != null`
 - **显示：** 
   - 摄像机图标（绿色）
   - "Evidence Segment" 标题
@@ -50,11 +44,11 @@
   - 提示文本：`Review this segment in the video`
 - **实现：** 异步加载 `result.json` 并调用 `resolveEvidenceWindow()`
 
-#### 优先级 3：显示占位图标 ✅
-- **条件：** `evidencePath == null` 且 `evidenceWindow == null`
+#### 优先级 2：显示播放占位 ✅
+- **条件：** `evidenceWindow == null`
 - **显示：** 
   - 播放图标（半透明白色）
-  - "No evidence snapshot" 文本
+  - "No video preview" 文本
 
 ---
 
@@ -99,6 +93,7 @@ No issues found!
 | Overall Score | `result.total`        | `scores.overall`       | int   |
 | Repetitions   | `result.reps`         | `repCount`             | int   |
 | 证据快照          | `result.evidencePath` | `evidence[0].snapshot` | str?  |
+（注：当前 UI 不再展示静态快照，仅用于后续视频联动）
 | 低置信度标记        | `result.lowConfidence` | `quality.lowConfidence` | bool? |
 | 覆盖率           | `result.coverage`     | `quality.coverage`     | num?  |
 | 模板名称          | `result.templateName` | `meta.template`        | str?  |
@@ -126,36 +121,14 @@ No issues found!
 - [x] 错误处理（降级到占位图标）
 
 ### 性能优化 ✅
-- [x] 仅在 `evidencePath == null` 时加载时间窗
+- [x] 始终异步加载时间窗（轻量 JSON 解析）
 - [x] 使用 `mounted` 检查防止内存泄漏
-- [x] 图片文件存在性检查（避免不必要的 IO）
 
 ---
 
 ## 📸 UI 预览（各种状态）
 
-### 完整证据（evidencePath 存在）
-```
-┌─────────────────────────────────────┐
-│  [证据快照图片]                      │
-│  (200x343, 圆角 8px)                 │
-└─────────────────────────────────────┘
-
-[Posture: 85]  [Stability: 90]  [Rhythm: 88]
-  (绿边框)        (绿边框)          (绿边框)
-
-Overall Score: 87/100 (绿色)
-Repetitions: 12
-
-[Analysis Details]
-Template: squat
-Strictness: strict
-Engine: MoveNet
-FPS: 30
-Coverage: 92%
-```
-
-### 时间窗降级（evidencePath 为 null）
+### 时间窗提示
 ```
 ┌─────────────────────────────────────┐
 │         🎥 (绿色图标)                │
@@ -167,11 +140,11 @@ Coverage: 92%
 [分数卡片同上...]
 ```
 
-### 无证据（两者都为 null）
+### 无时间窗（占位）
 ```
 ┌─────────────────────────────────────┐
 │         ▶️ (半透明图标)              │
-│    No evidence snapshot             │
+│    No video preview                 │
 └─────────────────────────────────────┘
 
 [分数卡片同上...]
@@ -196,7 +169,6 @@ Overall Score: 87/100
 
 ### 依赖项
 ```dart
-import 'dart:io';                                    // 文件操作
 import 'package:flutter/material.dart';              // Flutter UI
 import 'package:aiwa_app/adapters/result_adapter.dart';  // 数据模型
 import 'package:aiwa_app/adapters/evidence_resolver.dart'; // 证据解析
@@ -207,7 +179,7 @@ import 'package:aiwa_app/adapters/evidence_resolver.dart'; // 证据解析
 // 1. 异步加载时间窗
 Future<void> _loadEvidenceWindow() async
 
-// 2. 三级降级显示
+// 2. 占位显示策略
 Widget _buildVideoPlaceholder(BuildContext context)
 
 // 3. 分数配色逻辑

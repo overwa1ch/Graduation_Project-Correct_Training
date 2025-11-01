@@ -1,0 +1,45 @@
+# Docker Compose for local development (Simplified Auth API)
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: aiwa-postgres
+    environment:
+      POSTGRES_DB: aiwa_auth
+      POSTGRES_USER: aiwa
+      POSTGRES_PASSWORD: aiwa_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aiwa"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Auth API
+  auth-api:
+    build:
+      context: ./core-api
+      dockerfile: Dockerfile
+    container_name: aiwa-auth-api
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://aiwa:aiwa_dev_password@postgres:5432/aiwa_auth
+      JWT_ACCESS_SECRET: dev_access_secret_change_in_production
+      JWT_REFRESH_SECRET: dev_refresh_secret_change_in_production
+      NODE_ENV: development
+      PORT: 3000
+      CORS_ORIGIN: "*"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh -c "npx prisma migrate deploy && npm start"
+
+volumes:
+  postgres_data:
+

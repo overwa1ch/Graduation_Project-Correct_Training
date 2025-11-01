@@ -89,8 +89,6 @@ my-app/
 │   │   │   ├── AdminDialogs.tsx # 管理员对话框组件
 │   │   │   ├── AdminUsersClient.tsx # 客户端组件
 │   │   │   └── page.tsx         # 页面入口
-│   │   ├── books/               # 单词书管理
-│   │   │   └── page.tsx         # 页面入口（待实现）
 │   │   └── layout.tsx           # 仪表板布局
 │   ├── actions/                 # Server Actions
 │   │   ├── admin-users.ts       # 管理员相关操作

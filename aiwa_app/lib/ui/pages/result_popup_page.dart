@@ -1,5 +1,8 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
+import 'package:video_player/video_player.dart';
 import 'package:aiwa_app/theme/colors.dart';
 import 'package:aiwa_app/theme/typography.dart';
 import 'package:aiwa_app/adapters/result_adapter.dart';
@@ -54,19 +57,52 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
   ({int startMs, int endMs})? _evidenceWindow;
   bool _isLoadingWindow = false;
 
+  // 骨架视频（部分结果时显示）
+  String? _overlayVideoPath;
+  bool _hasOverlayVideo = false;
+  VideoPlayerController? _videoController;
+
   @override
   void initState() {
     super.initState();
+    _checkOverlayVideo();
     _loadEvidenceWindow();
   }
 
-  /// 加载证据时间窗（若快照路径不存在）
-  Future<void> _loadEvidenceWindow() async {
-    // 如果已有证据路径，不需要加载时间窗
-    if (widget.result.evidencePath != null && widget.result.evidencePath!.isNotEmpty) {
-      return;
-    }
+  @override
+  void dispose() {
+    _videoController?.dispose();
+    super.dispose();
+  }
 
+  /// 检查骨架视频是否存在
+  Future<void> _checkOverlayVideo() async {
+    try {
+      final overlayPath = p.join(widget.sessionRoot, 'keypoints_overlay.mp4');
+      final overlayFile = File(overlayPath);
+      
+      if (await overlayFile.exists()) {
+        final size = await overlayFile.length();
+        debugPrint('[ResultPopup] Found overlay video: $overlayPath ($size bytes)');
+        
+        if (size > 0) {
+          setState(() {
+            _overlayVideoPath = overlayPath;
+            _hasOverlayVideo = true;
+          });
+        } else {
+          debugPrint('[ResultPopup] Overlay video file is empty');
+        }
+      } else {
+        debugPrint('[ResultPopup] No overlay video found at: $overlayPath');
+      }
+    } catch (e) {
+      debugPrint('[ResultPopup] Error checking overlay video: $e');
+    }
+  }
+
+  /// 加载证据时间窗（用于视频段落提示）
+  Future<void> _loadEvidenceWindow() async {
     setState(() => _isLoadingWindow = true);
 
     try {
@@ -93,9 +129,11 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      key: const ValueKey('dialog.result.backdrop'),
       onTap: () => Navigator.pop(context), // 点击空白处关闭
       behavior: HitTestBehavior.opaque,
       child: GestureDetector(
+        key: const ValueKey('dialog.result.content'),
         onTap: () {}, // 阻止点击内容时关闭
         child: DraggableScrollableSheet(
           initialChildSize: 0.67, // 初始占 2/3 高度
@@ -103,9 +141,9 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
           maxChildSize: 0.9,      // 最大 9/10 高度
           builder: (context, scrollController) {
             return Container(
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppColors.surfacePrimary,
-                borderRadius: const BorderRadius.vertical(
+                borderRadius: BorderRadius.vertical(
                   top: Radius.circular(20),
                 ),
               ),
@@ -162,13 +200,24 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
 
   /// 视频/证据占位区域（顶部）
   Widget _buildVideoPlaceholder(BuildContext context) {
-    // 证据降级策略：
-    // 1. 优先显示快照图片（evidencePath）
-    // 2. 次选显示时间窗提示（window）
-    // 3. 最后显示播放图标占位
+    // 显示优先级：
+    // 1. 骨架视频（部分结果时）
+    // 2. 证据时间窗提示
+    // 3. 加载中
+    // 4. 占位图标
+
+    Widget content;
     
-    final evidencePath = widget.result.evidencePath;
-    final hasEvidence = evidencePath != null && evidencePath.isNotEmpty;
+    if (_hasOverlayVideo && _overlayVideoPath != null) {
+      // 显示骨架视频
+      content = _buildOverlayVideoPlayer();
+    } else if (_evidenceWindow != null) {
+      content = _buildWindowHint(_evidenceWindow!);
+    } else if (_isLoadingWindow) {
+      content = const Center(child: CircularProgressIndicator());
+    } else {
+      content = _buildPlaceholder();
+    }
 
     return Container(
       width: 343,
@@ -184,14 +233,125 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
           ),
         ],
       ),
-      child: hasEvidence
-          ? _buildEvidenceImage(evidencePath)
-          : (_evidenceWindow != null
-              ? _buildWindowHint(_evidenceWindow!)
-              : (_isLoadingWindow
-                  ? const Center(child: CircularProgressIndicator())
-                  : _buildPlaceholder())),
+      child: content,
     );
+  }
+
+  /// 构建骨架视频播放器
+  Widget _buildOverlayVideoPlayer() {
+    return Stack(
+      children: [
+        GestureDetector(
+          onTap: () => _openFullscreenVideo(context),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: FutureBuilder<VideoPlayerController>(
+              future: _initializeVideoPlayer(_overlayVideoPath!),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.done) {
+                  if (snapshot.hasData && snapshot.data!.value.isInitialized) {
+                    final controller = snapshot.data!;
+                    
+                    // 自动循环播放
+                    controller.setLooping(true);
+                    if (!controller.value.isPlaying) {
+                      controller.play();
+                    }
+                    
+                    return SizedBox(
+                      width: 343,
+                      height: 200,
+                      child: FittedBox(
+                        fit: BoxFit.cover,
+                        child: SizedBox(
+                          width: controller.value.size.width,
+                          height: controller.value.size.height,
+                          child: VideoPlayer(controller),
+                        ),
+                      ),
+                    );
+                  } else {
+                    return _buildPlaceholder();
+                  }
+                } else {
+                  return const Center(child: CircularProgressIndicator());
+                }
+              },
+            ),
+          ),
+        ),
+        // 标签：显示这是骨架视频
+        Positioned(
+          top: 8,
+          left: 8,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.black54,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.accessibility_new,
+                  size: 14,
+                  color: AppColors.brandPrimaryVariant,
+                ),
+                SizedBox(width: 4),
+                Text(
+                  'Keypoints',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        // 放大图标提示
+        Positioned(
+          bottom: 8,
+          right: 8,
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: const BoxDecoration(
+              color: Colors.black54,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.fullscreen,
+              color: AppColors.brandPrimaryVariant,
+              size: 20,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 打开全屏视频
+  void _openFullscreenVideo(BuildContext context) {
+    if (_overlayVideoPath == null) return;
+    
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (context) => _FullscreenVideoPage(videoPath: _overlayVideoPath!),
+      ),
+    );
+  }
+
+  /// 初始化视频播放器
+  Future<VideoPlayerController> _initializeVideoPlayer(String path) async {
+    final controller = VideoPlayerController.file(File(path));
+    await controller.initialize();
+    
+    // 保存控制器引用以便清理
+    _videoController = controller;
+    
+    return controller;
   }
 
   /// 构建播放图标占位
@@ -207,7 +367,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            'No evidence snapshot',
+            'No video preview',
             style: AppTypography.bodyBase.copyWith(
               color: AppColors.textInvert.withOpacity(0.5),
               fontSize: 12,
@@ -228,7 +388,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
+          const Icon(
             Icons.videocam,
             size: 48,
             color: AppColors.brandPrimaryVariant,
@@ -265,36 +425,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
     );
   }
 
-  /// 构建证据图片
-  Widget _buildEvidenceImage(String relativePath) {
-    final fullPath = '${widget.sessionRoot}/$relativePath';
-    final file = File(fullPath);
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: file.existsSync()
-          ? Image.file(
-              file,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Center(
-                  child: Icon(
-                    Icons.image_not_supported,
-                    size: 48,
-                    color: AppColors.textInvert.withOpacity(0.4),
-                  ),
-                );
-              },
-            )
-          : Center(
-              child: Icon(
-                Icons.image_outlined,
-                size: 48,
-                color: AppColors.textInvert.withOpacity(0.4),
-              ),
-            ),
-    );
-  }
+  // 旧版静态快照展示已移除，后续将接入视频播放器
 
   /// 打分卡片区域（中部）
   Widget _buildScoreCards(BuildContext context) {
@@ -311,21 +442,26 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
   }
 
   /// 单个打分卡片
-  Widget _buildScoreCard(String label, int score) {
+  Widget _buildScoreCard(String label, int? score) {
+    final isNA = score == null;
+    
     // 根据分数选择颜色（参见 ui_contracts.md）
     // <60 灰，60~79 灰，≥80 绿
     final Color scoreColor;
-    if (score < 60) {
-      scoreColor = AppColors.surfaceSecondary;
+    if (isNA) {
+      scoreColor = AppColors.neutralLight.withOpacity(0.5);
+    } else if (score < 60) {
+      scoreColor = AppColors.neutralLight;
     } else if (score < 80) {
-      scoreColor = AppColors.surfaceSecondary;
+      scoreColor = AppColors.neutralLight;
     } else {
       scoreColor = AppColors.brandPrimaryVariant;
     }
 
     return Container(
-      width: 100,
-      height: 80,
+      key: ValueKey('score_card_${label.toLowerCase()}'),
+      width: 88,
+      height: 64,
       decoration: BoxDecoration(
         color: AppColors.surfaceSecondary,
         borderRadius: BorderRadius.circular(8),
@@ -338,39 +474,52 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
           ),
         ],
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            label,
-            style: AppTypography.bodyBold.copyWith(
-              color: AppColors.textInvert,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              height: 1.5,
-            ),
-            textAlign: TextAlign.center,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                label,
+                key: ValueKey('score_label_${label.toLowerCase()}'),
+                softWrap: false,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.bodyBold.copyWith(
+                  color: AppColors.textInvert,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  height: 1.3,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                isNA ? 'N/A' : score.toString(),
+                key: ValueKey('score_value_${label.toLowerCase()}'),
+                softWrap: false,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.bodyBold.copyWith(
+                  color: scoreColor,
+                  fontSize: isNA ? 16 : 18,
+                  fontWeight: FontWeight.w800,
+                  height: 1.2,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
-          const SizedBox(height: 2),
-          Text(
-            score.toString(),
-            style: AppTypography.bodyBold.copyWith(
-              color: scoreColor,
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              height: 1.5,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+        ),
       ),
     );
   }
 
   /// 评估详情区域（底部，包含总分、次数、质量提示、元信息）
   Widget _buildEvaluationPanel(BuildContext context) {
-    // 质量提示判断
+    // 质量提示判断（包括部分结果）
     final showQualityWarning = 
+        widget.result.isPartial ||
         (widget.result.lowConfidence == true) || 
         (widget.result.coverage != null && widget.result.coverage! < 0.7);
 
@@ -389,10 +538,20 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
       ),
       padding: const EdgeInsets.all(22),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 总分与次数
           _buildSummarySection(),
+          
+          if (_shouldShowAttemptFeedback())
+            const SizedBox(height: 24),
+
+          if (_shouldShowAttemptFeedback())
+            _buildAttemptFeedbackSection(context),
+
+          if (_shouldShowAttemptFeedback())
+            const SizedBox(height: 24),
           
           const SizedBox(height: 24),
           
@@ -412,15 +571,11 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
 
   /// 构建总分与次数区域
   Widget _buildSummarySection() {
-    // 总分颜色
-    final Color totalColor;
-    if (widget.result.total < 60) {
-      totalColor = AppColors.surfaceSecondary;
-    } else if (widget.result.total < 80) {
-      totalColor = AppColors.surfaceSecondary;
-    } else {
-      totalColor = AppColors.brandPrimaryVariant;
-    }
+    final isNA = widget.result.total == null;
+    // 总分颜色固定为纯白，提升可读性
+    final Color totalColor = isNA 
+        ? AppColors.textInvert.withOpacity(0.5) 
+        : AppColors.textInvert;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -439,7 +594,8 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
         
         // 总分数值
         Text(
-          '${widget.result.total}/100',
+          isNA ? 'N/A' : '${widget.result.total}/100',
+          key: const ValueKey('overall_score'),
           style: AppTypography.heading.copyWith(
             color: totalColor,
             fontSize: 32,
@@ -453,7 +609,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
         // 次数
         Row(
           children: [
-            Icon(
+            const Icon(
               Icons.repeat,
               color: AppColors.textInvert,
               size: 20,
@@ -461,6 +617,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
             const SizedBox(width: 8),
             Text(
               'Repetitions: ${widget.result.reps}',
+              key: const ValueKey('reps_count'),
               style: AppTypography.bodyBase.copyWith(
                 color: AppColors.textInvert,
                 fontSize: 16,
@@ -469,12 +626,206 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
             ),
           ],
         ),
+
+        if (widget.result.attempts > widget.result.reps)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.fitness_center,
+                  color: AppColors.textInvert,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Detected Attempts: ${widget.result.attempts}',
+                  style: AppTypography.bodyBase.copyWith(
+                    color: AppColors.textInvert.withOpacity(0.85),
+                    fontSize: 15,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
       ],
+    );
+  }
+
+  bool _shouldShowAttemptFeedback() {
+    if (widget.result.attemptFeedback != null) {
+      return true;
+    }
+    return widget.result.attempts > widget.result.reps;
+  }
+
+  Widget _buildAttemptFeedbackSection(BuildContext context) {
+    final feedback = widget.result.attemptFeedback;
+    final attemptsTotal = feedback?.total ?? widget.result.attempts;
+    final attemptsQualified = feedback?.qualified ?? widget.result.reps;
+    final attemptsUnqualified = feedback?.unqualified ??
+        math.max(0, attemptsTotal - attemptsQualified);
+    final avgAngle = feedback?.avgAngle;
+    final targetAngle = feedback?.targetAngle;
+    final detectionThreshold = feedback?.detectionThreshold;
+    final suggestions = feedback?.suggestions ?? const <String>[];
+    final modeLabel = feedback?.mode ?? (widget.result.strictness ?? 'relaxed');
+
+    final bool isRelaxed = modeLabel.toLowerCase() != 'strict';
+    final Color accentColor = AppColors.brandPrimaryVariant;
+    final Color badgeColor = isRelaxed
+        ? AppColors.brandPrimaryVariant.withOpacity(0.22)
+        : AppColors.surfaceSecondary.withOpacity(0.45);
+    final Color badgeBorder = isRelaxed
+        ? AppColors.brandPrimaryVariant.withOpacity(0.55)
+        : AppColors.surfaceSecondary.withOpacity(0.7);
+    final Color badgeTextColor = isRelaxed
+        ? AppColors.brandPrimaryVariant
+        : AppColors.textInvert.withOpacity(0.85);
+    final String badgeText = isRelaxed
+        ? 'Relaxed · Beginner Friendly'
+        : 'Strict · Advanced Challenge';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surfacePrimary.withOpacity(0.35),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: accentColor.withOpacity(0.6),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            decoration: BoxDecoration(
+              color: badgeColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: badgeBorder,
+                width: 1,
+              ),
+            ),
+            child: Text(
+              badgeText,
+              style: AppTypography.caption.copyWith(
+                color: badgeTextColor,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 14),
+
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Icon(Icons.insights, color: accentColor, size: 22),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Attempt Summary',
+                  style: AppTypography.bodyBold.copyWith(
+                    color: AppColors.textInvert,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Detected $attemptsTotal attempts • Qualified $attemptsQualified • Needs work $attemptsUnqualified',
+            style: AppTypography.bodyBase.copyWith(
+              color: AppColors.textInvert.withOpacity(0.85),
+              fontSize: 14,
+            ),
+          ),
+          if (avgAngle != null && targetAngle != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'Average depth: ${avgAngle.toStringAsFixed(1)}° (goal < ${targetAngle.toStringAsFixed(1)}°)',
+                style: AppTypography.bodyBase.copyWith(
+                  color: AppColors.textInvert.withOpacity(0.7),
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          if (detectionThreshold != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                'Detection window: up to ${detectionThreshold.toStringAsFixed(0)}°',
+                style: AppTypography.caption.copyWith(
+                  color: AppColors.textInvert.withOpacity(0.55),
+                ),
+              ),
+            ),
+          if (suggestions.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Coaching Tips',
+              style: AppTypography.bodyBold.copyWith(
+                color: accentColor,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...suggestions.map((tip) => _buildSuggestionItem(tip)),
+          ] else ...[
+            const SizedBox(height: 12),
+            _buildSuggestionItem('Replay your successful reps and replicate their depth and pacing.'),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSuggestionItem(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '• ',
+            style: AppTypography.bodyBase.copyWith(
+              color: AppColors.textInvert,
+              fontSize: 13,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              text,
+              style: AppTypography.bodyBase.copyWith(
+                color: AppColors.textInvert.withOpacity(0.8),
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   /// 构建质量警告提示
   Widget _buildQualityWarning() {
+    // 检查是否为部分结果
+    if (widget.result.isPartial) {
+      return _buildPartialResultWarning();
+    }
+    
+    // 普通质量警告
     String message;
     if (widget.result.lowConfidence == true) {
       message = '⚠️ Low confidence detected. Results may be less accurate.';
@@ -493,7 +844,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
       ),
       child: Row(
         children: [
-          Icon(Icons.warning, color: AppColors.surfaceSecondary, size: 20),
+          const Icon(Icons.warning, color: AppColors.surfaceSecondary, size: 20),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -502,6 +853,86 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
                 color: AppColors.surfaceSecondary,
                 fontSize: 14,
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 构建部分结果警告（降级模式）
+  Widget _buildPartialResultWarning() {
+    final partialInfo = widget.result.partialFailure;
+    
+    String title = 'Partial Analysis Results';
+    String message = 'Keypoints detected successfully, but angle calculation failed.';
+    String suggestion = '💡 Suggestions: Ensure clear view of knees and hips, improve lighting, or adjust camera angle.';
+    
+    if (partialInfo != null) {
+      switch (partialInfo.code) {
+        case 'ANGLE_COMPUTE_FAILED':
+          message = 'Keypoints detected successfully, but angle calculation failed.\nReason: ${partialInfo.message}';
+          suggestion = '💡 Suggestions: Ensure clear view of knees and hips, improve lighting, or adjust camera angle.';
+          break;
+        case 'METRICS_COMPUTE_FAILED':
+          message = 'Angles computed, but scoring metrics failed.\nReason: ${partialInfo.message}';
+          suggestion = '💡 Try recording again with better visibility.';
+          break;
+        default:
+          message = 'Analysis completed with limitations: ${partialInfo.message}';
+          suggestion = '💡 Try recording again with better conditions.';
+      }
+    }
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceSecondary.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppColors.surfaceSecondary,
+          width: 2,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.info_outline,
+                color: AppColors.surfaceSecondary,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: AppTypography.bodyBold.copyWith(
+                    color: AppColors.textInvert,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            message,
+            style: AppTypography.bodyBase.copyWith(
+              color: AppColors.textInvert.withOpacity(0.9),
+              fontSize: 14,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            suggestion,
+            style: AppTypography.bodyBase.copyWith(
+              color: AppColors.textInvert.withOpacity(0.7),
+              fontSize: 12,
+              fontStyle: FontStyle.italic,
             ),
           ),
         ],
@@ -572,6 +1003,87 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ============================================================================
+// 全屏视频播放页面
+// ============================================================================
+
+/// 全屏视频播放页面（私有组件）
+class _FullscreenVideoPage extends StatefulWidget {
+  final String videoPath;
+
+  const _FullscreenVideoPage({required this.videoPath});
+
+  @override
+  State<_FullscreenVideoPage> createState() => _FullscreenVideoPageState();
+}
+
+class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
+  late VideoPlayerController _controller;
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeVideo();
+  }
+
+  Future<void> _initializeVideo() async {
+    _controller = VideoPlayerController.file(File(widget.videoPath));
+    await _controller.initialize();
+    _controller.setLooping(true);
+    _controller.play();
+    
+    if (mounted) {
+      setState(() => _isInitialized = true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text(
+          'Skeleton Video',
+          style: TextStyle(color: Colors.white),
+        ),
+      ),
+      body: Center(
+        child: _isInitialized
+            ? AspectRatio(
+                aspectRatio: _controller.value.aspectRatio,
+                child: VideoPlayer(_controller),
+              )
+            : const CircularProgressIndicator(color: Colors.white),
+      ),
+      floatingActionButton: _isInitialized
+          ? FloatingActionButton(
+              backgroundColor: AppColors.brandPrimaryVariant,
+              onPressed: () {
+                setState(() {
+                  _controller.value.isPlaying
+                      ? _controller.pause()
+                      : _controller.play();
+                });
+              },
+              child: Icon(
+                _controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
+                color: Colors.white,
+              ),
+            )
+          : null,
     );
   }
 }

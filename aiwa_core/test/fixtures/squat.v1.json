@@ -16,7 +16,7 @@
   },
   "scoreWeights": { "form": 0.5, "stability": 0.25, "tempo": 0.25 },
   "strictness": {
-    "relaxed": { "minValleyKneeAngle": 90 },
-    "strict":  { "minValleyKneeAngle": 80 }
+    "relaxed": { "minValleyKneeAngle": 90, "detectionThreshold": 120 },
+    "strict":  { "minValleyKneeAngle": 80, "detectionThreshold": 100 }
   }
 }

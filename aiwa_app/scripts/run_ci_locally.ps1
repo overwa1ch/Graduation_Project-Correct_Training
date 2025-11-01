@@ -65,29 +65,35 @@ Run-Test "📊 Static Analysis" {
 
 # 4. 所有测试
 Run-Test "🧪 All Tests" {
-    flutter test --no-pub --reporter expanded
+    flutter test --no-pub --reporter expanded --coverage
     if ($LASTEXITCODE -ne 0) { throw "Tests failed" }
 }
 
-# 5. 主题测试
+# 5. 覆盖率检查
+Run-Test "📊 Coverage Check (>85%)" {
+    dart tool/check_coverage.dart --threshold=85
+    if ($LASTEXITCODE -ne 0) { throw "Coverage below threshold" }
+}
+
+# 6. 主题测试
 Run-Test "🎨 Theme Tests" {
     flutter test test/theme_test.dart --no-pub --reporter expanded
     if ($LASTEXITCODE -ne 0) { throw "Theme tests failed" }
 }
 
-# 6. Tokens Schema 测试
+# 7. Tokens Schema 测试
 Run-Test "📝 Tokens Schema Tests" {
     flutter test test/tokens_schema_test.dart --no-pub --reporter expanded
     if ($LASTEXITCODE -ne 0) { throw "Schema tests failed" }
 }
 
-# 7. Widget 测试
+# 8. Widget 测试
 Run-Test "🖼️  Widget Tests" {
     flutter test test/widget_test.dart --no-pub --reporter expanded
     if ($LASTEXITCODE -ne 0) { throw "Widget tests failed" }
 }
 
-# 8. Tokens 同步验证
+# 9. Tokens 同步验证
 if ((Test-Path "tool") -and (Test-Path "tool/sync_tokens.dart")) {
     Write-Host ""
     Write-Host "------------------------------------------------------------"
@@ -114,7 +120,7 @@ if ((Test-Path "tool") -and (Test-Path "tool/sync_tokens.dart")) {
     }
 }
 
-# 9. 构建验证（可选，耗时较长）
+# 10. 构建验证（可选，耗时较长）
 if ($args -contains "--with-build") {
     Run-Test "🏗️  Build Validation" {
         flutter build apk --debug --no-pub

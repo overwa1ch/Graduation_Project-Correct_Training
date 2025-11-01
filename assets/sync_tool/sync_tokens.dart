@@ -252,7 +252,7 @@ class TokenSyncer {
 
       final targetFile = File(p.join(tmpDir.path, filename));
       await sourceFile.copy(targetFile.path);
-      logger.verbose('  ✓ $filename');
+      logger.debug('  ✓ $filename');
     }
   }
 
@@ -281,7 +281,7 @@ class TokenSyncer {
 
       final targetFile = File(p.join(tmpDir.path, filename));
       await sourceFile.copy(targetFile.path);
-      logger.verbose('  ✓ $filename');
+      logger.debug('  ✓ $filename');
     }
   }
 
@@ -295,7 +295,7 @@ class TokenSyncer {
         final json = jsonDecode(content);
 
         validator.validate(filename, json);
-        logger.verbose('  ✓ $filename 结构正确');
+        logger.debug('  ✓ $filename 结构正确');
       } catch (e) {
         throw Exception('$filename 验证失败: $e');
       }
@@ -351,8 +351,8 @@ class TokenSyncer {
         );
 
         if (config.verbose) {
-          logger.verbose('  旧哈希: ${change.oldHash}');
-          logger.verbose('  新哈希: ${change.newHash}');
+          logger.debug('  旧哈希: ${change.oldHash}');
+          logger.debug('  新哈希: ${change.newHash}');
         }
       }
     }
@@ -459,7 +459,9 @@ class TokenSyncer {
         report.writeln('### ${change.filename}');
         report.writeln('- **状态**: ${change.status.name}');
         report.writeln('- **大小**: ${change.oldSize} → ${change.newSize} bytes');
-        report.writeln('- **哈希**: `${change.oldHash.substring(0, 8)}...` → `${change.newHash.substring(0, 8)}...`');
+        final oldHashShort = change.oldHash.length >= 8 ? change.oldHash.substring(0, 8) : change.oldHash;
+        final newHashShort = change.newHash.length >= 8 ? change.newHash.substring(0, 8) : change.newHash;
+        report.writeln('- **哈希**: `${oldHashShort}...` → `${newHashShort}...`');
         report.writeln();
       }
     }
@@ -478,7 +480,8 @@ class TokenSyncer {
     report.writeln();
     for (final filename in tokenFiles) {
       final change = changes[filename]!;
-      report.writeln('- `$filename`: ${change.newSize} bytes (${change.newHash.substring(0, 8)})');
+      final hashShort = change.newHash.length >= 8 ? change.newHash.substring(0, 8) : change.newHash;
+      report.writeln('- `$filename`: ${change.newSize} bytes (${hashShort})');
     }
 
     final reportFile = File('SYNC_TOKENS_REPORT.md');
@@ -704,7 +707,7 @@ class Logger {
     print('❌ $message');
   }
 
-  void verbose(String message) {
+  void debug(String message) {
     if (verbose) {
       print(message);
     }

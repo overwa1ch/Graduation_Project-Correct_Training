@@ -1,0 +1,13 @@
+# Scenario: Analysis completes but evidence snapshot is missing
+{"event":"START","sessionId":"test_no_evidence_001","input":{"videoPath":"test_video.mp4"},"params":{"engine":"MoveNet","strictness":"relaxed"}}
+{"event":"PHASE","phase":"extract","message":"Extracting frames from video"}
+{"event":"PROGRESS","phase":"extract","processed":100,"total":100,"eta_sec":0,"p95_ms":14}
+{"event":"PHASE","phase":"infer","message":"Running pose inference"}
+{"event":"PROGRESS","phase":"infer","processed":100,"total":100,"eta_sec":0,"p95_ms":23}
+{"event":"PHASE","phase":"analyze","message":"Analyzing movement patterns"}
+{"event":"PROGRESS","phase":"analyze","processed":100,"total":100,"eta_sec":0,"p95_ms":10}
+{"event":"METRIC","key":"fps_actual","value":28.5}
+{"event":"METRIC","key":"coverage","value":0.65}
+{"event":"METRIC","key":"confidence","value":0.78}
+{"event":"DONE","artifacts":{"root":"test/fixtures/e2e_scenarios/artifacts/session_no_evidence","result":"result.json","perf":"perf.json","keypoints":"keypoints.json"}}
+

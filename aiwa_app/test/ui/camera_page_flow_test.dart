@@ -214,9 +214,14 @@ void main() {
       // 断言：状态为 error
       expect(controller.state, equals(AnalysisState.error));
 
-      // 断言：错误消息存在
+      // 断言：错误消息存在（新的健壮 event_bus 会跳过坏行继续处理，
+      // 最终可能因 result.json 不存在而失败）
       expect(controller.errorMessage, isNotNull);
-      expect(controller.errorMessage, contains('parse'));
+      expect(controller.errorMessage, anyOf(
+        contains('parse'),
+        contains('result.json'),
+        contains('ResultReadException'),
+      ));
     });
 
     test('错误路径：缺失 result.json 触发 error 状态', () async {

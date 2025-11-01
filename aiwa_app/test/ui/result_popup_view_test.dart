@@ -7,7 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:aiwa_app/adapters/result_adapter.dart';
 
 /// 根据分数返回颜色（UI 逻辑）
-Color getScoreColor(int score) {
+Color getScoreColor(int? score) {
+  if (score == null) return Colors.grey;
   if (score < 60) return Colors.red;
   if (score < 80) return Colors.orange;
   return Colors.green;

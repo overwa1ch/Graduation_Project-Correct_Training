@@ -1,0 +1,56 @@
+{
+  "fontFamily": "Inter",
+  "styles": {
+    "h1": {
+      "fontFamily": "Inter",
+      "fontWeight": "800",
+      "fontSize": 48,
+      "lineHeight": 0.583,
+      "letterSpacing": 0
+    },
+    "h2": {
+      "fontFamily": "Inter",
+      "fontWeight": "800",
+      "fontSize": 32,
+      "lineHeight": 0.875,
+      "letterSpacing": 0
+    },
+    "heading": {
+      "fontFamily": "Inter",
+      "fontWeight": "600",
+      "fontSize": 24,
+      "lineHeight": 1.2,
+      "letterSpacing": -0.02
+    },
+    "subheading": {
+      "fontFamily": "Inter",
+      "fontWeight": "400",
+      "fontSize": 20,
+      "lineHeight": 1.2,
+      "letterSpacing": 0
+    },
+    "bodyBase": {
+      "fontFamily": "Inter",
+      "fontWeight": "400",
+      "fontSize": 16,
+      "lineHeight": 1.4,
+      "letterSpacing": 0
+    },
+    "bold": {
+      "fontFamily": "Inter",
+      "fontWeight": "700",
+      "fontSize": 16,
+      "lineHeight": 1.5,
+      "letterSpacing": 0
+    },
+    "button": {
+      "fontFamily": "Inter",
+      "fontWeight": "800",
+      "fontSize": 20,
+      "lineHeight": 1.4,
+      "letterSpacing": 0
+    }
+  }
+}
+
+

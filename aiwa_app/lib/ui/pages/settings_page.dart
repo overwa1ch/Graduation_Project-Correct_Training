@@ -4,6 +4,8 @@ import 'package:aiwa_app/theme/colors.dart';
 import 'package:aiwa_app/ui/app_shell.dart';
 import 'package:aiwa_app/services/config_sync.dart';
 import 'package:aiwa_app/services/session_manager.dart';
+import 'package:aiwa_app/services/analysis_history.dart';
+import 'package:aiwa_app/services/support_bundle.dart';
 
 /// SettingsPage
 /// 
@@ -340,19 +342,74 @@ class _SettingsPageState extends State<SettingsPage> {
 
   /// 清理历史会话
   Future<void> _cleanupSessions() async {
+    // 显示确认对话框
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surfaceSecondary,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.dialog),
+        ),
+        title: Text(
+          'Clear All Data',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            color: AppColors.textInvert,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        content: Text(
+          'This will delete all training records and session files. This action cannot be undone.',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: AppColors.textInvert,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              'Cancel',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: AppColors.textInvert.withOpacity(0.7),
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.surfaceSecondary,
+              foregroundColor: AppColors.textInvert,
+            ),
+            child: Text(
+              'Delete All',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: AppColors.textInvert,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
     try {
-      await SessionManager.cleanupExpired(days: 7);
+      // 1. 清理会话文件（删除所有会话目录）
+      await SessionManager.cleanupExpired(days: 0);
+      
+      // 2. 清理历史记录（删除 analysis_history.json）
+      await AnalysisHistoryService().clearAllRecords();
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Local data cleaned up successfully!'),
+            content: Text('All data cleared successfully!'),
             backgroundColor: AppColors.brandPrimaryVariant,
           ),
         );
       }
     } catch (e) {
-      debugPrint('[Settings] Failed to cleanup sessions: $e');
+      debugPrint('[Settings] Failed to cleanup: $e');
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -445,37 +502,37 @@ class _SettingsPageState extends State<SettingsPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      SizedBox(height: AppSpacing.md),
+                      const SizedBox(height: AppSpacing.md),
                       
                       // 用户信息卡片
                       _buildUserCard(context),
                       
-                      SizedBox(height: AppSpacing.xl),
+                      const SizedBox(height: AppSpacing.xl),
                       
                       // Analysis Threshold
                       _buildAnalysisThreshold(theme),
                       
-                      SizedBox(height: AppSpacing.xl),
+                      const SizedBox(height: AppSpacing.xl),
                       
                       // Analysis Engine
                       _buildAnalysisEngine(theme),
                       
-                      SizedBox(height: AppSpacing.xl),
+                      const SizedBox(height: AppSpacing.xl),
                       
                       // Performance Settings
                       _buildPerformanceSettings(theme),
                       
-                      SizedBox(height: AppSpacing.xl),
+                      const SizedBox(height: AppSpacing.xl),
                       
                       // Data Management
                       _buildDataManagement(theme),
                       
-                      SizedBox(height: AppSpacing.xl),
+                      const SizedBox(height: AppSpacing.xl),
                       
                       // Advanced Settings
                       _buildAdvancedSettings(theme),
                       
-                      SizedBox(height: AppSpacing.xl),
+                      const SizedBox(height: AppSpacing.xl),
                       
                       // 按钮组
                       Row(
@@ -483,11 +540,12 @@ class _SettingsPageState extends State<SettingsPage> {
                           // 恢复默认按钮
                           Expanded(
                             child: OutlinedButton(
+                              key: const ValueKey('action.reset_defaults'),
                               onPressed: _isSaving ? null : _resetToDefaults,
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: AppColors.textInvert,
-                                side: BorderSide(color: AppColors.neutralLight),
-                                padding: EdgeInsets.symmetric(
+                                side: const BorderSide(color: AppColors.neutralLight),
+                                padding: const EdgeInsets.symmetric(
                                   vertical: AppSpacing.lg,
                                 ),
                               ),
@@ -495,17 +553,18 @@ class _SettingsPageState extends State<SettingsPage> {
                             ),
                           ),
                           
-                          SizedBox(width: AppSpacing.md),
+                          const SizedBox(width: AppSpacing.md),
                           
                           // 保存按钮
                           Expanded(
                             flex: 2,
                             child: ElevatedButton(
+                              key: const ValueKey('action.save_config'),
                               onPressed: (_isSaving || !_hasChanges) ? null : _saveConfig,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.brandPrimaryVariant,
                                 foregroundColor: AppColors.textInvert,
-                                padding: EdgeInsets.symmetric(
+                                padding: const EdgeInsets.symmetric(
                                   vertical: AppSpacing.lg,
                                 ),
                               ),
@@ -524,12 +583,13 @@ class _SettingsPageState extends State<SettingsPage> {
                         ],
                       ),
                       
-                      SizedBox(height: AppSpacing.xxl),
+                      const SizedBox(height: AppSpacing.xxl),
                       
                       // 登出按钮
                       SizedBox(
                         width: double.infinity,
                         child: OutlinedButton(
+                          key: const ValueKey('action.logout'),
                           onPressed: () {
                             Navigator.pushReplacementNamed(
                               context, 
@@ -539,8 +599,8 @@ class _SettingsPageState extends State<SettingsPage> {
                           },
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.textInvert,
-                            side: BorderSide(color: AppColors.brandPrimaryVariant),
-                            padding: EdgeInsets.symmetric(
+                            side: const BorderSide(color: AppColors.brandPrimaryVariant),
+                            padding: const EdgeInsets.symmetric(
                               vertical: AppSpacing.lg,
                             ),
                           ),
@@ -548,7 +608,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                       ),
                 
-                      SizedBox(height: AppSpacing.xxl),
+                      const SizedBox(height: AppSpacing.xxl),
                     ],
                   ),
                 ),
@@ -560,11 +620,11 @@ class _SettingsPageState extends State<SettingsPage> {
   /// 构建 Analysis Threshold 板块
   Widget _buildAnalysisThreshold(ThemeData theme) {
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.surfaceSecondary,
         borderRadius: AppRadius.cardRadius,
       ),
-      padding: EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -574,15 +634,25 @@ class _SettingsPageState extends State<SettingsPage> {
               color: AppColors.textPrimary,
             ),
           ),
-          
-          SizedBox(height: AppSpacing.lg),
-          
+
+          const SizedBox(height: AppSpacing.sm),
+
+          Text(
+            'Choose the coaching intensity that matches your current skill level.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppColors.textPrimary.withOpacity(0.7),
+            ),
+          ),
+
+          const SizedBox(height: AppSpacing.lg),
+
           // Relaxed / Strict 按钮
           Row(
             children: [
               Expanded(
                 child: _buildToggleButton(
                   label: 'Relaxed',
+                  subtitle: 'Beginner friendly',
                   isSelected: _thresholdMode == 0,
                   onTap: () {
                     setState(() {
@@ -592,10 +662,11 @@ class _SettingsPageState extends State<SettingsPage> {
                   },
                 ),
               ),
-              SizedBox(width: AppSpacing.lg),
+              const SizedBox(width: AppSpacing.lg),
               Expanded(
                 child: _buildToggleButton(
                   label: 'Strict',
+                  subtitle: 'Advanced challenge',
                   isSelected: _thresholdMode == 1,
                   onTap: () {
                     setState(() {
@@ -615,11 +686,11 @@ class _SettingsPageState extends State<SettingsPage> {
   /// 构建 Analysis Engine 板块
   Widget _buildAnalysisEngine(ThemeData theme) {
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.surfaceSecondary,
         borderRadius: AppRadius.cardRadius,
       ),
-      padding: EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -630,7 +701,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
           
-          SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.md),
           
           // MLKit 选项
           _buildRadioOption(
@@ -644,7 +715,7 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
           
-          SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.sm),
           
           // MoveNet 选项
           _buildRadioOption(
@@ -658,7 +729,7 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
           
-          SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.sm),
           
           // MediaPipe 选项
           _buildRadioOption(
@@ -672,7 +743,7 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
           
-          SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.sm),
           
           // Auto 选项
           _buildRadioOption(
@@ -693,11 +764,11 @@ class _SettingsPageState extends State<SettingsPage> {
   /// 构建 Performance Settings 板块
   Widget _buildPerformanceSettings(ThemeData theme) {
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.surfaceSecondary,
         borderRadius: AppRadius.cardRadius,
       ),
-      padding: EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -708,19 +779,20 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
           
-          SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.lg),
           
           // Stride（步长）
           TextField(
+            key: const ValueKey('input.stride'),
             controller: _strideController,
             keyboardType: TextInputType.number,
-            style: TextStyle(color: AppColors.textPrimary),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textPrimary),
             decoration: InputDecoration(
               labelText: 'Stride (步长)',
               helperText: '推理时跳帧数，必须 ≥ 1',
               errorText: _strideError,
-              border: OutlineInputBorder(),
-              labelStyle: TextStyle(color: AppColors.textPrimary),
+              border: const OutlineInputBorder(),
+              labelStyle: Theme.of(context).textTheme.labelMedium?.copyWith(color: AppColors.textPrimary),
             ),
             onChanged: (value) {
               _validateStride(value);
@@ -728,19 +800,20 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
           
-          SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.lg),
           
           // Target FPS（目标帧率）
           TextField(
+            key: const ValueKey('input.targetFps'),
             controller: _targetFpsController,
             keyboardType: TextInputType.number,
-            style: TextStyle(color: AppColors.textPrimary),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textPrimary),
             decoration: InputDecoration(
               labelText: 'Target FPS (目标帧率)',
               helperText: '推理目标帧率，必须 ≥ 1',
               errorText: _targetFpsError,
-              border: OutlineInputBorder(),
-              labelStyle: TextStyle(color: AppColors.textPrimary),
+              border: const OutlineInputBorder(),
+              labelStyle: Theme.of(context).textTheme.labelMedium?.copyWith(color: AppColors.textPrimary),
             ),
             onChanged: (value) {
               _validateTargetFps(value);
@@ -748,18 +821,19 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
           
-          SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.lg),
           
           // Resolution（分辨率）
           TextField(
+            key: const ValueKey('input.resolution'),
             controller: _resolutionController,
-            style: TextStyle(color: AppColors.textPrimary),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textPrimary),
             decoration: InputDecoration(
               labelText: 'Resolution (分辨率)',
               helperText: '格式: 1280x720',
               errorText: _resolutionError,
-              border: OutlineInputBorder(),
-              labelStyle: TextStyle(color: AppColors.textPrimary),
+              border: const OutlineInputBorder(),
+              labelStyle: Theme.of(context).textTheme.labelMedium?.copyWith(color: AppColors.textPrimary),
             ),
             onChanged: (value) {
               _validateResolution(value);
@@ -774,11 +848,11 @@ class _SettingsPageState extends State<SettingsPage> {
   /// 构建 Data Management 板块
   Widget _buildDataManagement(ThemeData theme) {
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.surfaceSecondary,
         borderRadius: AppRadius.cardRadius,
       ),
-      padding: EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -789,7 +863,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
           
-          SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.lg),
           
           // Cloud Backup & Sync 开关
           Row(
@@ -804,6 +878,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ),
               Switch(
+                key: const ValueKey('switch.uploadVideo'),
                 value: _cloudBackupEnabled,
                 onChanged: (value) {
                   setState(() {
@@ -815,7 +890,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ],
           ),
           
-          SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.md),
           
           // Confirm Video Upload 开关
           Row(
@@ -830,6 +905,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ),
               Switch(
+                key: const ValueKey('switch.confirmUpload'),
                 value: _confirmVideoUpload,
                 onChanged: (value) {
                   setState(() {
@@ -841,19 +917,20 @@ class _SettingsPageState extends State<SettingsPage> {
             ],
           ),
           
-          SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.lg),
           
           // Cleanup Days (清理天数)
           TextField(
+            key: const ValueKey('input.cleanupDays'),
             controller: _cleanupDaysController,
             keyboardType: TextInputType.number,
-            style: TextStyle(color: AppColors.textPrimary),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textPrimary),
             decoration: InputDecoration(
               labelText: 'Cleanup Days (清理天数)',
               helperText: '保留最近 N 天的会话，必须 ≥ 0',
               errorText: _cleanupDaysError,
-              border: OutlineInputBorder(),
-              labelStyle: TextStyle(color: AppColors.textPrimary),
+              border: const OutlineInputBorder(),
+              labelStyle: Theme.of(context).textTheme.labelMedium?.copyWith(color: AppColors.textPrimary),
             ),
             onChanged: (value) {
               _validateCleanupDays(value);
@@ -861,21 +938,70 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
           
-          SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.lg),
           
           // Clear Local Data 按钮
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
+              key: const ValueKey('action.clear_data'),
               onPressed: _cleanupSessions,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.brandPrimaryVariant,
                 foregroundColor: AppColors.textInvert,
-                padding: EdgeInsets.symmetric(
+                padding: const EdgeInsets.symmetric(
                   vertical: AppSpacing.md,
                 ),
               ),
               child: const Text('Clear Local Data'),
+            ),
+          ),
+
+          const SizedBox(height: AppSpacing.md),
+
+          // Export Support Bundle 按钮
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              key: const ValueKey('action.export_support_bundle'),
+              onPressed: () async {
+                try {
+                  final records = await AnalysisHistoryService().loadAllRecords();
+                  if (records.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('No sessions found to export'),
+                      ),
+                    );
+                    return;
+                  }
+                  final sessionRoot = records.first.sessionRoot;
+                  final zip = await SupportBundleService.export(sessionRoot);
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Exported: ${zip.path}'),
+                      backgroundColor: AppColors.brandPrimaryVariant,
+                    ),
+                  );
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Export failed: $e'),
+                      backgroundColor: AppColors.surfaceSecondary,
+                    ),
+                  );
+                }
+              },
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.textInvert,
+                side: const BorderSide(color: AppColors.neutralLight),
+                padding: const EdgeInsets.symmetric(
+                  vertical: AppSpacing.md,
+                ),
+              ),
+              child: const Text('Export Support Bundle'),
             ),
           ),
         ],
@@ -886,11 +1012,11 @@ class _SettingsPageState extends State<SettingsPage> {
   /// 构建 Advanced Settings 板块
   Widget _buildAdvancedSettings(ThemeData theme) {
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.surfaceSecondary,
         borderRadius: AppRadius.cardRadius,
       ),
-      padding: EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -901,7 +1027,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
           
-          SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.lg),
           
           Text(
             'Log Level (日志级别)',
@@ -910,7 +1036,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
           
-          SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.md),
           
           // Info
           _buildRadioOption(
@@ -924,7 +1050,7 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
           
-          SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.sm),
           
           // Debug
           _buildRadioOption(
@@ -938,7 +1064,7 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
           
-          SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.sm),
           
           // Warning
           _buildRadioOption(
@@ -952,7 +1078,7 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
           
-          SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.sm),
           
           // Error
           _buildRadioOption(
@@ -973,6 +1099,7 @@ class _SettingsPageState extends State<SettingsPage> {
   /// 构建切换按钮（Relaxed/Strict）
   Widget _buildToggleButton({
     required String label,
+    String? subtitle,
     required bool isSelected,
     required VoidCallback onTap,
   }) {
@@ -980,7 +1107,7 @@ class _SettingsPageState extends State<SettingsPage> {
       onTap: onTap,
       borderRadius: AppRadius.buttonRadius,
       child: Container(
-        padding: EdgeInsets.symmetric(
+        padding: const EdgeInsets.symmetric(
           vertical: AppSpacing.md,
         ),
         decoration: BoxDecoration(
@@ -992,13 +1119,30 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
         ),
         child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? AppColors.textInvert : AppColors.textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: isSelected ? AppColors.textInvert : AppColors.textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+              if (subtitle != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: isSelected
+                            ? AppColors.textInvert.withOpacity(0.85)
+                            : AppColors.textPrimary.withOpacity(0.65),
+                        fontSize: 12,
+                      ),
+                ),
+              ],
+            ],
           ),
         ),
       ),
@@ -1030,7 +1174,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     child: Container(
                       width: 12,
                       height: 12,
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         shape: BoxShape.circle,
                         color: AppColors.brandPrimaryVariant,
                       ),
@@ -1038,10 +1182,10 @@ class _SettingsPageState extends State<SettingsPage> {
                   )
                 : null,
           ),
-          SizedBox(width: AppSpacing.md),
+          const SizedBox(width: AppSpacing.md),
           Text(
             label,
-            style: TextStyle(
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: AppColors.textPrimary,
               fontSize: 16,
               fontWeight: FontWeight.w400,
@@ -1057,6 +1201,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final theme = Theme.of(context);
 
     return Card(
+      color: AppColors.surfaceSecondary, // 提升与页面背景（surfacePrimary）的对比度
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Row(
@@ -1071,7 +1216,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 color: theme.colorScheme.onPrimary,
               ),
             ),
-            SizedBox(width: AppSpacing.lg),
+            const SizedBox(width: AppSpacing.lg),
             
             // 用户信息
             Expanded(
@@ -1082,7 +1227,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     '训练者',
                     style: theme.textTheme.titleLarge,
                   ),
-                  SizedBox(height: AppSpacing.xs),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(
                     'user@example.com',
                     style: theme.textTheme.bodyMedium?.copyWith(

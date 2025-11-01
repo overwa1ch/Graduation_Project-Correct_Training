@@ -4,4 +4,5 @@
 {"event":"PROGRESS","phase":"analyze","processed":480,"total":960,"p95MsPerFrame":33,"etaSec":9}
 {"event":"METRIC","lowConfidenceRatio":0.24,"usableFrameRatio":0.76}
 {"event":"EVIDENCE","frame":612,"t":"00:00:20.4","files":["evidence/frame_612.jpg"]}
+{"event":"PROGRESS","phase":"analyze","processed":960,"total":960,"p95MsPerFrame":33,"etaSec":0}
 {"event":"DONE","artifacts":{"root":"build/offline_out/2025_demo_session/","files":["result.json","logs/perf.json"]}}

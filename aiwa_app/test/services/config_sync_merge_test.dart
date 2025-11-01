@@ -343,5 +343,348 @@ void main() {
       expect(cfg['resolution'], equals('1280x720'), reason: '非法格式回退默认');
     });
   });
+
+  group('config_sync file system errors', () {
+    test('readAppRuntimeConfig handles permission errors', () async {
+      // 注意：在大多数测试环境中难以模拟权限错误
+      // 这里测试不存在的路径（回退到默认值）
+      final configPath = '/root/impossible/path/config.json';
+      
+      // 读取不可访问的路径应该使用默认值
+      final cfg = await readAppRuntimeConfig(pathOverride: configPath);
+      
+      expect(cfg['engine'], equals('MoveNet'));
+      expect(cfg['strictness'], equals('strict'));
+    });
+
+    test('writeAppRuntimeConfig handles directory creation', () async {
+      final configPath = '${tempDir.path}/deep/nested/path/config.json';
+      
+      // 写入深层嵌套路径
+      await writeAppRuntimeConfig(
+        {'engine': 'MLKit'},
+        pathOverride: configPath,
+      );
+      
+      // 验证：文件和目录都已创建
+      final configFile = File(configPath);
+      expect(await configFile.exists(), isTrue);
+      
+      // 读取验证
+      final cfg = await readAppRuntimeConfig(pathOverride: configPath);
+      expect(cfg['engine'], equals('MLKit'));
+    });
+
+    test('writeAppRuntimeConfig is atomic (creates temp file first)', () async {
+      final configPath = '${tempDir.path}/configs/atomic_test.json';
+      
+      // 写入配置
+      await writeAppRuntimeConfig(
+        {'engine': 'MoveNet', 'stride': 3},
+        pathOverride: configPath,
+      );
+      
+      // 验证：主文件存在且有效
+      final configFile = File(configPath);
+      expect(await configFile.exists(), isTrue);
+      
+      final content = await configFile.readAsString();
+      expect(content, contains('MoveNet'));
+      expect(content, contains('stride'));
+    });
+
+    test('writeRuntimeSnapshot handles session directory missing', () async {
+      final sessionRoot = '${tempDir.path}/nonexistent_session';
+      // 不创建目录
+      
+      final cfg = {
+        'engine': 'MoveNet',
+        'strictness': 'strict',
+      };
+      
+      // 写入快照（应该创建目录）
+      await writeRuntimeSnapshot(sessionRoot, cfg);
+      
+      // 验证：快照文件已创建
+      final snapshotFile = File('$sessionRoot/configs_snapshot.json');
+      expect(await snapshotFile.exists(), isTrue);
+    });
+
+    test('config file corruption recovery', () async {
+      final configPath = '${tempDir.path}/configs/corrupted.json';
+      await Directory('${tempDir.path}/configs').create(recursive: true);
+      
+      // 写入损坏的 JSON
+      await File(configPath).writeAsString('{incomplete json');
+      
+      // 尝试读取损坏的配置
+      expect(
+        () => readAppRuntimeConfig(pathOverride: configPath),
+        throwsA(isA<ConfigInvalid>()),
+      );
+    });
+
+    test('writeAppRuntimeConfig handles disk full simulation', () async {
+      // 注意：真实的磁盘满情况难以测试
+      // 这里测试空间可用时的正常行为
+      final configPath = '${tempDir.path}/configs/diskfull_test.json';
+      
+      // 写入较大的配置
+      final largeCfg = {
+        'engine': 'MoveNet' * 100,
+        'strictness': 'strict' * 100,
+      };
+      
+      try {
+        await writeAppRuntimeConfig(largeCfg, pathOverride: configPath);
+        
+        // 如果写入成功，验证文件存在
+        final file = File(configPath);
+        expect(await file.exists(), isTrue);
+      } catch (e) {
+        // 如果失败，应该是有意义的异常
+        expect(e, isNotNull);
+      }
+    });
+  });
+
+  group('config_sync concurrent access', () {
+    test('multiple reads are safe', () async {
+      final configPath = '${tempDir.path}/configs/concurrent_read.json';
+      await Directory('${tempDir.path}/configs').create(recursive: true);
+      
+      // 写入初始配置
+      await writeAppRuntimeConfig(
+        {'engine': 'MoveNet'},
+        pathOverride: configPath,
+      );
+      
+      // 并发读取
+      final reads = await Future.wait([
+        readAppRuntimeConfig(pathOverride: configPath),
+        readAppRuntimeConfig(pathOverride: configPath),
+        readAppRuntimeConfig(pathOverride: configPath),
+      ]);
+      
+      // 验证：所有读取结果一致
+      for (final cfg in reads) {
+        expect(cfg['engine'], equals('MoveNet'));
+      }
+    });
+
+    test('concurrent writes serialize correctly', () async {
+      final configPath = '${tempDir.path}/configs/concurrent_write.json';
+      
+      // 并发写入不同值
+      await Future.wait([
+        writeAppRuntimeConfig({'engine': 'MoveNet'}, pathOverride: configPath),
+        writeAppRuntimeConfig({'engine': 'MLKit'}, pathOverride: configPath),
+        writeAppRuntimeConfig({'engine': 'MediaPipe'}, pathOverride: configPath),
+      ]);
+      
+      // 验证：最终文件存在且有效（最后一次写入生效）
+      final cfg = await readAppRuntimeConfig(pathOverride: configPath);
+      expect(['MoveNet', 'MLKit', 'MediaPipe'], contains(cfg['engine']));
+    });
+
+    test('read during write is consistent', () async {
+      final configPath = '${tempDir.path}/configs/read_during_write.json';
+      
+      // 初始写入
+      await writeAppRuntimeConfig(
+        {'engine': 'MoveNet'},
+        pathOverride: configPath,
+      );
+      
+      // 启动写入和读取
+      final futures = await Future.wait([
+        writeAppRuntimeConfig({'engine': 'MLKit'}, pathOverride: configPath),
+        readAppRuntimeConfig(pathOverride: configPath),
+      ]);
+      
+      // 读取结果应该是有效的配置（MoveNet 或 MLKit）
+      final readResult = futures[1] as Map<String, dynamic>;
+      expect(['MoveNet', 'MLKit'], contains(readResult['engine']));
+    });
+
+    test('multiple snapshot writes to different sessions', () async {
+      final cfg = {
+        'engine': 'MoveNet',
+        'strictness': 'strict',
+      };
+      
+      // 并发写入多个会话快照
+      await Future.wait([
+        writeRuntimeSnapshot('${tempDir.path}/session_001', cfg),
+        writeRuntimeSnapshot('${tempDir.path}/session_002', cfg),
+        writeRuntimeSnapshot('${tempDir.path}/session_003', cfg),
+      ]);
+      
+      // 验证：所有快照都存在
+      for (int i = 1; i <= 3; i++) {
+        final snapshotPath = '${tempDir.path}/session_00$i/configs_snapshot.json';
+        expect(await File(snapshotPath).exists(), isTrue);
+      }
+    });
+  });
+
+  group('config_sync edge cases', () {
+    test('empty config object writes defaults', () async {
+      final configPath = '${tempDir.path}/configs/empty.json';
+      
+      // 写入空配置
+      await writeAppRuntimeConfig({}, pathOverride: configPath);
+      
+      // 读取应该有默认值
+      final cfg = await readAppRuntimeConfig(pathOverride: configPath);
+      expect(cfg['engine'], equals('MoveNet'));
+      expect(cfg['strictness'], equals('strict'));
+    });
+
+    test('config with unknown fields is preserved', () async {
+      final configPath = '${tempDir.path}/configs/unknown_fields.json';
+      await Directory('${tempDir.path}/configs').create(recursive: true);
+      
+      // 手动写入包含未知字段的配置
+      await File(configPath).writeAsString(jsonEncode({
+        'engine': 'MoveNet',
+        'unknownField': 'customValue',
+        'anotherUnknown': 123,
+      }));
+      
+      // 读取配置
+      final cfg = await readAppRuntimeConfig(pathOverride: configPath);
+      
+      // 验证：已知字段正确
+      expect(cfg['engine'], equals('MoveNet'));
+      
+      // 未知字段可能被保留或忽略（取决于实现）
+      // 至少配置应该可用
+      expect(cfg, isNotEmpty);
+    });
+
+    test('very long config values are handled', () async {
+      final configPath = '${tempDir.path}/configs/long_values.json';
+      
+      // 写入很长的字符串
+      final longString = 'A' * 10000;
+      await writeAppRuntimeConfig(
+        {'engine': 'MoveNet', 'resolution': longString},
+        pathOverride: configPath,
+      );
+      
+      // 读取配置（无效的 resolution 应该回退到默认值）
+      final cfg = await readAppRuntimeConfig(pathOverride: configPath);
+      expect(cfg['resolution'], equals('1280x720')); // 回退到默认
+    });
+
+    test('special characters in config values', () async {
+      final configPath = '${tempDir.path}/configs/special_chars.json';
+      
+      // 写入包含特殊字符的值（虽然 engine 枚举不应该有这些）
+      await writeAppRuntimeConfig(
+        {'engine': 'Move\nNet'},
+        pathOverride: configPath,
+      );
+      
+      // 读取配置（无效值应该回退）
+      final cfg = await readAppRuntimeConfig(pathOverride: configPath);
+      expect(cfg['engine'], equals('MoveNet')); // 回退到默认
+    });
+
+    test('config file size limits', () async {
+      final configPath = '${tempDir.path}/configs/size_test.json';
+      
+      // 正常大小的配置应该工作
+      await writeAppRuntimeConfig(
+        {'engine': 'MoveNet', 'stride': 2},
+        pathOverride: configPath,
+      );
+      
+      final file = File(configPath);
+      final size = await file.length();
+      
+      // 配置文件应该是合理大小（< 10KB）
+      expect(size, lessThan(10 * 1024));
+    });
+
+    test('buildCliArgs with empty strings', () {
+      final args = buildCliArgs(
+        pickedInput: '',
+        sessionRoot: '',
+      );
+      
+      expect(args.inputPath, equals(''));
+      expect(args.sessionRoot, equals(''));
+      expect(args.configPath, isNotEmpty); // 应该有默认值
+    });
+
+    test('buildCliArgs with very long paths', () {
+      final longPath = '/very/long/path/' + ('nested/' * 100) + 'file.mp4';
+      
+      final args = buildCliArgs(
+        pickedInput: longPath,
+        sessionRoot: '/another/long/path',
+      );
+      
+      expect(args.inputPath, equals(longPath));
+      expect(args.sessionRoot, equals('/another/long/path'));
+    });
+  });
+
+  group('config_sync performance', () {
+    test('config read is fast', () async {
+      final configPath = '${tempDir.path}/configs/perf_test.json';
+      
+      // 准备配置
+      await writeAppRuntimeConfig(
+        {'engine': 'MoveNet'},
+        pathOverride: configPath,
+      );
+      
+      // 测量读取时间
+      final stopwatch = Stopwatch()..start();
+      await readAppRuntimeConfig(pathOverride: configPath);
+      stopwatch.stop();
+      
+      // 读取应该很快（< 100ms）
+      expect(stopwatch.elapsedMilliseconds, lessThan(100));
+    });
+
+    test('config write is fast', () async {
+      final configPath = '${tempDir.path}/configs/perf_write_test.json';
+      
+      // 测量写入时间
+      final stopwatch = Stopwatch()..start();
+      await writeAppRuntimeConfig(
+        {'engine': 'MoveNet', 'stride': 2},
+        pathOverride: configPath,
+      );
+      stopwatch.stop();
+      
+      // 写入应该很快（< 100ms）
+      expect(stopwatch.elapsedMilliseconds, lessThan(100));
+    });
+
+    test('multiple sequential operations are efficient', () async {
+      final configPath = '${tempDir.path}/configs/sequential_test.json';
+      
+      final stopwatch = Stopwatch()..start();
+      
+      // 执行多次读写操作
+      for (int i = 0; i < 10; i++) {
+        await writeAppRuntimeConfig(
+          {'engine': 'MoveNet', 'stride': i},
+          pathOverride: configPath,
+        );
+        await readAppRuntimeConfig(pathOverride: configPath);
+      }
+      
+      stopwatch.stop();
+      
+      // 10次操作应该在合理时间内完成（< 1秒）
+      expect(stopwatch.elapsedMilliseconds, lessThan(1000));
+    });
+  });
 }
 

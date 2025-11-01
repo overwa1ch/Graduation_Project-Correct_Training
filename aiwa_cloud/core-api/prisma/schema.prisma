@@ -1,0 +1,68 @@
+// Prisma schema for AIWA Auth API (Simplified)
+// Version: 2.0 - Authentication only
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 用户表
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  name         String?   // 用户名（可选）
+  avatar       String?   // 头像URL（可选）
+  status       String    @default("active") // active | inactive | suspended
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  
+  refreshTokens RefreshToken[]
+  
+  @@map("users")
+}
+
+// 刷新Token表
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  token     String    @unique
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz
+  
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+// ============================================================================
+// 未来扩展预留（暂时注释）
+// ============================================================================
+//
+// model Session {
+//   id              String    @id @default(uuid())
+//   clientSessionId String    @map("client_session_id")
+//   userId          String    @map("user_id")
+//   template        String    // "squat"
+//   strictness      String    @default("strict")
+//   engine          String    @default("MoveNet")
+//   status          String    @default("local_only")
+//   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+//   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+//   
+//   user            User      @relation(fields: [userId], references: [id])
+//   
+//   @@map("sessions")
+// }
+//
+// model Asset { ... }
+// model Job { ... }
+// model Consent { ... }
+

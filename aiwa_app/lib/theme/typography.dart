@@ -72,6 +72,14 @@ class AppTypography {
     height: 1.4,
     letterSpacing: 0,
   );
+
+  static const TextStyle caption = TextStyle(
+    fontFamily: fontFamily,
+    fontWeight: regular,
+    fontSize: 14,
+    height: 1.4,
+    letterSpacing: 0,
+  );
 }
 
 /// Material 3 TextTheme mapping
