@@ -171,7 +171,7 @@ class MainActivity : FlutterActivity() {
                 when (call.method) {
                     "encodeOverlayVideo" -> {
                         val frameImages = call.argument<List<ByteArray>>("frameImages")
-                        val keypointsPerFrame = call.argument<List<List<Map<String, Any>>>>("keypointsPerFrame")
+                        val keypointsPerFrameRaw = call.argument<List<List<Map<String, Any>>>>("keypointsPerFrame")
                         val connections = call.argument<List<Map<String, Any>>>("connections")
                         val keypointProperties = call.argument<Map<String, Any>>("keypointProperties")
                         val outputPath = call.argument<String>("outputPath")
@@ -179,11 +179,40 @@ class MainActivity : FlutterActivity() {
                         val width = call.argument<Int>("width")
                         val height = call.argument<Int>("height")
 
-                        if (frameImages == null || keypointsPerFrame == null || connections == null || 
+                        if (frameImages == null || keypointsPerFrameRaw == null || connections == null || 
                             keypointProperties == null || outputPath == null || fps == null || 
                             width == null || height == null) {
                             result.error("INVALID_ARGUMENTS", "Missing required arguments", null)
                             return@setMethodCallHandler
+                        }
+
+                        // Debug: Log first frame's first keypoint data to check data integrity
+                        if (keypointsPerFrameRaw.isNotEmpty() && keypointsPerFrameRaw[0].isNotEmpty()) {
+                            val firstKp = keypointsPerFrameRaw[0][0]
+                            android.util.Log.d("MainActivity", "🔍 First keypoint raw data: $firstKp")
+                            android.util.Log.d("MainActivity", "   Keys: ${firstKp.keys}")
+                            android.util.Log.d("MainActivity", "   x type: ${firstKp["x"]?.javaClass?.simpleName}, value: ${firstKp["x"]}")
+                            android.util.Log.d("MainActivity", "   y type: ${firstKp["y"]?.javaClass?.simpleName}, value: ${firstKp["y"]}")
+                            android.util.Log.d("MainActivity", "   score type: ${firstKp["score"]?.javaClass?.simpleName}, value: ${firstKp["score"]}")
+                        }
+
+                        // Convert Any types to proper types (handle Flutter type conversions)
+                        // Flutter may pass Int/Long instead of Double for numeric values
+                        val keypointsPerFrame = keypointsPerFrameRaw.map { frame ->
+                            frame.map { kp ->
+                                val converted = mutableMapOf<String, Any>()
+                                kp.forEach { (key, value) ->
+                                    when (value) {
+                                        is Double -> converted[key] = value
+                                        is Int -> converted[key] = value.toDouble()
+                                        is Long -> converted[key] = value.toDouble()
+                                        is Float -> converted[key] = value.toDouble()
+                                        is Number -> converted[key] = value.toDouble()
+                                        else -> converted[key] = value
+                                    }
+                                }
+                                converted
+                            }
                         }
 
                         // Encode video in background thread

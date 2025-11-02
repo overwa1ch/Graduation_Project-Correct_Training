@@ -280,13 +280,15 @@ class AnalysisSession {
       Strictness strictness = Strictness.relaxed; // 默认值
       try {
         final config = await readAppRuntimeConfig();
+        debugPrint('[AnalysisSession] 📋 Loaded config: $config');
         final strictnessStr = config['strictness'] as String?;
+        debugPrint('[AnalysisSession] 📋 Config strictness string: "$strictnessStr"');
         if (strictnessStr == 'strict') {
           strictness = Strictness.strict;
         }
-        debugPrint('[AnalysisSession] Using strictness: ${strictness.value}');
+        debugPrint('[AnalysisSession] ✅ Using strictness: ${strictness.value}');
       } catch (e) {
-        debugPrint('[AnalysisSession] Failed to read strictness config, using default: $e');
+        debugPrint('[AnalysisSession] ⚠️  Failed to read strictness config, using default: $e');
       }
 
       // 创建事件流和任务 Future

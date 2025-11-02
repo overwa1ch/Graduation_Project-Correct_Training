@@ -150,9 +150,14 @@ class _SettingsPageState extends State<SettingsPage> {
       setState(() => _isSaving = true);
       
       // 构建表单数据
+      final strictnessValue = _thresholdMode == 1 ? 'strict' : 'relaxed';
+      debugPrint('[Settings] 💾 Saving config');
+      debugPrint('[Settings] 💾 _thresholdMode: $_thresholdMode');
+      debugPrint('[Settings] 💾 strictness value: "$strictnessValue"');
+      
       final formData = <String, dynamic>{
         'engine': _indexToEngine(_engineMode),
-        'strictness': _thresholdMode == 1 ? 'strict' : 'relaxed',
+        'strictness': strictnessValue,
         'stride': int.parse(_strideController.text),
         'targetFps': int.parse(_targetFpsController.text),
         'resolution': _resolutionController.text.trim(),
@@ -168,7 +173,7 @@ class _SettingsPageState extends State<SettingsPage> {
         },
       };
       
-      debugPrint('[Settings] Saving config: $formData');
+      debugPrint('[Settings] 💾 Full formData: $formData');
       
       // 写入配置
       await writeAppRuntimeConfig(formData);

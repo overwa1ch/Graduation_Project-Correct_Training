@@ -36,6 +36,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
+
 // ============================================================================
 // 异常类型（契约违反/读取错误）
 // ============================================================================
@@ -398,13 +400,18 @@ void assertResultContract(Map<String, dynamic> raw) {
 /// - 部分结果时 scores 可为 null
 AnalysisResultLite mapToLite(Map<String, dynamic> raw) {
   final isPartial = raw['partial'] == true;
+  debugPrint('[ResultAdapter] 📥 mapToLite: isPartial=$isPartial');
+  
   final scores = raw['scores'] as Map<String, dynamic>;
+  debugPrint('[ResultAdapter] 📥 scores object: $scores');
 
   // 映射分数（round 取整，部分结果时可为 null）
   final posture = scores['form'] != null ? (scores['form'] as num).round() : null;
   final stability = scores['stability'] != null ? (scores['stability'] as num).round() : null;
   final rhythm = scores['tempo'] != null ? (scores['tempo'] as num).round() : null;
   final total = scores['overall'] != null ? (scores['overall'] as num).round() : null;
+  
+  debugPrint('[ResultAdapter] 📥 Mapped scores: posture=$posture, stability=$stability, rhythm=$rhythm, total=$total');
 
   // 映射次数（round 取整）
   final reps = (raw['repCount'] as num).round();
@@ -447,6 +454,7 @@ AnalysisResultLite mapToLite(Map<String, dynamic> raw) {
 
   if (raw.containsKey('meta') && raw['meta'] is Map) {
     final meta = raw['meta'] as Map<String, dynamic>;
+    debugPrint('[ResultAdapter] 📥 meta object: $meta');
 
     if (meta.containsKey('template') && meta['template'] is String) {
       templateName = meta['template'] as String;
@@ -454,6 +462,9 @@ AnalysisResultLite mapToLite(Map<String, dynamic> raw) {
 
     if (meta.containsKey('strictness') && meta['strictness'] is String) {
       strictness = meta['strictness'] as String;
+      debugPrint('[ResultAdapter] 📥 Extracted strictness: $strictness');
+    } else {
+      debugPrint('[ResultAdapter] ⚠️  meta.strictness missing or invalid');
     }
 
     if (meta.containsKey('engine') && meta['engine'] is String) {

@@ -10,6 +10,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -267,10 +268,13 @@ class VideoAnalysisService {
 
       // 运行分析管道
       final poseSeries = poseSeriesFromNeutral(neutralSeries);
+      debugPrint('[VideoAnalysis] 🔧 Creating pipeline with strictness: ${strictness.value}');
       final pipeline = OfflinePipeline(ruleSet, strictness);
       final result = await pipeline.run(poseSeries);
 
       debugPrint('[VideoAnalysis] Pipeline complete');
+      debugPrint('[VideoAnalysis] 📊 Result JSON meta.strictness: ${result.resultJson['meta']?['strictness']}');
+      debugPrint('[VideoAnalysis] 📊 Result JSON scores: ${result.resultJson['scores']}');
 
       // 7. 保存输出文件
       await _saveOutputs(
@@ -283,6 +287,19 @@ class VideoAnalysisService {
 
       // 7.5. 镜像导出到外部存储（方便 adb pull）
       await _mirrorToExternalStorage(sessionRoot: sessionRoot);
+
+      // 7.6. Generate keypoint overlay video (best effort - don't fail if it errors)
+      try {
+        debugPrint('[VideoAnalysis] Generating keypoint overlay video...');
+        final overlayVideoPath = await KeypointOverlayGenerator.generateOverlayVideo(
+          sessionRoot: sessionRoot,
+        );
+        debugPrint('[VideoAnalysis] - keypoints_overlay.mp4: ✓ ($overlayVideoPath)');
+      } catch (e, st) {
+        debugPrint('[VideoAnalysis] WARNING: Failed to generate overlay video (non-fatal): $e');
+        debugPrint('[VideoAnalysis] Stack trace: $st');
+        // Don't throw - overlay video is optional, partial results are still valid
+      }
 
       // 8. 发送 DONE 事件
       controller.add({
@@ -303,7 +320,8 @@ class VideoAnalysisService {
       
     } on AngleComputeFailed catch (e) {
       // 降级错误：角度计算失败，但关键点存在，可以保存部分数据
-      debugPrint('[VideoAnalysis] Angle computation failed, saving partial data: $e');
+      debugPrint('[VideoAnalysis] ⚠️  Angle computation failed, saving partial data: $e');
+      debugPrint('[VideoAnalysis] ⚠️  Current strictness: ${strictness.value}');
       
       if (neutralSeries != null && qualityMetrics != null) {
         try {
@@ -313,6 +331,7 @@ class VideoAnalysisService {
             failureCode: e.code,
             failureMessage: e.message,
             quality: qualityMetrics,
+            strictnessOverride: strictness.value, // 传递strictness
           );
           
           // 保存部分输出
@@ -369,7 +388,8 @@ class VideoAnalysisService {
       
     } on MetricsComputeFailed catch (e) {
       // 降级错误：指标计算失败，但角度存在
-      debugPrint('[VideoAnalysis] Metrics computation failed, saving partial data: $e');
+      debugPrint('[VideoAnalysis] ⚠️  Metrics computation failed, saving partial data: $e');
+      debugPrint('[VideoAnalysis] ⚠️  Current strictness: ${strictness.value}');
       
       if (neutralSeries != null && qualityMetrics != null) {
         try {
@@ -378,6 +398,7 @@ class VideoAnalysisService {
             failureCode: e.code,
             failureMessage: e.message,
             quality: qualityMetrics,
+            strictnessOverride: strictness.value, // 传递strictness
           );
           
           await _savePartialOutputs(
@@ -445,7 +466,8 @@ class VideoAnalysisService {
       
     } on AiwaError catch (e) {
       // AiwaError系列：根据isRecoverable判断
-      debugPrint('[VideoAnalysis] AiwaError caught: $e (recoverable: ${e.isRecoverable})');
+      debugPrint('[VideoAnalysis] ⚠️  AiwaError caught: $e (recoverable: ${e.isRecoverable})');
+      debugPrint('[VideoAnalysis] ⚠️  Current strictness: ${strictness.value}');
       
       if (e.isRecoverable && neutralSeries != null && qualityMetrics != null) {
         // 可恢复错误，尝试保存部分数据
@@ -455,6 +477,7 @@ class VideoAnalysisService {
             failureCode: e.code,
             failureMessage: e.message,
             quality: qualityMetrics,
+            strictnessOverride: strictness.value, // 传递strictness
           );
           
           await _savePartialOutputs(
@@ -661,6 +684,28 @@ class VideoAnalysisService {
       final timestampMs = ((frameIndex / videoInfo.fps) * 1000).toInt();
 
       try {
+        // 读取实际帧图像的尺寸（用于调试和验证）
+        int actualFrameWidth = videoInfo.width;
+        int actualFrameHeight = videoInfo.height;
+        try {
+          final frameBytes = await frameFile.readAsBytes();
+          final codec = await ui.instantiateImageCodec(frameBytes);
+          final frameImage = await codec.getNextFrame();
+          actualFrameWidth = frameImage.image.width;
+          actualFrameHeight = frameImage.image.height;
+          frameImage.image.dispose(); // dispose() returns void, no await needed
+        } catch (e) {
+          debugPrint('[VideoAnalysis] Failed to read frame dimensions: $e');
+        }
+
+        // 调试日志：前 3 帧的详细信息
+        if (idx < 3) {
+          debugPrint('[VideoAnalysis] 🔍 Frame $idx (frameIndex=$frameIndex) debug:');
+          debugPrint('[VideoAnalysis]   Video info: ${videoInfo.width}x${videoInfo.height}');
+          debugPrint('[VideoAnalysis]   Actual frame: ${actualFrameWidth}x${actualFrameHeight}');
+          debugPrint('[VideoAnalysis]   Frame file: ${frameFile.path}');
+        }
+
         // ML Kit 推理
         final inputImage = ml.InputImage.fromFilePath(frameFile.path);
         final poses = await detector.processImage(inputImage);
@@ -674,14 +719,53 @@ class VideoAnalysisService {
             frameIndex: frameIndex,
             timestampMs: timestampMs,
           );
+          
+          if (idx < 3) {
+            debugPrint('[VideoAnalysis]   ⚠️ No poses detected');
+          }
         } else {
           // 有效帧：转换关键点
           final pose = poses.first;
+          
+          // 调试日志：检查 ML Kit 返回的原始坐标
+          if (idx < 3) {
+            final sampleLandmark = pose.landmarks[ml.PoseLandmarkType.nose];
+            if (sampleLandmark != null) {
+              debugPrint('[VideoAnalysis]   ML Kit raw coordinates (nose):');
+              debugPrint('[VideoAnalysis]     x: ${sampleLandmark.x}, y: ${sampleLandmark.y}');
+              debugPrint('[VideoAnalysis]     likelihood: ${sampleLandmark.likelihood}');
+              debugPrint('[VideoAnalysis]   Normalization using: ${videoInfo.width}x${videoInfo.height}');
+              debugPrint('[VideoAnalysis]     Normalized x: ${sampleLandmark.x / videoInfo.width}');
+              debugPrint('[VideoAnalysis]     Normalized y: ${sampleLandmark.y / videoInfo.height}');
+              debugPrint('[VideoAnalysis]   Alternative normalization (using actual frame):');
+              debugPrint('[VideoAnalysis]     Normalized x: ${sampleLandmark.x / actualFrameWidth}');
+              debugPrint('[VideoAnalysis]     Normalized y: ${sampleLandmark.y / actualFrameHeight}');
+              
+              // 检查所有 keypoints 的 y 值
+              var yValues = pose.landmarks.values.map((lm) => lm.y).toList();
+              if (yValues.isNotEmpty) {
+                debugPrint('[VideoAnalysis]   All landmark y values (first 5): ${yValues.take(5).toList().join(", ")}...');
+                debugPrint('[VideoAnalysis]   Y value range: min=${yValues.reduce((a, b) => a < b ? a : b)}, max=${yValues.reduce((a, b) => a > b ? a : b)}');
+              }
+            }
+          }
+          
+          // Use actual frame dimensions for normalization (ML Kit processes the actual frame)
           final keypoints = _landmarksToNeutral(
             pose.landmarks,
-            videoInfo.width,
-            videoInfo.height,
+            actualFrameWidth,
+            actualFrameHeight,
           );
+
+          // 调试日志：检查归一化后的坐标
+          if (idx < 3 && keypoints.isNotEmpty) {
+            final sampleKp = keypoints.firstWhere(
+              (kp) => kp['name'] == 'nose',
+              orElse: () => keypoints.first,
+            );
+            debugPrint('[VideoAnalysis]   Normalized keypoint (nose):');
+            debugPrint('[VideoAnalysis]     x: ${sampleKp['x']}, y: ${sampleKp['y']}, score: ${sampleKp['score']}');
+          }
 
           // 计算平均置信度
           final avgScore = keypoints.isEmpty
@@ -762,10 +846,15 @@ class VideoAnalysisService {
 
       final landmark = landmarks[mlkitType];
       if (landmark != null) {
+        // Normalize coordinates. Don't clamp to [0,1] as ML Kit can return coordinates
+        // outside image bounds (negative values). Clamp only to reasonable bounds to prevent
+        // extreme outliers from causing rendering issues.
+        final normalizedX = landmark.x / imgW;
+        final normalizedY = landmark.y / imgH;
         result.add({
           'name': neutralName,
-          'x': (landmark.x / imgW).clamp(0.0, 1.0),
-          'y': (landmark.y / imgH).clamp(0.0, 1.0),
+          'x': normalizedX.clamp(-0.5, 1.5),  // Allow some negative values but clamp extreme outliers
+          'y': normalizedY.clamp(-0.5, 1.5),  // Allow some negative values but clamp extreme outliers
           'z': landmark.z,
           'score': landmark.likelihood,
         });
@@ -885,6 +974,12 @@ class VideoAnalysisService {
 
     // 2. result.json
     final resultFile = File(p.join(sessionRoot, 'result.json'));
+    debugPrint('[VideoAnalysis] 💾 Saving result.json');
+    debugPrint('[VideoAnalysis] 💾 meta.strictness: ${result.resultJson['meta']?['strictness']}');
+    debugPrint('[VideoAnalysis] 💾 scores.form: ${result.resultJson['scores']?['form']}');
+    debugPrint('[VideoAnalysis] 💾 scores.stability: ${result.resultJson['scores']?['stability']}');
+    debugPrint('[VideoAnalysis] 💾 scores.tempo: ${result.resultJson['scores']?['tempo']}');
+    debugPrint('[VideoAnalysis] 💾 scores.overall: ${result.resultJson['scores']?['overall']}');
     await resultFile.writeAsString(
       const JsonEncoder.withIndent('  ').convert(result.resultJson),
     );
@@ -970,12 +1065,20 @@ class VideoAnalysisService {
     required String failureCode,
     required String failureMessage,
     required Map<String, dynamic> quality,
+    String? strictnessOverride, // 新增参数：允许传入strictness
   }) {
     final totalFrames = neutralSeries.frames.length;
     final usableFrames = neutralSeries.frames
         .where((f) => !f.lowConfidence)
         .length;
     final usableRatio = totalFrames > 0 ? usableFrames / totalFrames : 0.0;
+    
+    // ⚠️ DEBUG: 记录降级结果生成
+    final effectiveStrictness = strictnessOverride ?? 'relaxed';
+    debugPrint('[VideoAnalysis] ⚠️  _buildPartialResult: generating partial result');
+    debugPrint('[VideoAnalysis] ⚠️  failureCode: $failureCode');
+    debugPrint('[VideoAnalysis] ⚠️  strictness (override=${strictnessOverride != null}): $effectiveStrictness');
+    debugPrint('[VideoAnalysis] ⚠️  scores will be null (form, stability, tempo, overall)');
     
     return {
       'version': '2.0',
@@ -1001,7 +1104,7 @@ class VideoAnalysisService {
       'quality': quality,
       'meta': {
         'template': 'squat',
-        'strictness': 'relaxed',
+        'strictness': effectiveStrictness,
         'engine': neutralSeries.engine.name,
         'fps': neutralSeries.sampling.effectiveFps.round(),
       },
@@ -1015,6 +1118,10 @@ class VideoAnalysisService {
     required NeutralKeypointSeries neutralSeries,
     required Map<String, dynamic> partialResult,
   }) async {
+    debugPrint('[VideoAnalysis] 💾 _savePartialOutputs: saving partial result');
+    debugPrint('[VideoAnalysis] 💾 partialResult.meta.strictness: ${partialResult['meta']?['strictness']}');
+    debugPrint('[VideoAnalysis] 💾 partialResult.scores: ${partialResult['scores']}');
+    
     // 1. 保存 neutral_keypoints.json（核心数据）
     final neutralFile = File(p.join(sessionRoot, 'neutral_keypoints.json'));
     await neutralFile.writeAsString(

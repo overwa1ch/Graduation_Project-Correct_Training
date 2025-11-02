@@ -24,7 +24,7 @@ android {
         applicationId = "com.example.aiwa_milestone_a"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 21
+        minSdk = 26  // Required for MediaCodec Surface input mode and getInputImage()
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"

@@ -670,7 +670,11 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
     final targetAngle = feedback?.targetAngle;
     final detectionThreshold = feedback?.detectionThreshold;
     final suggestions = feedback?.suggestions ?? const <String>[];
+    debugPrint('[ResultPopup] 🎨 Building feedback badge');
+    debugPrint('[ResultPopup] 🎨 feedback?.mode: ${feedback?.mode}');
+    debugPrint('[ResultPopup] 🎨 widget.result.strictness: ${widget.result.strictness}');
     final modeLabel = feedback?.mode ?? (widget.result.strictness ?? 'relaxed');
+    debugPrint('[ResultPopup] 🎨 Final modeLabel: $modeLabel');
 
     final bool isRelaxed = modeLabel.toLowerCase() != 'strict';
     final Color accentColor = AppColors.brandPrimaryVariant;
