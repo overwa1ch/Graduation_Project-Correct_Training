@@ -1,8 +1,8 @@
-# AIWA Auth API (Simplified)
+# AIWA Auth API（阿里云版本）
 
-> **版本 2.0** - 简化版认证服务，适合毕业设计快速部署
+> **版本 3.0** - 简化认证服务，适合毕业设计部署到阿里云
 
-基于 JWT 的用户认证 API，为 AIWA 健身姿态纠正应用提供用户管理功能。
+基于 JWT 的用户认证 API，为 AIWA 健身姿态纠正应用提供用户登录/注册功能。
 
 ---
 
@@ -11,28 +11,30 @@
 - ✅ **用户注册/登录** - 基于邮箱和密码
 - ✅ **JWT 认证** - RS256 标准，access + refresh token
 - ✅ **安全加密** - Bcrypt 密码哈希
-- ✅ **快速部署** - Railway 一键部署
+- ✅ **阿里云部署** - RDS PostgreSQL + ECS
 - ✅ **本地开发** - Docker Compose 零配置
-- ✅ **可扩展** - 预留会话管理、云端分析模块接口
+- ✅ **可扩展** - 预留文件存储接口（OSS）
 
 ---
 
 ## 🚀 快速部署
 
-### 方案1：Railway 部署（推荐）⭐
+### 方案1：阿里云部署（推荐）⭐
 
-**最快 5 分钟上线！零运维经验要求！**
+**适合毕业设计，约 200 元/月！**
 
-详细步骤请查看：**[RAILWAY_DEPLOYMENT.md](./RAILWAY_DEPLOYMENT.md)**
+详细步骤请查看：**[ALIYUN_DEPLOYMENT.md](./ALIYUN_DEPLOYMENT.md)**
 
 **简要步骤：**
-1. 登录 [Railway](https://railway.app/) → 连接 GitHub 仓库
-2. Root Directory 设置为：`aiwa_cloud`
-3. 添加 PostgreSQL 数据库
-4. 配置环境变量（JWT密钥）
-5. 自动部署完成！
+1. 创建阿里云 RDS PostgreSQL 数据库
+2. 购买 ECS 云服务器（2核2GB）
+3. 安装 Docker 和 Docker Compose
+4. 配置环境变量（数据库连接、JWT密钥）
+5. 启动服务
 
-**成本：** $5 试用额度，之后约 $10/月
+**成本：** 
+- 正常：约 200 元/月
+- 学生优惠：约 90 元/月
 
 ---
 
@@ -54,24 +56,26 @@ curl http://localhost:3000/health
 
 ## 🏛️ 架构
 
-### 简化版架构（当前实现）
+### 当前架构（简化版）
 
 ```
 Flutter App
     ↓ (HTTP/JSON)
 Auth API (Fastify/Node.js)
     ↓ (SQL)
-PostgreSQL Database
+阿里云 RDS PostgreSQL
 ```
 
-### 完整版架构（预留扩展）
+### 未来扩展（可选）
 
 ```
 Flutter App
-    ↓ (HTTP/JSON)
+    ↓
 Auth API
     ↓
-会话管理 → AI Workers → 结果存储
+阿里云 OSS（文件存储）
+    ↓
+训练数据管理
 ```
 
 ---
@@ -85,7 +89,7 @@ aiwa_cloud/
 │   │   ├── modules/
 │   │   │   └── auth/          # ✅ 注册、登录、Token
 │   │   ├── lib/               # 加密、数据库
-│   │   ├── config.ts          # 配置管理
+│   │   ├── config.ts          # 配置管理（含阿里云）
 │   │   └── main.ts            # 入口
 │   ├── prisma/
 │   │   └── schema.prisma      # ✅ User, RefreshToken
@@ -93,15 +97,9 @@ aiwa_cloud/
 │   ├── package.json
 │   └── env.example            # 环境变量模板
 │
-├── workers/                   # ❌ 已移除（AI功能在Flutter本地）
-├── infra/
-│   ├── archive/               # 归档的AWS/阿里云文档
-│   └── terraform/             # 基础设施代码（未来）
-│
+├── my-app/                    # Next.js 管理后台（可选）
 ├── docker-compose.yml         # ✅ 本地开发
-├── railway.json               # ✅ Railway 部署配置
-├── nixpacks.toml              # ✅ Railway 构建配置
-├── RAILWAY_DEPLOYMENT.md      # ✅ 部署指南
+├── ALIYUN_DEPLOYMENT.md       # ✅ 阿里云部署指南
 └── README.md                  # 本文件
 ```
 
@@ -160,8 +158,6 @@ curl -X POST http://localhost:3000/v1/auth/refresh \
   }'
 ```
 
-详细 API 规范：[docs/07-cloud/CLOUD_CORE_API.md](../docs/07-cloud/CLOUD_CORE_API.md)
-
 ---
 
 ## 🛠️ 技术栈
@@ -175,9 +171,10 @@ curl -X POST http://localhost:3000/v1/auth/refresh \
 - **Auth**: JWT (@fastify/jwt)
 - **Encryption**: Bcrypt
 
-### 部署
-- **Platform**: Railway (推荐) / Docker
-- **CI/CD**: GitHub → Railway 自动部署
+### 云服务（阿里云）
+- **数据库**: RDS PostgreSQL
+- **服务器**: ECS（可选）
+- **对象存储**: OSS（可选，用于文件存储）
 
 ---
 
@@ -269,7 +266,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class AuthService {
-  static const String baseUrl = 'https://your-app.up.railway.app';
+  // 阿里云 ECS 地址
+  static const String baseUrl = 'http://你的ECS公网IP:3000';
   // 或本地开发: 'http://localhost:3000'
 
   Future<Map<String, dynamic>> register(String email, String password) async {
@@ -285,10 +283,22 @@ class AuthService {
       throw Exception('注册失败');
     }
   }
+
+  Future<Map<String, dynamic>> login(String email, String password) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/v1/auth/login'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email, 'password': password}),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('登录失败');
+    }
+  }
 }
 ```
-
-完整的 Flutter 集成示例请查看：[RAILWAY_DEPLOYMENT.md](./RAILWAY_DEPLOYMENT.md)
 
 ---
 
@@ -300,12 +310,13 @@ class AuthService {
    - 前端：Flutter（跨平台移动应用）
    - 后端：Node.js + TypeScript（RESTful API）
    - 数据库：PostgreSQL（关系型数据库）
+   - 云平台：阿里云（国内主流）
 
 2. **现代架构**
    - 前后端分离
    - JWT 认证标准
    - Docker 容器化
-   - PaaS 云部署
+   - 云端部署
 
 3. **工程实践**
    - TypeScript 类型安全
@@ -315,10 +326,10 @@ class AuthService {
 
 ### 演示建议
 
-1. **展示 Railway Dashboard**
-   - 部署状态
-   - 环境变量配置
-   - 日志监控
+1. **展示阿里云控制台**
+   - RDS 数据库配置
+   - ECS 服务器状态
+   - （可选）OSS 存储桶
 
 2. **API 测试（Postman/curl）**
    - 注册新用户
@@ -336,12 +347,12 @@ class AuthService {
 > 
 > - **前端**：Flutter 跨平台移动应用，实现姿态识别和分析
 > - **后端**：Node.js + Fastify RESTful API，提供用户认证服务
-> - **数据库**：PostgreSQL 关系型数据库
-> - **部署**：Railway PaaS 平台，简化运维
-> - **认证**：JWT RS256 行业标准
+> - **数据库**：阿里云 RDS PostgreSQL（云端托管）
+> - **部署**：阿里云 ECS，使用 Docker 容器化部署
+> - **认证**：JWT 行业标准，支持 token 刷新
 > 
-> 目前实现了核心的用户认证功能，**预留了云端分析扩展接口**，
-> 未来可以添加会话管理、云端AI分析等功能。"
+> 目前实现了核心的用户认证功能，**预留了云端文件存储接口**，
+> 未来可以添加训练数据存储、用户统计分析等功能。"
 
 ---
 
@@ -360,7 +371,7 @@ docker-compose up       # 重新启动
 **检查：**
 - PostgreSQL 是否运行：`docker ps`
 - DATABASE_URL 是否正确
-- 端口 5432 是否被占用
+- 阿里云 RDS 白名单是否配置
 
 ### 问题3：JWT 错误
 
@@ -368,39 +379,55 @@ docker-compose up       # 重新启动
 - JWT_ACCESS_SECRET 和 JWT_REFRESH_SECRET 是否已设置
 - 密钥长度是否足够（建议 32+ 字符）
 
-### 问题4：Railway 部署失败
+### 问题4：阿里云部署失败
 
 **检查：**
-- Root Directory 是否设置为 `aiwa_cloud`
-- 环境变量是否完整
-- 查看 Build Logs
+- RDS 和 ECS 是否在同一地域和 VPC
+- 环境变量是否正确配置
+- 安全组是否放行端口
 
 ---
 
 ## 📖 更多文档
 
-- 📖 **[Railway 部署指南](./RAILWAY_DEPLOYMENT.md)** - 零基础部署教程
-- 🔐 **[API 规范](../docs/07-cloud/CLOUD_CORE_API.md)** - 完整接口文档
+- 📖 **[阿里云部署指南](./ALIYUN_DEPLOYMENT.md)** - 完整部署教程
 - 🗄️ **[数据库 Schema](./core-api/prisma/schema.prisma)** - 数据模型
-- 📦 **[归档文档](./infra/archive/)** - AWS/阿里云部署（已弃用）
 
 ---
 
 ## 🔄 版本历史
 
-### v2.0.0 (2025-10-31) - 简化版
+### v3.0.0 (2025-11-02) - 阿里云版本
 
-- ✅ 移除 AWS/阿里云依赖
-- ✅ 移除 Workers 模块（AI功能在Flutter本地）
+- ✅ 删除 AWS/Railway 依赖
+- ✅ 添加阿里云 RDS 支持
+- ✅ 预留 OSS 对象存储接口
 - ✅ 简化为纯认证服务
-- ✅ 添加 Railway 部署支持
-- ✅ 优化 Docker Compose 配置
+- ✅ 优化毕业设计部署流程
 
-### v1.0.0 (2025-10-30) - 完整版
+### v2.0.0 (2025-10-31) - Railway 版本
+
+- ✅ 移除 AWS 依赖
+- ✅ 添加 Railway 部署支持
+- ✅ 简化架构
+
+### v1.0.0 (2025-10-30) - AWS 版本
 
 - ✅ 完整的云端架构
-- ✅ AWS S3 + SQS
-- ✅ Python Workers (REINFER + ADVICE)
+- ✅ AWS S3 + SQS + Lambda
+
+---
+
+## 💰 成本对比
+
+| 云平台 | 配置 | 月费用 |
+|--------|------|--------|
+| **阿里云** | RDS 1核2GB + ECS 2核2GB | ¥200 |
+| 阿里云学生 | 同上（学生优惠） | ¥90 |
+| Railway | PostgreSQL + 1 服务 | $10 (¥70) |
+| AWS | RDS + EC2 | $20 (¥140) |
+
+**推荐：** 国内毕业设计使用阿里云（速度快、有学生优惠）
 
 ---
 
@@ -408,7 +435,7 @@ docker-compose up       # 重新启动
 
 遇到问题？
 
-1. 查看 [Railway 文档](https://docs.railway.app/)
+1. 查看 [阿里云文档](https://help.aliyun.com/)
 2. 查看 [Fastify 文档](https://www.fastify.io/)
 3. 查看 [Prisma 文档](https://www.prisma.io/)
 

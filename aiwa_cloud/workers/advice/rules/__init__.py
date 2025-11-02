@@ -1,2 +1,0 @@
-# Exercise-specific rules
-

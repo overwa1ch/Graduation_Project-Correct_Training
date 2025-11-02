@@ -1,7 +1,7 @@
 {
   "name": "aiwa-auth-api",
-  "version": "2.0.0",
-  "description": "AIWA Auth API - Simplified authentication service for Railway deployment",
+  "version": "3.0.0",
+  "description": "AIWA Auth API - Simplified authentication service for Aliyun deployment",
   "main": "dist/main.js",
   "scripts": {
     "dev": "tsx watch src/main.ts",
@@ -14,7 +14,7 @@
     "lint": "eslint src --ext .ts",
     "test": "jest"
   },
-  "keywords": ["aiwa", "auth", "api", "jwt", "fastify", "railway"],
+  "keywords": ["aiwa", "auth", "api", "jwt", "fastify", "aliyun", "graduation-project"],
   "author": "",
   "license": "MIT",
   "dependencies": {

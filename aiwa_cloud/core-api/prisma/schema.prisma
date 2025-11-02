@@ -1,5 +1,11 @@
-// Prisma schema for AIWA Auth API (Simplified)
-// Version: 2.0 - Authentication only
+// =============================================================================
+// AIWA Auth API - Prisma Schema (阿里云版本)
+// =============================================================================
+// 版本: 3.0 - 简化认证 + 阿里云扩展预留
+// 
+// 当前实现：用户认证（登录/注册）
+// 未来扩展：训练数据存储（存储在阿里云 OSS）
+// =============================================================================
 
 generator client {
   provider = "prisma-client-js"
@@ -10,13 +16,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// =============================================================================
+// 核心表（已实现）
+// =============================================================================
+
 // 用户表
 model User {
   id           String    @id @default(uuid())
   email        String    @unique
   passwordHash String    @map("password_hash")
   name         String?   // 用户名（可选）
-  avatar       String?   // 头像URL（可选）
+  avatar       String?   // 头像URL（可选，可存储在阿里云OSS）
   status       String    @default("active") // active | inactive | suspended
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz
@@ -42,27 +52,35 @@ model RefreshToken {
   @@map("refresh_tokens")
 }
 
-// ============================================================================
-// 未来扩展预留（暂时注释）
-// ============================================================================
-//
-// model Session {
+// =============================================================================
+// 未来扩展预留（需要时取消注释）
+// =============================================================================
+// 
+// 说明：如果后续需要云端存储训练数据，可以添加以下表：
+// 
+// 1. TrainingSession 表 - 存储训练会话元数据
+// 2. TrainingData 表 - 存储训练数据引用（实际文件在阿里云 OSS）
+// 3. UserProfile 表 - 扩展用户信息（身高、体重等）
+// 
+// 示例：
+// 
+// model TrainingSession {
 //   id              String    @id @default(uuid())
-//   clientSessionId String    @map("client_session_id")
 //   userId          String    @map("user_id")
-//   template        String    // "squat"
-//   strictness      String    @default("strict")
-//   engine          String    @default("MoveNet")
-//   status          String    @default("local_only")
+//   exerciseType    String    @map("exercise_type") // squat, pushup, etc.
+//   duration        Int       // 训练时长（秒）
+//   repCount        Int       @map("rep_count") // 重复次数
+//   avgScore        Float?    @map("avg_score") // 平均分数
+//   ossVideoUrl     String?   @map("oss_video_url") // 阿里云OSS视频URL
+//   ossDataUrl      String?   @map("oss_data_url") // 阿里云OSS数据URL
 //   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
-//   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 //   
-//   user            User      @relation(fields: [userId], references: [id])
+//   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 //   
-//   @@map("sessions")
+//   @@index([userId])
+//   @@index([createdAt])
+//   @@map("training_sessions")
 // }
-//
-// model Asset { ... }
-// model Job { ... }
-// model Consent { ... }
+// 
+// =============================================================================
 

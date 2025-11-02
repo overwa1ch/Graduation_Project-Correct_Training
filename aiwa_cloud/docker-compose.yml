@@ -1,8 +1,9 @@
-# Docker Compose for local development (Simplified Auth API)
+# Docker Compose for AIWA Auth API
+# Version: 3.0 - 简化版（仅认证服务）
 version: '3.8'
 
 services:
-  # PostgreSQL Database
+  # PostgreSQL Database（本地开发用）
   postgres:
     image: postgres:15-alpine
     container_name: aiwa-postgres
@@ -19,6 +20,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - aiwa-network
 
   # Auth API
   auth-api:
@@ -29,17 +32,73 @@ services:
     ports:
       - "3000:3000"
     environment:
+      # 数据库连接
       DATABASE_URL: postgresql://aiwa:aiwa_dev_password@postgres:5432/aiwa_auth
-      JWT_ACCESS_SECRET: dev_access_secret_change_in_production
-      JWT_REFRESH_SECRET: dev_refresh_secret_change_in_production
+      
+      # JWT 密钥（开发环境，生产环境必须更改！）
+      JWT_ACCESS_SECRET: dev_access_secret_change_in_production_32chars
+      JWT_REFRESH_SECRET: dev_refresh_secret_change_in_production_32chars
+      
+      # 服务器配置
       NODE_ENV: development
       PORT: 3000
       CORS_ORIGIN: "*"
+      
+      # 阿里云配置（可选，开发环境不需要）
+      USE_ALIYUN_OSS: "false"
+      # ALIYUN_REGION: oss-cn-hangzhou
+      # ALIYUN_ACCESS_KEY_ID: your_key
+      # ALIYUN_SECRET_ACCESS_KEY: your_secret
+      # ALIYUN_OSS_BUCKET: aiwa-storage-dev
     depends_on:
       postgres:
         condition: service_healthy
     command: sh -c "npx prisma migrate deploy && npm start"
+    networks:
+      - aiwa-network
+    restart: unless-stopped
 
 volumes:
   postgres_data:
 
+networks:
+  aiwa-network:
+    driver: bridge
+
+# =============================================================================
+# 使用说明
+# =============================================================================
+# 
+# 本地开发：
+#   docker-compose up
+#   API: http://localhost:3000
+#   数据库: localhost:5432
+# 
+# 仅启动数据库：
+#   docker-compose up postgres -d
+# 
+# 查看日志：
+#   docker-compose logs -f auth-api
+# 
+# 重建容器：
+#   docker-compose up --build
+# 
+# 清理：
+#   docker-compose down -v
+# 
+# =============================================================================
+# 生产环境部署到阿里云
+# =============================================================================
+# 
+# 1. 不需要运行 postgres 服务（使用阿里云 RDS）
+# 2. 修改 auth-api 的 DATABASE_URL 为 RDS 地址
+# 3. 修改 JWT_ACCESS_SECRET 和 JWT_REFRESH_SECRET
+# 4. 设置 NODE_ENV=production
+# 5. 如果需要文件存储，设置 USE_ALIYUN_OSS=true 并配置相关变量
+# 
+# 推荐使用 .env 文件管理环境变量：
+#   1. 复制 core-api/env.example 为 core-api/.env
+#   2. 填写实际的配置值
+#   3. 在 ECS 上运行: docker-compose up -d
+# 
+# =============================================================================

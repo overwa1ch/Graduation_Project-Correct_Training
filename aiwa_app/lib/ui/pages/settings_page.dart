@@ -562,13 +562,12 @@ class _SettingsPageState extends State<SettingsPage> {
                           
                           // 保存按钮
                           Expanded(
-                            flex: 2,
-                            child: ElevatedButton(
+                            child: OutlinedButton(
                               key: const ValueKey('action.save_config'),
                               onPressed: (_isSaving || !_hasChanges) ? null : _saveConfig,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.brandPrimaryVariant,
+                              style: OutlinedButton.styleFrom(
                                 foregroundColor: AppColors.textInvert,
+                                side: const BorderSide(color: AppColors.neutralLight),
                                 padding: const EdgeInsets.symmetric(
                                   vertical: AppSpacing.lg,
                                 ),
@@ -593,7 +592,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       // 登出按钮
                       SizedBox(
                         width: double.infinity,
-                        child: OutlinedButton(
+                        child: ElevatedButton(
                           key: const ValueKey('action.logout'),
                           onPressed: () {
                             Navigator.pushReplacementNamed(
@@ -602,9 +601,9 @@ class _SettingsPageState extends State<SettingsPage> {
                               arguments: {'noAnimation': true},
                             );
                           },
-                          style: OutlinedButton.styleFrom(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.brandPrimaryVariant,
                             foregroundColor: AppColors.textInvert,
-                            side: const BorderSide(color: AppColors.brandPrimaryVariant),
                             padding: const EdgeInsets.symmetric(
                               vertical: AppSpacing.lg,
                             ),
@@ -1113,6 +1112,7 @@ class _SettingsPageState extends State<SettingsPage> {
       borderRadius: AppRadius.buttonRadius,
       child: Container(
         padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
           vertical: AppSpacing.md,
         ),
         decoration: BoxDecoration(

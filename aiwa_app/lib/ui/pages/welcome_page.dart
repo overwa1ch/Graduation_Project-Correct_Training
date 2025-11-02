@@ -113,7 +113,6 @@ class _WelcomePageState extends State<WelcomePage> {
                   context: context,
                   strictness: Strictness.relaxed,
                   icon: Icons.sentiment_satisfied_rounded,
-                  iconColor: SemanticColors.success,
                   title: '新手模式 (Relaxed)',
                   description: '标准宽松，更容易获得反馈\n推荐给刚开始练习的用户',
                   isSelected: _selectedStrictness == Strictness.relaxed,
@@ -131,7 +130,6 @@ class _WelcomePageState extends State<WelcomePage> {
                   context: context,
                   strictness: Strictness.strict,
                   icon: Icons.emoji_events_rounded,
-                  iconColor: SemanticColors.warning,
                   title: '严格模式 (Strict)',
                   description: '专业标准，挑战更高分\n推荐给已掌握基本动作的用户',
                   isSelected: _selectedStrictness == Strictness.strict,
@@ -170,7 +168,6 @@ class _WelcomePageState extends State<WelcomePage> {
     required BuildContext context,
     required Strictness strictness,
     required IconData icon,
-    required Color iconColor,
     required String title,
     required String description,
     required bool isSelected,
@@ -178,73 +175,82 @@ class _WelcomePageState extends State<WelcomePage> {
   }) {
     final theme = Theme.of(context);
     
+    // 根据选中状态动态确定图标颜色
+    final iconColor = isSelected 
+        ? SemanticColors.success 
+        : SemanticColors.warning;
+    
     return GestureDetector(
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        decoration: BoxDecoration(
-          color: isSelected 
-              ? theme.colorScheme.primary.withOpacity(0.1)
-              : Colors.transparent,
-          border: Border.all(
+      child: Transform.scale(
+        scale: isSelected ? 1.05 : 1.0,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          decoration: BoxDecoration(
             color: isSelected 
-                ? theme.colorScheme.primary
-                : theme.colorScheme.outline.withOpacity(0.3),
-            width: isSelected ? 2 : 1,
+                ? theme.colorScheme.primary.withOpacity(0.1)
+                : Colors.transparent,
+            border: Border.all(
+              color: isSelected 
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.outline.withOpacity(0.3),
+              width: isSelected ? 2 : 1,
+            ),
+            borderRadius: BorderRadius.circular(16),
           ),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Row(
-          children: [
-            // 图标
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Row(
+            children: [
+              // 图标
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  size: 32,
+                  color: iconColor,
+                ),
               ),
-              child: Icon(
-                icon,
-                size: 32,
-                color: iconColor,
-              ),
-            ),
-            
-            const SizedBox(width: AppSpacing.lg),
-            
-            // 文字内容
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: theme.colorScheme.onSurface,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              
+              const SizedBox(width: AppSpacing.lg),
+              
+              // 文字内容
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: theme.colorScheme.onSurface,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    description,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      height: 1.4,
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      description,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        height: 1.4,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            
-            // 选中标记
-            if (isSelected)
-              Icon(
-                Icons.check_circle,
-                color: theme.colorScheme.primary,
-                size: 24,
-              ),
-          ],
+              
+              // 选中标记
+              if (isSelected)
+                Icon(
+                  Icons.check_circle,
+                  color: theme.colorScheme.primary,
+                  size: 24,
+                ),
+            ],
+          ),
         ),
       ),
     );

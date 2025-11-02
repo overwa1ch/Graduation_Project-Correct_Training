@@ -1,165 +1,196 @@
-# 毕业项目 - 训练管理系统（云端管理平台）
+# AIWA 管理后台
 
-## 项目简介
+> **可选功能** - Next.js 管理后台（用于用户管理）
 
-这是一个基于 Next.js 15 开发的云端管理平台，用于管理训练相关的数据和用户。系统采用现代化的技术栈，提供完整的认证授权功能和管理员管理功能。
+---
 
-## 技术栈
+## 📋 说明
 
-- **框架**: Next.js 15 (App Router)
-- **语言**: TypeScript
-- **数据库**: PostgreSQL (Supabase)
-- **ORM**: Drizzle ORM
-- **样式**: Tailwind CSS 4
-- **UI 组件**: 自定义组件库（基于 Radix UI）
-- **认证**: 基于 Session Cookie 的自定义认证系统
+这是一个可选的 Next.js 管理后台应用，用于：
+- 查看注册用户
+- 管理用户状态
+- 查看用户统计信息
 
-## 核心功能
+**注意：** 如果只需要 Flutter 移动端 + 认证 API，可以不使用此管理后台。
 
-### 1. 用户认证系统
-- ✅ 管理员注册（首次注册自动成为系统管理员）
-- ✅ 管理员登录
-- ✅ Session 管理（7天有效期）
-- ✅ 密码哈希加密（SHA-256）
-- ✅ 路由保护（中间件拦截）
+---
 
-### 2. 管理员管理
-- ✅ 管理员列表展示
-- ✅ 新建管理员（仅系统管理员）
-- ✅ 编辑管理员权限
-- ✅ 账户状态管理（启用/停用）
-- ✅ 系统管理员/普通管理员角色区分
-
-### 3. 数据模型
-
-#### admin-users 表
-```typescript
-- id: UUID (主键)
-- name: 文本 (姓名)
-- email: 文本 (邮箱，唯一)
-- password_hash: 文本 (密码哈希)
-- is_system_admin: 布尔 (是否为系统管理员)
-- is_active: 布尔 (账户是否启用)
-- created_at: 时间戳
-- updated_at: 时间戳
-```
-
-#### admin-session 表
-```typescript
-- id: UUID (主键)
-- user_id: UUID (外键，关联 admin-users)
-- session_token: 文本 (会话令牌，唯一)
-- expires_at: 时间戳 (过期时间)
-- created_at: 时间戳
-```
-
-## 项目结构
-
-```
-my-app/
-├── app/                          # Next.js App Router
-│   ├── (auth)/                   # 认证相关页面（不带导航）
-│   │   ├── signin/              # 登录页
-│   │   └── signup/              # 注册页
-│   ├── (dashboard)/             # 仪表板页面（带导航）
-│   │   ├── admin-users/         # 管理员管理
-│   │   └── layout.tsx           # 仪表板布局
-│   ├── actions/                 # Server Actions
-│   │   ├── admin-users.ts       # 管理员操作
-│   │   ├── admin.ts             # 管理相关操作
-│   │   └── auth.ts              # 认证操作
-│   ├── globals.css              # 全局样式
-│   ├── layout.tsx               # 根布局
-│   └── page.tsx                 # 首页（重定向逻辑）
-├── components/                   # React 组件
-│   └── ui/                      # UI 基础组件
-│       ├── button.tsx
-│       ├── card.tsx
-│       ├── checkbox.tsx
-│       ├── dialog.tsx
-│       ├── input.tsx
-│       ├── label.tsx
-│       └── separator.tsx
-├── lib/                         # 核心库文件
-│   ├── auth.ts                  # 认证逻辑
-│   ├── db.ts                    # 数据库连接
-│   ├── schema.ts                # 数据库模型
-│   └── utils.ts                 # 工具函数
-├── drizzle/                     # 数据库迁移文件
-├── public/                      # 静态资源
-├── middleware.ts                # Next.js 中间件（路由保护）
-└── drizzle.config.ts           # Drizzle 配置
-```
-
-## 安装与运行
+## 🚀 快速开始
 
 ### 1. 安装依赖
+
 ```bash
+cd my-app
 npm install
 ```
 
 ### 2. 配置环境变量
+
 创建 `.env.local` 文件：
-```env
-DATABASE_URL=postgresql://username:password@host:port/database
+
+```bash
+# 数据库（与 core-api 使用相同的数据库）
+DATABASE_URL=postgresql://aiwa:aiwa_dev_password@localhost:5432/aiwa_auth
+
+# NextAuth 密钥（生成随机字符串）
+NEXTAUTH_SECRET=your_nextauth_secret_here
+NEXTAUTH_URL=http://localhost:3001
+
+# API 地址（core-api）
+API_BASE_URL=http://localhost:3000
 ```
 
-### 3. 数据库迁移
+### 3. 运行数据库迁移
+
 ```bash
-# 生成迁移文件
-npm run drizzle:generate
-
-# 推送到数据库
-npm run drizzle:push
-
-# 打开 Drizzle Studio（可视化管理）
-npm run drizzle:studio
+npx drizzle-kit push:pg
 ```
 
 ### 4. 启动开发服务器
+
 ```bash
 npm run dev
 ```
 
-访问 http://localhost:3000
+访问：http://localhost:3001
 
-## 开发脚本
+---
 
-```bash
-npm run dev              # 启动开发服务器
-npm run build            # 构建生产版本
-npm run start            # 启动生产服务器
-npm run lint             # 运行 ESLint
-npm run drizzle:generate # 生成数据库迁移
-npm run drizzle:push     # 推送迁移到数据库
-npm run drizzle:studio   # 打开 Drizzle Studio
+## 🎨 功能
+
+### 当前实现
+- ✅ 管理员登录
+- ✅ 查看用户列表
+- ✅ 用户状态管理（激活/停用）
+
+### 未来扩展
+- [ ] 用户详情页
+- [ ] 训练数据统计
+- [ ] 用户活跃度分析
+
+---
+
+## 🔐 默认管理员账号
+
+首次运行时需要手动创建管理员：
+
+```sql
+-- 连接到数据库
+psql postgresql://aiwa:aiwa_dev_password@localhost:5432/aiwa_auth
+
+-- 创建管理员用户
+INSERT INTO users (id, email, password_hash, status)
+VALUES (
+  gen_random_uuid(),
+  'admin@example.com',
+  -- 密码: admin123（使用 bcrypt 加密）
+  '$2b$10$N9qo8uLOickgx2ZMRZoMye.IY0n1UdWfQA8V5R6VU5gJN8QKKUQWS',
+  'active'
+);
 ```
 
-## 待开发功能
+登录信息：
+- 邮箱: `admin@example.com`
+- 密码: `admin123`
 
-- [ ] 用户训练数据管理
-- [ ] 数据统计与可视化
-- [ ] 导出功能
-- [ ] 批量操作
-- [ ] 搜索与过滤
-- [ ] 角色权限细化
+**⚠️ 生产环境务必修改密码！**
 
-## 安全注意事项
+---
 
-⚠️ **重要提醒**：
-1. 请勿将数据库凭证提交到版本控制系统
-2. 生产环境建议使用更强的密码哈希算法（如 bcrypt、argon2）
-3. 建议添加请求频率限制防止暴力破解
-4. 建议添加 CSRF 保护
-5. 建议添加日志审计功能
+## 🛠️ 技术栈
 
-## 最近更新
+- **框架**: Next.js 15 (App Router)
+- **数据库**: PostgreSQL + Drizzle ORM
+- **认证**: NextAuth.js
+- **UI**: Tailwind CSS + shadcn/ui
+- **语言**: TypeScript
 
-- ✅ 完成管理员认证系统
-- ✅ 完成管理员管理功能
-- ✅ 优化项目结构
-- ✅ 清理测试和调试文件
+---
 
-## 许可证
+## 📖 API 集成
 
-本项目为毕业设计项目。
+管理后台通过 HTTP 调用 core-api：
+
+```typescript
+// 获取用户列表
+const response = await fetch(`${API_BASE_URL}/v1/users`, {
+  headers: {
+    'Authorization': `Bearer ${accessToken}`,
+  },
+});
+```
+
+**注意：** 需要在 core-api 中添加管理员接口（当前版本未实现）。
+
+---
+
+## 🚧 当前状态
+
+- **状态**: 基础框架已搭建
+- **是否必需**: ❌ 不必需（毕业设计可选）
+- **推荐**: 如果时间充裕，可以演示管理后台增加亮点
+
+---
+
+## 🎓 毕业答辩建议
+
+如果使用此管理后台：
+
+1. **展示内容**
+   - 用户管理界面
+   - 实时用户数据
+   - 管理员权限控制
+
+2. **技术亮点**
+   - 前后端分离
+   - 多端应用（Flutter + Next.js）
+   - 统一认证系统
+
+3. **注意事项**
+   - 说明这是"可选的管理后台"
+   - 重点仍在 Flutter 移动端
+
+---
+
+## 📝 开发建议
+
+### 最小实现（毕业设计）
+
+只实现：
+- 管理员登录
+- 查看用户列表
+- 基本的用户管理
+
+### 完整实现（未来扩展）
+
+添加：
+- 训练数据可视化
+- 用户行为分析
+- 系统监控面板
+
+---
+
+## 🗂️ 文件结构
+
+```
+my-app/
+├── app/
+│   ├── (auth)/        # 登录页面
+│   ├── (dashboard)/   # 管理后台主页
+│   └── actions/       # Server Actions
+├── components/        # UI 组件
+├── lib/              # 工具库
+└── drizzle/          # 数据库迁移
+```
+
+---
+
+## 📞 技术支持
+
+- Next.js 文档: https://nextjs.org/docs
+- Drizzle ORM: https://orm.drizzle.team/
+- shadcn/ui: https://ui.shadcn.com/
+
+---
+
+**结论：** 此管理后台是可选功能，毕业设计可以不使用。如果时间充裕，可以作为额外亮点展示。
