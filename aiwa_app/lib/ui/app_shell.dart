@@ -163,7 +163,7 @@ class PageHeader extends StatelessWidget {
           style: theme.textTheme.headlineMedium,
         ),
         if (subtitle != null) ...[
-          SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             subtitle!,
             style: theme.textTheme.bodyMedium?.copyWith(

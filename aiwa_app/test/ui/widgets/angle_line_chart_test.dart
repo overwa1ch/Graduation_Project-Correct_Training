@@ -22,7 +22,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: 'Knee Angle',
               dataPoints: [45.0, 60.0, 75.0, 90.0, 85.0],
             ),
@@ -38,7 +38,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: 'Chart',
               dataPoints: [90.0],
             ),
@@ -53,7 +53,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: 'Chart',
               dataPoints: [45.0, 60.0, 75.0],
             ),
@@ -70,7 +70,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: 'With Threshold',
               dataPoints: [45.0, 60.0, 75.0],
               threshold: 70.0,
@@ -88,7 +88,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: 'No Threshold',
               dataPoints: [45.0, 60.0, 75.0],
               threshold: 70.0,
@@ -106,7 +106,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: 'Custom Threshold',
               dataPoints: [45.0, 60.0, 75.0],
               threshold: 50.0,
@@ -123,7 +123,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: 'Default Threshold',
               dataPoints: [80.0, 85.0, 95.0],
               showThreshold: true,
@@ -142,7 +142,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: 'Single Point',
               dataPoints: [75.0],
             ),
@@ -158,7 +158,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: 'Empty Data',
               dataPoints: [],
             ),
@@ -192,7 +192,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: 'Duplicates',
               dataPoints: [60.0, 60.0, 60.0, 60.0],
             ),
@@ -210,7 +210,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: 'Zero Values',
               dataPoints: [0.0, 10.0, 0.0],
             ),
@@ -226,7 +226,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: 'Negative Values',
               dataPoints: [-10.0, -5.0, 0.0, 5.0],
             ),
@@ -242,7 +242,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: 'Large Values',
               dataPoints: [360.0, 400.0, 450.0],
             ),
@@ -258,7 +258,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: 'Wide Range',
               dataPoints: [0.0, 180.0, 360.0],
             ),
@@ -273,7 +273,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: 'Small Range',
               dataPoints: [90.0, 90.1, 90.2, 90.15],
             ),
@@ -291,7 +291,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: 'Color Test',
               dataPoints: [45.0, 60.0, 75.0],
             ),
@@ -311,7 +311,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: 'Threshold Color',
               dataPoints: [45.0, 60.0, 75.0],
               threshold: 70.0,
@@ -329,7 +329,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: 'Background',
               dataPoints: [50.0, 60.0],
             ),
@@ -347,7 +347,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: 'Typography Test',
               dataPoints: [60.0],
             ),
@@ -363,7 +363,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: 'Legend Test',
               dataPoints: [60.0, 70.0],
               showThreshold: true,
@@ -382,7 +382,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: 'Fixed Height',
               dataPoints: [60.0, 70.0, 80.0],
             ),
@@ -402,7 +402,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: 'Very Long Chart Title That Should Wrap Or Truncate Properly',
               dataPoints: [60.0, 70.0],
             ),
@@ -418,7 +418,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: 'Legend',
               dataPoints: [60.0, 70.0],
               showThreshold: true,
@@ -435,7 +435,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            SizedBox(
+            const SizedBox(
               width: 300,
               child: AngleLineChart(
                 title: 'Constrained',
@@ -456,7 +456,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: 'NaN Test',
               dataPoints: [60.0, double.nan, 80.0],
             ),
@@ -472,7 +472,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: 'Infinity Test',
               dataPoints: [60.0, double.infinity, 80.0],
             ),
@@ -488,7 +488,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: '',
               dataPoints: [60.0, 70.0],
             ),
@@ -504,7 +504,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: 'Negative Threshold',
               dataPoints: [-20.0, -10.0, 0.0, 10.0],
               threshold: -5.0,
@@ -522,7 +522,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: 'Complete Chart',
               dataPoints: [30.0, 45.0, 60.0, 75.0, 90.0, 85.0, 70.0],
               threshold: 80.0,
@@ -561,7 +561,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            AngleLineChart(
+            const AngleLineChart(
               title: 'Color Contract',
               dataPoints: [60.0, 70.0],
               showThreshold: true,

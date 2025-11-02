@@ -424,7 +424,7 @@ void main() {
   });
 
   group('Result Adapter - File I/O Tests', () {
-    final testDir = 'test_output';
+    const testDir = 'test_output';
     final sessionRoot = '$testDir/test_session';
 
     setUp(() async {

@@ -14,7 +14,7 @@ void main() {
   group('ResultPopupPage', () {
     testWidgets('renders with complete result data', (WidgetTester tester) async {
       // Create test result
-      final result = AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 85,
         stability: 90,
         rhythm: 88,
@@ -59,7 +59,7 @@ void main() {
 
     testWidgets('displays quality warning when lowConfidence is true', (WidgetTester tester) async {
       // Create result with low confidence
-      final result = AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 60,
         stability: 65,
         rhythm: 70,
@@ -87,7 +87,7 @@ void main() {
 
     testWidgets('displays quality warning when coverage is low', (WidgetTester tester) async {
       // Create result with low coverage
-      final result = AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 80,
         stability: 85,
         rhythm: 82,
@@ -115,7 +115,7 @@ void main() {
 
     testWidgets('does not display quality warning when conditions are met', (WidgetTester tester) async {
       // Create result with good quality
-      final result = AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 85,
         stability: 90,
         rhythm: 88,
@@ -144,7 +144,7 @@ void main() {
 
     testWidgets('displays evidence placeholder when no evidence path', (WidgetTester tester) async {
       // Create result without evidence
-      final result = AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 80,
         stability: 85,
         rhythm: 82,
@@ -183,7 +183,7 @@ void main() {
 
     testWidgets('displays optional metadata when available', (WidgetTester tester) async {
       // Create result with metadata
-      final result = AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 85,
         stability: 90,
         rhythm: 88,
@@ -219,7 +219,7 @@ void main() {
 
     testWidgets('handles missing optional metadata gracefully', (WidgetTester tester) async {
       // Create result without metadata
-      final result = AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 80,
         stability: 85,
         rhythm: 82,
@@ -251,7 +251,7 @@ void main() {
 
     testWidgets('score cards use correct colors based on score thresholds', (WidgetTester tester) async {
       // Test different score ranges
-      final lowScoreResult = AnalysisResultLite(
+      const lowScoreResult = AnalysisResultLite(
         posture: 45, // < 60 (red)
         stability: 50, // < 60 (red)
         rhythm: 55, // < 60 (red)
@@ -281,7 +281,7 @@ void main() {
 
     testWidgets('widget is scrollable', (WidgetTester tester) async {
       // Create result with metadata to make content longer
-      final result = AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 85,
         stability: 90,
         rhythm: 88,
@@ -313,7 +313,7 @@ void main() {
 
     testWidgets('handles edge case scores correctly', (WidgetTester tester) async {
       // Test boundary values
-      final edgeCaseResult = AnalysisResultLite(
+      const edgeCaseResult = AnalysisResultLite(
         posture: 0, // Minimum
         stability: 100, // Maximum
         rhythm: 60, // Boundary
@@ -346,7 +346,7 @@ void main() {
 
   group('ResultPopupPage Evidence Fallback', () {
     testWidgets('tries evidence.jpg first', (WidgetTester tester) async {
-      final result = AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 85,
         stability: 90,
         rhythm: 88,
@@ -373,7 +373,7 @@ void main() {
     });
 
     testWidgets('falls back to best_form.jpg if evidence.jpg missing', (WidgetTester tester) async {
-      final result = AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 85,
         stability: 90,
         rhythm: 88,
@@ -400,7 +400,7 @@ void main() {
     });
 
     testWidgets('shows placeholder when all evidence missing', (WidgetTester tester) async {
-      final result = AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 85,
         stability: 90,
         rhythm: 88,
@@ -440,7 +440,7 @@ void main() {
 
   group('ResultPopupPage Quality Warnings', () {
     testWidgets('shows both warnings when multiple issues exist', (WidgetTester tester) async {
-      final result = AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 60,
         stability: 65,
         rhythm: 70,
@@ -468,7 +468,7 @@ void main() {
 
     testWidgets('warning threshold is 0.7 for coverage', (WidgetTester tester) async {
       // Test just above threshold
-      final goodCoverage = AnalysisResultLite(
+      const goodCoverage = AnalysisResultLite(
         posture: 80,
         stability: 85,
         rhythm: 82,
@@ -494,7 +494,7 @@ void main() {
       expect(find.textContaining('Low coverage'), findsNothing);
 
       // Test just below threshold
-      final lowCoverage = AnalysisResultLite(
+      const lowCoverage = AnalysisResultLite(
         posture: 80,
         stability: 85,
         rhythm: 82,
@@ -556,7 +556,7 @@ void main() {
 
   group('ResultPopupPage Data Binding', () {
     testWidgets('all score fields are displayed', (WidgetTester tester) async {
-      final result = AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 11,
         stability: 22,
         rhythm: 33,
@@ -589,7 +589,7 @@ void main() {
 
     testWidgets('metadata fields are optional', (WidgetTester tester) async {
       // Minimum required fields only
-      final minimalResult = AnalysisResultLite(
+      const minimalResult = AnalysisResultLite(
         posture: 85,
         stability: 90,
         rhythm: 88,
@@ -617,7 +617,7 @@ void main() {
     });
 
     testWidgets('full metadata is displayed when provided', (WidgetTester tester) async {
-      final fullResult = AnalysisResultLite(
+      const fullResult = AnalysisResultLite(
         posture: 85,
         stability: 90,
         rhythm: 88,
@@ -654,7 +654,7 @@ void main() {
 
   group('ResultPopupPage User Actions', () {
     testWidgets('close button exists', (WidgetTester tester) async {
-      final result = AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 85,
         stability: 90,
         rhythm: 88,
@@ -682,7 +682,7 @@ void main() {
     });
 
     testWidgets('widget can be dismissed', (WidgetTester tester) async {
-      final result = AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 85,
         stability: 90,
         rhythm: 88,
@@ -721,7 +721,7 @@ void main() {
 
   group('ResultPopupPage Error States', () {
     testWidgets('handles null coverage gracefully', (WidgetTester tester) async {
-      final result = AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 85,
         stability: 90,
         rhythm: 88,
@@ -749,7 +749,7 @@ void main() {
     });
 
     testWidgets('handles extreme rep counts', (WidgetTester tester) async {
-      final result = AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 85,
         stability: 90,
         rhythm: 88,
@@ -776,7 +776,7 @@ void main() {
     });
 
     testWidgets('survives widget rebuild', (WidgetTester tester) async {
-      final result = AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 85,
         stability: 90,
         rhythm: 88,

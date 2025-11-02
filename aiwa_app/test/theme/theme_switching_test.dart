@@ -34,8 +34,8 @@ void main() {
       
       // 主题应该不同
       expect(lightTheme.brightness, isNot(equals(darkTheme.brightness)));
-      expect(lightTheme.colorScheme.background, 
-             isNot(equals(darkTheme.colorScheme.background)));
+      expect(lightTheme.colorScheme.surface, 
+             isNot(equals(darkTheme.colorScheme.surface)));
     });
   });
 
@@ -186,7 +186,7 @@ void main() {
       // 验证组件使用颜色方案中的颜色
       expect(theme.appBarTheme.backgroundColor, anyOf(
         equals(colorScheme.surface),
-        equals(colorScheme.background),
+        equals(colorScheme.surface),
         equals(colorScheme.primary),
       ));
     });
@@ -198,7 +198,7 @@ void main() {
       // 验证组件使用颜色方案中的颜色
       expect(theme.appBarTheme.backgroundColor, anyOf(
         equals(colorScheme.surface),
-        equals(colorScheme.background),
+        equals(colorScheme.surface),
         equals(colorScheme.primary),
       ));
     });
@@ -363,7 +363,7 @@ void main() {
       final darkScheme = createDarkColorScheme();
       
       // 暗色主题的背景应该较暗
-      final bgLuminance = darkScheme.background.computeLuminance();
+      final bgLuminance = darkScheme.surface.computeLuminance();
       expect(bgLuminance, lessThan(0.5));
     });
 
@@ -371,7 +371,7 @@ void main() {
       final lightScheme = createLightColorScheme();
       
       // 亮色主题的背景应该较亮
-      final bgLuminance = lightScheme.background.computeLuminance();
+      final bgLuminance = lightScheme.surface.computeLuminance();
       expect(bgLuminance, greaterThan(0.5));
     });
   });

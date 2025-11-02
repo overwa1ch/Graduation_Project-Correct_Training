@@ -1,6 +1,5 @@
 import { prisma } from '../../lib/prisma';
 import { hashPassword, verifyPassword } from '../../lib/crypto';
-import { CONFIG } from '../../config';
 import crypto from 'crypto';
 
 export interface RegisterInput {

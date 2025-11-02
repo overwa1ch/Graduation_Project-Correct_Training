@@ -3,7 +3,7 @@ import { config } from 'dotenv';
 config();
 
 export const CONFIG = {
-  port: parseInt(process.env.PORT || '3000', 10),
+  port: parseInt(process.env.PORT || '8080', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
   
   database: {

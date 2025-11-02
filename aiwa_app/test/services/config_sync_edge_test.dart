@@ -273,7 +273,7 @@ void main() {
     });
 
     test('handles very long paths', () async {
-      final longPath = '/very/long/path/' + ('a' * 200) + '/video.mp4';
+      final longPath = '/very/long/path/${'a' * 200}/video.mp4';
       final args = buildCliArgs(
         pickedInput: longPath,
         sessionRoot: '/tmp/session',

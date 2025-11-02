@@ -151,7 +151,7 @@ void main() {
 
   group('Performance - UI Rendering Time', () {
     testWidgets('ResultPopupPage - first render', (tester) async {
-      final result = AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 85,
         stability: 88,
         rhythm: 83,
@@ -200,8 +200,8 @@ void main() {
 
       final stopwatch = Stopwatch()..start();
 
-      await tester.pumpWidget(TestHarness(
-        child: const CameraPage(),
+      await tester.pumpWidget(const TestHarness(
+        child: CameraPage(),
       ));
 
       await tester.pump();
@@ -222,8 +222,8 @@ void main() {
 
       final stopwatch = Stopwatch()..start();
 
-      await tester.pumpWidget(TestHarness(
-        child: const SettingsPage(),
+      await tester.pumpWidget(const TestHarness(
+        child: SettingsPage(),
       ));
 
       await tester.pump();
@@ -237,7 +237,7 @@ void main() {
     });
 
     testWidgets('ResultPopup - rebuild performance', (tester) async {
-      final result = AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 85,
         stability: 88,
         rhythm: 83,
@@ -388,8 +388,8 @@ void main() {
 
   group('Performance - Stress Tests', () {
     testWidgets('Rapid navigation - no performance degradation', (tester) async {
-      await tester.pumpWidget(TestHarness(
-        child: const CameraPage(),
+      await tester.pumpWidget(const TestHarness(
+        child: CameraPage(),
       ));
 
       final times = <int>[];
@@ -398,8 +398,8 @@ void main() {
       for (int i = 0; i < 10; i++) {
         final stopwatch = Stopwatch()..start();
         
-        await tester.pumpWidget(TestHarness(
-          child: const SettingsPage(),
+        await tester.pumpWidget(const TestHarness(
+          child: SettingsPage(),
         ));
         await tester.pump();
         

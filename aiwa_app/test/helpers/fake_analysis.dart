@@ -110,7 +110,7 @@ Stream<Map<String, dynamic>> replayEventsWithSpeed(
   }
   
   // Base delay of 50ms per event
-  final baseDelay = Duration(milliseconds: 50);
+  const baseDelay = Duration(milliseconds: 50);
   final adjustedDelay = Duration(
     milliseconds: (baseDelay.inMilliseconds / speed).round(),
   );

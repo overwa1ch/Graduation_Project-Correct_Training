@@ -227,14 +227,14 @@ void main() {
       final session2 = await SessionManager.createSessionRoot();
       
       // Wait a bit to ensure directories are fully created
-      await Future.delayed(Duration(milliseconds: 100));
+      await Future.delayed(const Duration(milliseconds: 100));
       
       // Run multiple cleanup operations concurrently
       final cleanupFutures = List.generate(5, (_) => SessionManager.cleanupExpired(days: 0));
       await Future.wait(cleanupFutures);
       
       // Wait for filesystem operations to complete
-      await Future.delayed(Duration(milliseconds: 100));
+      await Future.delayed(const Duration(milliseconds: 100));
       
       // Sessions should be cleaned up (allow for race condition where last cleanup may miss)
       // At least one cleanup should have succeeded
@@ -252,7 +252,7 @@ void main() {
       final session2 = await SessionManager.createSessionRoot();
       
       // Wait to ensure directories are fully created
-      await Future.delayed(Duration(milliseconds: 50));
+      await Future.delayed(const Duration(milliseconds: 50));
       
       // Start concurrent operations with 7-day retention to avoid deleting new sessions
       final createFuture = SessionManager.createSessionRoot();
@@ -359,7 +359,7 @@ void main() {
       final sessionDir = Directory(sessionRoot);
       
       // Wait to ensure directory is fully created
-      await Future.delayed(Duration(milliseconds: 50));
+      await Future.delayed(const Duration(milliseconds: 50));
       
       // Directory should be empty
       final contents = await sessionDir.list().toList();
@@ -374,7 +374,7 @@ void main() {
       await SessionManager.cleanupExpired(days: 0);
       
       // Wait for filesystem to process deletion
-      await Future.delayed(Duration(milliseconds: 50));
+      await Future.delayed(const Duration(milliseconds: 50));
       
       expect(await sessionDir.exists(), isFalse,
           reason: 'Empty session should be deleted by cleanup');
@@ -393,7 +393,7 @@ void main() {
       await nestedFile.writeAsString('nested content');
       
       // Wait to ensure all files are fully written
-      await Future.delayed(Duration(milliseconds: 50));
+      await Future.delayed(const Duration(milliseconds: 50));
       
       // Should be listed as a valid session
       final sessions = await SessionManager.listSessions();
@@ -404,7 +404,7 @@ void main() {
       await SessionManager.cleanupExpired(days: 0);
       
       // Wait for filesystem to process recursive deletion
-      await Future.delayed(Duration(milliseconds: 100));
+      await Future.delayed(const Duration(milliseconds: 100));
       
       expect(await sessionDir.exists(), isFalse,
           reason: 'Session with nested structure should be deleted completely');

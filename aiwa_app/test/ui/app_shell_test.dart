@@ -15,7 +15,7 @@ void main() {
   group('AppShell - Navigation Contract', () {
     testWidgets('renders child widget correctly', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: AppShell(
             child: Text('Test Child'),
           ),
@@ -62,17 +62,17 @@ void main() {
             child: Container(),
           ),
           routes: {
-            '/home': (context) => Scaffold(body: Text('Home')),
-            '/camera': (context) => Scaffold(body: Text('Camera')),
-            '/settings': (context) => Scaffold(body: Text('Settings')),
+            '/home': (context) => const Scaffold(body: Text('Home')),
+            '/camera': (context) => const Scaffold(body: Text('Camera')),
+            '/settings': (context) => const Scaffold(body: Text('Settings')),
           },
         ),
       );
 
       // Verify nav items exist via ValueKeys
-      expect(find.byKey(ValueKey('nav.home.icon')), findsOneWidget);
-      expect(find.byKey(ValueKey('nav.camera.icon')), findsOneWidget);
-      expect(find.byKey(ValueKey('nav.settings.icon')), findsOneWidget);
+      expect(find.byKey(const ValueKey('nav.home.icon')), findsOneWidget);
+      expect(find.byKey(const ValueKey('nav.camera.icon')), findsOneWidget);
+      expect(find.byKey(const ValueKey('nav.settings.icon')), findsOneWidget);
     });
 
     testWidgets('hides bottom navigation when showBottomNav is false', (WidgetTester tester) async {
@@ -85,26 +85,26 @@ void main() {
         ),
       );
 
-      expect(find.byKey(ValueKey('nav.home.icon')), findsNothing);
+      expect(find.byKey(const ValueKey('nav.home.icon')), findsNothing);
     });
 
     testWidgets('home tab navigates to /home route', (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: AppShell(
+          home: const AppShell(
             currentNavIndex: 1, // Start on camera
             child: Text('Camera Page'),
           ),
           routes: {
-            '/home': (context) => Scaffold(body: Text('Home Page')),
-            '/camera': (context) => Scaffold(body: Text('Camera')),
-            '/settings': (context) => Scaffold(body: Text('Settings')),
+            '/home': (context) => const Scaffold(body: Text('Home Page')),
+            '/camera': (context) => const Scaffold(body: Text('Camera')),
+            '/settings': (context) => const Scaffold(body: Text('Settings')),
           },
         ),
       );
 
       // Tap home icon
-      await tester.tap(find.byKey(ValueKey('nav.home.icon')));
+      await tester.tap(find.byKey(const ValueKey('nav.home.icon')));
       await safePumpAndSettle(tester);
 
       // Verify navigation occurred
@@ -114,20 +114,20 @@ void main() {
     testWidgets('camera tab navigates to /camera route', (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: AppShell(
+          home: const AppShell(
             currentNavIndex: 0, // Start on home
             child: Text('Home Page'),
           ),
           routes: {
-            '/home': (context) => Scaffold(body: Text('Home')),
-            '/camera': (context) => Scaffold(body: Text('Camera Page')),
-            '/settings': (context) => Scaffold(body: Text('Settings')),
+            '/home': (context) => const Scaffold(body: Text('Home')),
+            '/camera': (context) => const Scaffold(body: Text('Camera Page')),
+            '/settings': (context) => const Scaffold(body: Text('Settings')),
           },
         ),
       );
 
       // Tap camera icon
-      await tester.tap(find.byKey(ValueKey('nav.camera.icon')));
+      await tester.tap(find.byKey(const ValueKey('nav.camera.icon')));
       await safePumpAndSettle(tester);
 
       // Verify navigation occurred
@@ -137,20 +137,20 @@ void main() {
     testWidgets('settings tab navigates to /settings route', (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: AppShell(
+          home: const AppShell(
             currentNavIndex: 0, // Start on home
             child: Text('Home Page'),
           ),
           routes: {
-            '/home': (context) => Scaffold(body: Text('Home')),
-            '/camera': (context) => Scaffold(body: Text('Camera')),
-            '/settings': (context) => Scaffold(body: Text('Settings Page')),
+            '/home': (context) => const Scaffold(body: Text('Home')),
+            '/camera': (context) => const Scaffold(body: Text('Camera')),
+            '/settings': (context) => const Scaffold(body: Text('Settings Page')),
           },
         ),
       );
 
       // Tap settings icon
-      await tester.tap(find.byKey(ValueKey('nav.settings.icon')));
+      await tester.tap(find.byKey(const ValueKey('nav.settings.icon')));
       await safePumpAndSettle(tester);
 
       // Verify navigation occurred
@@ -165,15 +165,15 @@ void main() {
             child: Container(),
           ),
           routes: {
-            '/home': (context) => Scaffold(body: Text('Home')),
-            '/camera': (context) => Scaffold(body: Text('Camera')),
-            '/settings': (context) => Scaffold(body: Text('Settings')),
+            '/home': (context) => const Scaffold(body: Text('Home')),
+            '/camera': (context) => const Scaffold(body: Text('Camera')),
+            '/settings': (context) => const Scaffold(body: Text('Settings')),
           },
         ),
       );
 
       // Find the camera icon's parent container
-      final cameraIconKey = find.byKey(ValueKey('nav.camera.icon'));
+      final cameraIconKey = find.byKey(const ValueKey('nav.camera.icon'));
       expect(cameraIconKey, findsOneWidget);
 
       // Verify it uses semantic color (not hardcoded) via GestureDetector → Container
@@ -193,7 +193,7 @@ void main() {
             showAppBar: true,
             actions: [
               IconButton(
-                icon: Icon(Icons.search),
+                icon: const Icon(Icons.search),
                 onPressed: () {},
               ),
             ],
@@ -211,7 +211,7 @@ void main() {
           home: AppShell(
             floatingActionButton: FloatingActionButton(
               onPressed: () {},
-              child: Icon(Icons.add),
+              child: const Icon(Icons.add),
             ),
             child: Container(),
           ),
@@ -226,7 +226,7 @@ void main() {
   group('AppShellSimple - Variant Behavior', () {
     testWidgets('renders child without bottom navigation', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: AppShellSimple(
             child: Text('Simple Shell Content'),
           ),
@@ -234,7 +234,7 @@ void main() {
       );
 
       expect(find.text('Simple Shell Content'), findsOneWidget);
-      expect(find.byKey(ValueKey('nav.home.icon')), findsNothing);
+      expect(find.byKey(const ValueKey('nav.home.icon')), findsNothing);
     });
 
     testWidgets('shows AppBar when requested', (WidgetTester tester) async {
@@ -270,7 +270,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            PageContainer(
+            const PageContainer(
               child: Text('Content'),
             ),
           ),
@@ -287,7 +287,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            PageContainer(
+            const PageContainer(
               padding: customPadding,
               child: Text('Content'),
             ),
@@ -303,7 +303,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            PageContainer(
+            const PageContainer(
               child: Text('Test Content'),
             ),
           ),
@@ -319,7 +319,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            PageHeader(
+            const PageHeader(
               title: 'Page Title',
             ),
           ),
@@ -337,7 +337,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            PageHeader(
+            const PageHeader(
               title: 'Title',
               subtitle: 'Subtitle Text',
             ),
@@ -353,7 +353,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            PageHeader(
+            const PageHeader(
               title: 'Title Only',
             ),
           ),
@@ -369,7 +369,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            PageHeader(
+            const PageHeader(
               title: 'Title',
               subtitle: 'Subtitle',
             ),
@@ -386,7 +386,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            PageHeader(
+            const PageHeader(
               title: 'Title',
               subtitle: 'Subtitle',
             ),
@@ -412,7 +412,7 @@ void main() {
   group('AppShell - Theme Integration', () {
     testWidgets('uses scaffold background color from theme', (WidgetTester tester) async {
       final customTheme = ThemeData.light().copyWith(
-        scaffoldBackgroundColor: Color(0xFFF5F5F5),
+        scaffoldBackgroundColor: const Color(0xFFF5F5F5),
       );
 
       await tester.pumpWidget(
@@ -435,16 +435,16 @@ void main() {
             child: Container(),
           ),
           routes: {
-            '/home': (context) => Scaffold(body: Text('Home')),
-            '/camera': (context) => Scaffold(body: Text('Camera')),
-            '/settings': (context) => Scaffold(body: Text('Settings')),
+            '/home': (context) => const Scaffold(body: Text('Home')),
+            '/camera': (context) => const Scaffold(body: Text('Camera')),
+            '/settings': (context) => const Scaffold(body: Text('Settings')),
           },
         ),
       );
 
       // Verify nav bar uses surfaceSecondary from tokens
       final container = find.ancestor(
-        of: find.byKey(ValueKey('nav.home.icon')),
+        of: find.byKey(const ValueKey('nav.home.icon')),
         matching: find.byType(Container),
       ).first;
 
@@ -462,15 +462,15 @@ void main() {
             child: Container(),
           ),
           routes: {
-            '/home': (context) => Scaffold(body: Text('Home')),
-            '/camera': (context) => Scaffold(body: Text('Camera')),
-            '/settings': (context) => Scaffold(body: Text('Settings')),
+            '/home': (context) => const Scaffold(body: Text('Home')),
+            '/camera': (context) => const Scaffold(body: Text('Camera')),
+            '/settings': (context) => const Scaffold(body: Text('Settings')),
           },
         ),
       );
 
       // Find gesture detector for home icon
-      final homeIconKey = find.byKey(ValueKey('nav.home.icon'));
+      final homeIconKey = find.byKey(const ValueKey('nav.home.icon'));
       final gestureDetector = tester.widget<GestureDetector>(homeIconKey);
       final container = gestureDetector.child as Container;
 
@@ -482,20 +482,20 @@ void main() {
     testWidgets('navigation responds to taps', (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: AppShell(
+          home: const AppShell(
             currentNavIndex: 0,
             child: Text('Home'),
           ),
           routes: {
-            '/home': (context) => Scaffold(body: Text('Home')),
-            '/camera': (context) => Scaffold(body: Text('Camera Tapped')),
-            '/settings': (context) => Scaffold(body: Text('Settings')),
+            '/home': (context) => const Scaffold(body: Text('Home')),
+            '/camera': (context) => const Scaffold(body: Text('Camera Tapped')),
+            '/settings': (context) => const Scaffold(body: Text('Settings')),
           },
         ),
       );
 
       // Tap camera icon
-      await tester.tap(find.byKey(ValueKey('nav.camera.icon')));
+      await tester.tap(find.byKey(const ValueKey('nav.camera.icon')));
       await safePumpAndSettle(tester);
 
       // Verify tap was handled

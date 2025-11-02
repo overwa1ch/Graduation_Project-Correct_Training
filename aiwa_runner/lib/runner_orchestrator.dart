@@ -226,10 +226,11 @@ class RunnerOrchestrator {
                   mapped.length;
 
         final lowConf = avgScore < 0.7; // 简单阈值，仅作标记
-        if (!lowConf)
+        if (!lowConf) {
           usableCount++;
-        else
+        } else {
           lowConfCount++;
+        }
 
         frameJson = {
           'frameIndex': frameIndex,
@@ -256,7 +257,7 @@ class RunnerOrchestrator {
             : (lowConfCount * 100 ~/ framesOut.length);
         debugPrint(
           '[PROG] frames ${framesOut.length}/${(total / samplingStride).ceil()} | '
-          'avg ${avgMs} ms | usable ${usableRatio}% | lowConf ${lowConfRatio}%',
+          'avg $avgMs ms | usable $usableRatio% | lowConf $lowConfRatio%',
         );
         lastProgMs = nowMs;
       }

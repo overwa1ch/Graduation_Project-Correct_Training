@@ -92,7 +92,7 @@ void main() {
       final testFile = File('${tempDir.path}/crlf.jsonl');
       
       // Write with CRLF (\\r\\n)
-      final content = '{"event":"START","sessionId":"test_001"}\r\n{"event":"DONE","artifacts":{"root":"test/"}}\r\n';
+      const content = '{"event":"START","sessionId":"test_001"}\r\n{"event":"DONE","artifacts":{"root":"test/"}}\r\n';
       await testFile.writeAsBytes(utf8.encode(content));
 
       final events = <Map<String, dynamic>>[];
@@ -127,7 +127,7 @@ void main() {
       final testFile = File('${tempDir.path}/mixed.jsonl');
       
       // Mix of CRLF and LF
-      final content = '{"event":"START","sessionId":"test_001"}\r\n{"event":"PROGRESS","processed":50,"total":100}\n{"event":"DONE","artifacts":{"root":"test/"}}\r\n';
+      const content = '{"event":"START","sessionId":"test_001"}\r\n{"event":"PROGRESS","processed":50,"total":100}\n{"event":"DONE","artifacts":{"root":"test/"}}\r\n';
       await testFile.writeAsBytes(utf8.encode(content));
 
       final events = <Map<String, dynamic>>[];
@@ -180,7 +180,7 @@ void main() {
       // Robust implementation: should handle or skip large lines without crashing
       // May emit ERROR if line is too large
       expect(events.length, greaterThanOrEqualTo(0));
-    }, timeout: Timeout(Duration(seconds: 30)));
+    }, timeout: const Timeout(Duration(seconds: 30)));
   });
 
   group('Event Bus - Malformed JSON', () {

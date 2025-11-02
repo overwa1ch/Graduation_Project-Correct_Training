@@ -128,7 +128,7 @@ void main() {
       expect(savedConfig['strictness'], equals('strict'));
 
       // Step 4: Create session and write snapshot
-      final sessionRoot = 'build/offline_out/test_session';
+      const sessionRoot = 'build/offline_out/test_session';
       await Directory(sessionRoot).create(recursive: true);
       
       await writeRuntimeSnapshot(sessionRoot, savedConfig);
@@ -347,8 +347,8 @@ void main() {
       final config1 = {'strictness': 'relaxed', 'stride': 2};
       final config2 = {'strictness': 'strict', 'stride': 8};
 
-      final session1 = 'build/offline_out/session_001';
-      final session2 = 'build/offline_out/session_002';
+      const session1 = 'build/offline_out/session_001';
+      const session2 = 'build/offline_out/session_002';
 
       await Directory(session1).create(recursive: true);
       await Directory(session2).create(recursive: true);

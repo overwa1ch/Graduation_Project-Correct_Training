@@ -6,6 +6,8 @@ import 'package:aiwa_app/services/config_sync.dart';
 import 'package:aiwa_app/services/session_manager.dart';
 import 'package:aiwa_app/services/analysis_history.dart';
 import 'package:aiwa_app/services/support_bundle.dart';
+import 'package:aiwa_app/services/auth_state.dart';
+import 'package:aiwa_app/services/auth_service.dart';
 
 /// SettingsPage
 /// 
@@ -25,6 +27,9 @@ class _SettingsPageState extends State<SettingsPage> {
   // 配置加载状态
   bool _isLoading = true;
   bool _isSaving = false;
+  
+  // 用户信息
+  String? _userEmail;
   
   // 表单字段
   int _thresholdMode = 0;                    // 0=Relaxed, 1=Strict
@@ -64,6 +69,28 @@ class _SettingsPageState extends State<SettingsPage> {
   void initState() {
     super.initState();
     _loadConfig();
+    _loadUserInfo();
+    
+    // 监听文本字段变化
+    _strideController.addListener(_detectChanges);
+    _targetFpsController.addListener(_detectChanges);
+    _resolutionController.addListener(_detectChanges);
+    _cleanupDaysController.addListener(_detectChanges);
+  }
+  
+  /// 加载用户信息
+  Future<void> _loadUserInfo() async {
+    try {
+      final authService = AuthService();
+      final email = await authService.getCurrentUserEmail();
+      if (mounted) {
+        setState(() {
+          _userEmail = email;
+        });
+      }
+    } catch (e) {
+      debugPrint('[SettingsPage] Failed to load user info: $e');
+    }
   }
 
   /// 加载配置
@@ -240,6 +267,57 @@ class _SettingsPageState extends State<SettingsPage> {
         duration: Duration(seconds: 2),
       ),
     );
+  }
+  
+  /// 处理登出
+  Future<void> _handleLogout() async {
+    // 显示确认对话框
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sign Out'),
+        content: const Text('Are you sure you want to sign out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('Sign Out'),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirmed != true) return;
+    
+    try {
+      // 执行登出
+      final authState = AuthState();
+      await authState.logout();
+      
+      if (mounted) {
+        // 跳转到登录页面
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/login',
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Logout failed: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
   }
 
   /// 检测变更
@@ -594,21 +672,15 @@ class _SettingsPageState extends State<SettingsPage> {
                         width: double.infinity,
                         child: ElevatedButton(
                           key: const ValueKey('action.logout'),
-                          onPressed: () {
-                            Navigator.pushReplacementNamed(
-                              context, 
-                              '/welcome',
-                              arguments: {'noAnimation': true},
-                            );
-                          },
+                          onPressed: _handleLogout,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.brandPrimaryVariant,
-                            foregroundColor: AppColors.textInvert,
+                            backgroundColor: theme.colorScheme.error,
+                            foregroundColor: theme.colorScheme.onError,
                             padding: const EdgeInsets.symmetric(
                               vertical: AppSpacing.lg,
                             ),
                           ),
-                          child: const Text('退出登录'),
+                          child: const Text('Sign Out'),
                         ),
                       ),
                 
@@ -1229,12 +1301,12 @@ class _SettingsPageState extends State<SettingsPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '训练者',
+                    'User',
                     style: theme.textTheme.titleLarge,
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
-                    'user@example.com',
+                    _userEmail ?? 'Loading...',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),

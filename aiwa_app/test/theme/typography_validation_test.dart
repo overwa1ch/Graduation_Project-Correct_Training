@@ -154,7 +154,7 @@ void main() {
   group('AppTypography Widget Integration', () {
     testWidgets('h1 style applies correctly', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: Text(
               'H1 Text',
@@ -174,7 +174,7 @@ void main() {
 
     testWidgets('body style applies correctly', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: Text(
               'Body Text',
@@ -192,7 +192,7 @@ void main() {
 
     testWidgets('multiple styles can coexist', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: Column(
               children: [
@@ -270,8 +270,8 @@ void main() {
 
   group('AppTypography Edge Cases', () {
     test('styles are immutable', () {
-      final style1 = AppTypography.bodyBase;
-      final style2 = AppTypography.bodyBase;
+      const style1 = AppTypography.bodyBase;
+      const style2 = AppTypography.bodyBase;
       
       // 应该是相同的常量
       expect(style1.fontSize, equals(style2.fontSize));
@@ -301,7 +301,7 @@ void main() {
       const unicodeText = '你好世界 🌍 مرحبا';
       
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: Text(
               unicodeText,
@@ -316,7 +316,7 @@ void main() {
 
     testWidgets('empty text renders without errors', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: Text(
               '',
@@ -348,7 +348,7 @@ void main() {
       final stopwatch = Stopwatch()..start();
       
       for (int i = 0; i < 10000; i++) {
-        final _ = AppTypography.bodyBase;
+        const _ = AppTypography.bodyBase;
       }
       
       stopwatch.stop();

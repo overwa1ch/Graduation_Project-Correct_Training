@@ -4,11 +4,47 @@ import 'package:aiwa_app/ui/pages/welcome_page.dart';
 import 'package:aiwa_app/ui/pages/home_page.dart';
 import 'package:aiwa_app/ui/pages/camera_page.dart';
 import 'package:aiwa_app/ui/pages/settings_page.dart';
+import 'package:aiwa_app/ui/pages/login_page.dart';
+import 'package:aiwa_app/ui/pages/register_page.dart';
+import 'package:aiwa_app/services/auth_state.dart';
 
-void main() => runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // 初始化认证状态
+  final authState = AuthState();
+  await authState.initialize();
+  
+  runApp(MyApp(authState: authState));
+}
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MyApp extends StatefulWidget {
+  final AuthState authState;
+  
+  const MyApp({super.key, required this.authState});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    // 监听认证状态变化
+    widget.authState.addListener(_onAuthStateChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.authState.removeListener(_onAuthStateChanged);
+    super.dispose();
+  }
+
+  void _onAuthStateChanged() {
+    // 认证状态改变时重建 widget
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,26 +54,40 @@ class MyApp extends StatelessWidget {
       // 🎨 应用深色主题（固定 #212121 背景）
       theme: createDarkTheme(),
       
-      // 🔀 路由配置
-      initialRoute: '/welcome',
+      // 🔀 路由配置（添加认证守卫）
+      initialRoute: widget.authState.isAuthenticated ? '/home' : '/login',
       onGenerateRoute: (settings) {
-        // 自定义路由生成器，禁用页面切换动画
+        // 自定义路由生成器，带认证检查
         Widget page;
-        switch (settings.name) {
-          case '/welcome':
-            page = const WelcomePage();
-            break;
-          case '/home':
-            page = const HomePage();
-            break;
-          case '/camera':
-            page = const CameraPage();
-            break;
-          case '/settings':
-            page = const SettingsPage();
-            break;
-          default:
-            page = const WelcomePage();
+        
+        // 认证路由（无需登录）
+        if (settings.name == '/login') {
+          page = const LoginPage();
+        } else if (settings.name == '/register') {
+          page = const RegisterPage();
+        } 
+        // 应用路由（需要登录）
+        else if (widget.authState.isAuthenticated) {
+          switch (settings.name) {
+            case '/welcome':
+              page = const WelcomePage();
+              break;
+            case '/home':
+              page = const HomePage();
+              break;
+            case '/camera':
+              page = const CameraPage();
+              break;
+            case '/settings':
+              page = const SettingsPage();
+              break;
+            default:
+              page = const HomePage();
+          }
+        } 
+        // 未登录时重定向到登录页
+        else {
+          page = const LoginPage();
         }
         
         // 检查是否需要禁用动画
@@ -63,7 +113,9 @@ class MyApp extends StatelessWidget {
       // 未知路由处理
       onUnknownRoute: (settings) {
         return MaterialPageRoute(
-          builder: (context) => const WelcomePage(),
+          builder: (context) => widget.authState.isAuthenticated 
+              ? const HomePage() 
+              : const LoginPage(),
         );
       },
     );

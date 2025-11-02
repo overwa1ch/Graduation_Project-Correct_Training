@@ -62,9 +62,11 @@ async function start() {
     });
 
     // Start server
-    await fastify.listen({ port: CONFIG.port, host: '0.0.0.0' });
+    // 使用 localhost 而不是 0.0.0.0 以避免 Windows 权限问题
+    await fastify.listen({ port: CONFIG.port, host: 'localhost' });
     fastify.log.info(`🚀 AIWA Auth API listening on port ${CONFIG.port}`);
     fastify.log.info(`📝 Environment: ${CONFIG.nodeEnv}`);
+    fastify.log.info(`🌐 Access at: http://localhost:${CONFIG.port}`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);

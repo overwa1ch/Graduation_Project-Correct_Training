@@ -15,7 +15,7 @@ import '../lib/services/config_sync.dart';
 
 void main() {
   group('Config Sync - Basic Tests', () {
-    final testDir = 'test_output/config_sync';
+    const testDir = 'test_output/config_sync';
 
     setUp(() async {
       // 创建测试目录

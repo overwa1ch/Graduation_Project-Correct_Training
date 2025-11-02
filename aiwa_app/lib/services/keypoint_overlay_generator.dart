@@ -8,8 +8,8 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 
-import 'native_video_encoder.dart';
-import 'keypoint_skeleton.dart';
+import 'package:aiwa_app/services/native_video_encoder.dart';
+import 'package:aiwa_app/services/keypoint_skeleton.dart';
 
 /// Generator for creating keypoint overlay videos
 class KeypointOverlayGenerator {
@@ -51,7 +51,7 @@ class KeypointOverlayGenerator {
     final height = videoInfo['height'] as int;
     final fps = (samplingInfo['effectiveFps'] as num).round();
 
-    debugPrint('[KeypointOverlayGenerator] Video: ${width}x${height}, $fps fps, ${frames.length} frames');
+    debugPrint('[KeypointOverlayGenerator] Video: ${width}x$height, $fps fps, ${frames.length} frames');
 
     // 2. Load frame images
     final framesDir = Directory(p.join(sessionRoot, 'frames'));

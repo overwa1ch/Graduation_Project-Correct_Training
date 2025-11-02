@@ -138,7 +138,7 @@ class ScoreCard extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
+          const Icon(
             Icons.cloud_done,
             size: 14,
             // ✅ CORRECT: Using semantic color

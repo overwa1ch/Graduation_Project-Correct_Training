@@ -25,8 +25,8 @@ void main() {
 
   group('CameraPage - Loading States', () {
     testWidgets('shows loading indicator during initial render', (tester) async {
-      await tester.pumpWidget(TestHarness(
-        child: const CameraPage(),
+      await tester.pumpWidget(const TestHarness(
+        child: CameraPage(),
       ));
 
       // Initial state should show camera page
@@ -37,8 +37,8 @@ void main() {
     });
 
     testWidgets('displays idle state with action buttons', (tester) async {
-      await tester.pumpWidget(TestHarness(
-        child: const CameraPage(),
+      await tester.pumpWidget(const TestHarness(
+        child: CameraPage(),
       ));
 
       await safePumpAndSettle(tester);
@@ -49,8 +49,8 @@ void main() {
     });
 
     testWidgets('disables buttons while analysis is running', (tester) async {
-      await tester.pumpWidget(TestHarness(
-        child: const CameraPage(),
+      await tester.pumpWidget(const TestHarness(
+        child: CameraPage(),
       ));
 
       await safePumpAndSettle(tester);
@@ -64,8 +64,8 @@ void main() {
     });
 
     testWidgets('shows progress indicator during analysis', (tester) async {
-      await tester.pumpWidget(TestHarness(
-        child: const CameraPage(),
+      await tester.pumpWidget(const TestHarness(
+        child: CameraPage(),
       ));
 
       await tester.pump();
@@ -76,8 +76,8 @@ void main() {
     });
 
     testWidgets('displays phase information during processing', (tester) async {
-      await tester.pumpWidget(TestHarness(
-        child: const CameraPage(),
+      await tester.pumpWidget(const TestHarness(
+        child: CameraPage(),
       ));
 
       await tester.pump();
@@ -87,8 +87,8 @@ void main() {
     });
 
     testWidgets('shows progress percentage', (tester) async {
-      await tester.pumpWidget(TestHarness(
-        child: const CameraPage(),
+      await tester.pumpWidget(const TestHarness(
+        child: CameraPage(),
       ));
 
       await tester.pump();
@@ -98,8 +98,8 @@ void main() {
     });
 
     testWidgets('displays ETA information', (tester) async {
-      await tester.pumpWidget(TestHarness(
-        child: const CameraPage(),
+      await tester.pumpWidget(const TestHarness(
+        child: CameraPage(),
       ));
 
       await tester.pump();
@@ -111,8 +111,8 @@ void main() {
 
   group('CameraPage - Error States', () {
     testWidgets('page renders without crashing', (tester) async {
-      await tester.pumpWidget(TestHarness(
-        child: const CameraPage(),
+      await tester.pumpWidget(const TestHarness(
+        child: CameraPage(),
       ));
 
       await tester.pump();
@@ -122,15 +122,15 @@ void main() {
     });
 
     testWidgets('handles widget disposal cleanly', (tester) async {
-      await tester.pumpWidget(TestHarness(
-        child: const CameraPage(),
+      await tester.pumpWidget(const TestHarness(
+        child: CameraPage(),
       ));
 
       await tester.pump();
 
       // Remove widget
-      await tester.pumpWidget(TestHarness(
-        child: const Scaffold(body: Text('Other Page')),
+      await tester.pumpWidget(const TestHarness(
+        child: Scaffold(body: Text('Other Page')),
       ));
 
       await tester.pump();
@@ -140,8 +140,8 @@ void main() {
     });
 
     testWidgets('retry button exists and is tappable', (tester) async {
-      await tester.pumpWidget(TestHarness(
-        child: const CameraPage(),
+      await tester.pumpWidget(const TestHarness(
+        child: CameraPage(),
       ));
 
       await tester.pump();
@@ -154,8 +154,8 @@ void main() {
     });
 
     testWidgets('cancel button appears during running state', (tester) async {
-      await tester.pumpWidget(TestHarness(
-        child: const CameraPage(),
+      await tester.pumpWidget(const TestHarness(
+        child: CameraPage(),
       ));
 
       await tester.pump();
@@ -168,8 +168,8 @@ void main() {
     });
 
     testWidgets('error message displays correctly', (tester) async {
-      await tester.pumpWidget(TestHarness(
-        child: const CameraPage(),
+      await tester.pumpWidget(const TestHarness(
+        child: CameraPage(),
       ));
 
       await tester.pump();
@@ -180,8 +180,8 @@ void main() {
     });
 
     testWidgets('error code is shown when available', (tester) async {
-      await tester.pumpWidget(TestHarness(
-        child: const CameraPage(),
+      await tester.pumpWidget(const TestHarness(
+        child: CameraPage(),
       ));
 
       await tester.pump();
@@ -193,8 +193,8 @@ void main() {
 
   group('CameraPage - Quality Warnings', () {
     testWidgets('page supports quality warning display', (tester) async {
-      await tester.pumpWidget(TestHarness(
-        child: const CameraPage(),
+      await tester.pumpWidget(const TestHarness(
+        child: CameraPage(),
       ));
 
       await tester.pump();
@@ -205,8 +205,8 @@ void main() {
     });
 
     testWidgets('low confidence warning can be displayed', (tester) async {
-      await tester.pumpWidget(TestHarness(
-        child: const CameraPage(),
+      await tester.pumpWidget(const TestHarness(
+        child: CameraPage(),
       ));
 
       await tester.pump();
@@ -216,8 +216,8 @@ void main() {
     });
 
     testWidgets('low coverage warning is supported', (tester) async {
-      await tester.pumpWidget(TestHarness(
-        child: const CameraPage(),
+      await tester.pumpWidget(const TestHarness(
+        child: CameraPage(),
       ));
 
       await tester.pump();
@@ -229,15 +229,15 @@ void main() {
 
   group('CameraPage - State Persistence', () {
     testWidgets('maintains state through rebuild', (tester) async {
-      await tester.pumpWidget(TestHarness(
-        child: const CameraPage(),
+      await tester.pumpWidget(const TestHarness(
+        child: CameraPage(),
       ));
 
       await tester.pump();
 
       // Trigger rebuild
-      await tester.pumpWidget(TestHarness(
-        child: const CameraPage(),
+      await tester.pumpWidget(const TestHarness(
+        child: CameraPage(),
       ));
 
       await tester.pump();
@@ -248,15 +248,15 @@ void main() {
     });
 
     testWidgets('cleans up resources on disposal', (tester) async {
-      await tester.pumpWidget(TestHarness(
-        child: const CameraPage(),
+      await tester.pumpWidget(const TestHarness(
+        child: CameraPage(),
       ));
 
       await tester.pump();
 
       // Navigate away
-      await tester.pumpWidget(TestHarness(
-        child: const Scaffold(body: Text('Different Page')),
+      await tester.pumpWidget(const TestHarness(
+        child: Scaffold(body: Text('Different Page')),
       ));
 
       await tester.pump();
@@ -268,8 +268,8 @@ void main() {
 
   group('CameraPage - Button Interactions', () {
     testWidgets('record button is interactive', (tester) async {
-      await tester.pumpWidget(TestHarness(
-        child: const CameraPage(),
+      await tester.pumpWidget(const TestHarness(
+        child: CameraPage(),
       ));
 
       await safePumpAndSettle(tester);
@@ -282,8 +282,8 @@ void main() {
     });
 
     testWidgets('import button is interactive', (tester) async {
-      await tester.pumpWidget(TestHarness(
-        child: const CameraPage(),
+      await tester.pumpWidget(const TestHarness(
+        child: CameraPage(),
       ));
 
       await safePumpAndSettle(tester);
@@ -295,8 +295,8 @@ void main() {
     });
 
     testWidgets('buttons have proper opacity when disabled', (tester) async {
-      await tester.pumpWidget(TestHarness(
-        child: const CameraPage(),
+      await tester.pumpWidget(const TestHarness(
+        child: CameraPage(),
       ));
 
       await safePumpAndSettle(tester);
@@ -309,8 +309,8 @@ void main() {
 
   group('CameraPage - Accessibility', () {
     testWidgets('has proper scaffold structure', (tester) async {
-      await tester.pumpWidget(TestHarness(
-        child: const CameraPage(),
+      await tester.pumpWidget(const TestHarness(
+        child: CameraPage(),
       ));
 
       await tester.pump();
@@ -320,8 +320,8 @@ void main() {
     });
 
     testWidgets('action buttons have semantic labels', (tester) async {
-      await tester.pumpWidget(TestHarness(
-        child: const CameraPage(),
+      await tester.pumpWidget(const TestHarness(
+        child: CameraPage(),
       ));
 
       await safePumpAndSettle(tester);

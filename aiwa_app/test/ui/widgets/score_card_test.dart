@@ -22,7 +22,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            ScoreCard(
+            const ScoreCard(
               title: 'Overall Score',
               score: 85.0,
             ),
@@ -38,7 +38,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            ScoreCard(
+            const ScoreCard(
               title: 'High Score',
               score: 95.0,
             ),
@@ -55,7 +55,7 @@ void main() {
       final textWidget = tester.widget<Text>(scoreText);
       expect(textWidget.style?.color, anyOf(
         equals(SemanticColors.success),
-        equals(Color(0xFF4CAF50)), // Fallback if semantic color resolves to this
+        equals(const Color(0xFF4CAF50)), // Fallback if semantic color resolves to this
       ));
     });
 
@@ -63,7 +63,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            ScoreCard(
+            const ScoreCard(
               title: 'Medium Score',
               score: 75.0,
             ),
@@ -77,7 +77,7 @@ void main() {
       final textWidget = tester.widget<Text>(scoreText);
       expect(textWidget.style?.color, anyOf(
         equals(SemanticColors.warning),
-        equals(Color(0xFFFFA726)),
+        equals(const Color(0xFFFFA726)),
       ));
     });
 
@@ -85,7 +85,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            ScoreCard(
+            const ScoreCard(
               title: 'Low Score',
               score: 45.0,
             ),
@@ -99,7 +99,7 @@ void main() {
       final textWidget = tester.widget<Text>(scoreText);
       expect(textWidget.style?.color, anyOf(
         equals(SemanticColors.error),
-        equals(Color(0xFFEF5350)),
+        equals(const Color(0xFFEF5350)),
       ));
     });
 
@@ -107,7 +107,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            ScoreCard(
+            const ScoreCard(
               title: 'Perfect',
               score: 100.0,
             ),
@@ -120,7 +120,7 @@ void main() {
       final textWidget = tester.widget<Text>(find.text('100'));
       expect(textWidget.style?.color, anyOf(
         equals(SemanticColors.success),
-        equals(Color(0xFF4CAF50)),
+        equals(const Color(0xFF4CAF50)),
       ));
     });
 
@@ -128,7 +128,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            ScoreCard(
+            const ScoreCard(
               title: 'Zero',
               score: 0.0,
             ),
@@ -141,7 +141,7 @@ void main() {
       final textWidget = tester.widget<Text>(find.text('0'));
       expect(textWidget.style?.color, anyOf(
         equals(SemanticColors.error),
-        equals(Color(0xFFEF5350)),
+        equals(const Color(0xFFEF5350)),
       ));
     });
 
@@ -149,7 +149,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            ScoreCard(
+            const ScoreCard(
               title: 'Boundary',
               score: 90.0,
             ),
@@ -162,7 +162,7 @@ void main() {
       final textWidget = tester.widget<Text>(find.text('90'));
       expect(textWidget.style?.color, anyOf(
         equals(SemanticColors.success),
-        equals(Color(0xFF4CAF50)),
+        equals(const Color(0xFF4CAF50)),
       ));
     });
 
@@ -170,7 +170,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            ScoreCard(
+            const ScoreCard(
               title: 'Boundary',
               score: 70.0,
             ),
@@ -183,7 +183,7 @@ void main() {
       final textWidget = tester.widget<Text>(find.text('70'));
       expect(textWidget.style?.color, anyOf(
         equals(SemanticColors.warning),
-        equals(Color(0xFFFFA726)),
+        equals(const Color(0xFFFFA726)),
       ));
     });
   });
@@ -193,7 +193,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            ScoreCard(
+            const ScoreCard(
               title: 'Cloud Score',
               score: 85.0,
               isCloudEnhanced: true,
@@ -210,7 +210,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            ScoreCard(
+            const ScoreCard(
               title: 'Local Score',
               score: 85.0,
               isCloudEnhanced: false,
@@ -226,7 +226,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            ScoreCard(
+            const ScoreCard(
               title: 'Score',
               score: 92.0,
               isCloudEnhanced: true,
@@ -245,7 +245,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            ScoreCard(
+            const ScoreCard(
               title: 'Form Score',
               score: 88.0,
               subtitle: 'Posture analysis',
@@ -262,7 +262,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            ScoreCard(
+            const ScoreCard(
               title: 'Form Score',
               score: 88.0,
             ),
@@ -281,7 +281,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            ScoreCard(
+            const ScoreCard(
               title: 'Theme Test',
               score: 80.0,
             ),
@@ -298,7 +298,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            ScoreCard(
+            const ScoreCard(
               title: 'Card Test',
               score: 75.0,
             ),
@@ -313,7 +313,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            ScoreCard(
+            const ScoreCard(
               title: 'Title',
               score: 85.0,
               subtitle: 'Subtitle',
@@ -332,7 +332,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            ScoreCard(
+            const ScoreCard(
               title: 'Very Long Title That Should Wrap Properly In The Card Layout',
               score: 82.0,
             ),
@@ -349,7 +349,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            ScoreCard(
+            const ScoreCard(
               title: 'Decimal',
               score: 87.5,
             ),
@@ -365,7 +365,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            ScoreCard(
+            const ScoreCard(
               title: 'Score',
               score: 91.0,
             ),
@@ -382,7 +382,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            ScoreCard(
+            const ScoreCard(
               title: 'Complete Card',
               score: 93.0,
               subtitle: 'With all features',
@@ -404,7 +404,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            ScoreCard(
+            const ScoreCard(
               title: 'Negative',
               score: -5.0,
             ),
@@ -420,7 +420,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            ScoreCard(
+            const ScoreCard(
               title: 'Over',
               score: 150.0,
             ),
@@ -437,7 +437,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            ScoreCard(
+            const ScoreCard(
               title: '',
               score: 80.0,
             ),

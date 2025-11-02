@@ -22,7 +22,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            EvidenceFrameCard(
+            const EvidenceFrameCard(
               frameName: 'Peak Position',
               state: EvidenceState.correct,
             ),
@@ -37,7 +37,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            EvidenceFrameCard(
+            const EvidenceFrameCard(
               frameName: 'Good Frame',
               state: EvidenceState.correct,
             ),
@@ -52,7 +52,7 @@ void main() {
       final icon = tester.widget<Icon>(find.byIcon(Icons.check_circle));
       expect(icon.color, anyOf(
         equals(SemanticColors.success),
-        equals(Color(0xFF4CAF50)),
+        equals(const Color(0xFF4CAF50)),
       ));
     });
 
@@ -60,7 +60,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            EvidenceFrameCard(
+            const EvidenceFrameCard(
               frameName: 'Caution Frame',
               state: EvidenceState.warning,
             ),
@@ -74,7 +74,7 @@ void main() {
       final icon = tester.widget<Icon>(find.byIcon(Icons.warning));
       expect(icon.color, anyOf(
         equals(SemanticColors.warning),
-        equals(Color(0xFFFFA726)),
+        equals(const Color(0xFFFFA726)),
       ));
     });
 
@@ -82,7 +82,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            EvidenceFrameCard(
+            const EvidenceFrameCard(
               frameName: 'Error Frame',
               state: EvidenceState.error,
             ),
@@ -96,7 +96,7 @@ void main() {
       final icon = tester.widget<Icon>(find.byIcon(Icons.error));
       expect(icon.color, anyOf(
         equals(SemanticColors.error),
-        equals(Color(0xFFEF5350)),
+        equals(const Color(0xFFEF5350)),
       ));
     });
 
@@ -104,7 +104,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            EvidenceFrameCard(
+            const EvidenceFrameCard(
               frameName: 'Processing Frame',
               state: EvidenceState.processing,
             ),
@@ -125,7 +125,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            EvidenceFrameCard(
+            const EvidenceFrameCard(
               frameName: 'Frame',
               state: EvidenceState.correct,
               stateMessage: 'Perfect form detected',
@@ -141,7 +141,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            EvidenceFrameCard(
+            const EvidenceFrameCard(
               frameName: 'Frame',
               state: EvidenceState.correct,
             ),
@@ -157,7 +157,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            EvidenceFrameCard(
+            const EvidenceFrameCard(
               frameName: 'Frame',
               state: EvidenceState.error,
               stateMessage: 'Form violation detected',
@@ -175,7 +175,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            EvidenceFrameCard(
+            const EvidenceFrameCard(
               frameName: 'No Image',
               state: EvidenceState.correct,
             ),
@@ -194,7 +194,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            EvidenceFrameCard(
+            const EvidenceFrameCard(
               frameName: 'Frame',
               state: EvidenceState.correct,
             ),
@@ -213,7 +213,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            EvidenceFrameCard(
+            const EvidenceFrameCard(
               frameName: 'With Image',
               imageUrl: 'https://example.com/frame.jpg',
               state: EvidenceState.correct,
@@ -232,7 +232,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            EvidenceFrameCard(
+            const EvidenceFrameCard(
               frameName: 'Cloud Frame',
               state: EvidenceState.correct,
               isCloudProcessed: true,
@@ -248,7 +248,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            EvidenceFrameCard(
+            const EvidenceFrameCard(
               frameName: 'Local Frame',
               state: EvidenceState.correct,
               isCloudProcessed: false,
@@ -264,7 +264,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            EvidenceFrameCard(
+            const EvidenceFrameCard(
               frameName: 'Frame',
               state: EvidenceState.warning,
               isCloudProcessed: true,
@@ -284,7 +284,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            EvidenceFrameCard(
+            const EvidenceFrameCard(
               frameName: 'Border Test',
               state: EvidenceState.correct,
             ),
@@ -342,7 +342,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            EvidenceFrameCard(
+            const EvidenceFrameCard(
               frameName: 'Card Test',
               state: EvidenceState.correct,
             ),
@@ -357,7 +357,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            EvidenceFrameCard(
+            const EvidenceFrameCard(
               frameName: 'Typography Test',
               state: EvidenceState.correct,
             ),
@@ -373,7 +373,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            EvidenceFrameCard(
+            const EvidenceFrameCard(
               frameName: 'Surface Test',
               state: EvidenceState.correct,
             ),
@@ -391,7 +391,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            EvidenceFrameCard(
+            const EvidenceFrameCard(
               frameName: 'Very Long Frame Name That Should Wrap Or Truncate Properly Without Breaking Layout',
               state: EvidenceState.correct,
             ),
@@ -407,7 +407,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            EvidenceFrameCard(
+            const EvidenceFrameCard(
               frameName: 'Frame',
               state: EvidenceState.warning,
               stateMessage: 'This is a very long state message that explains in detail what went wrong with the user\'s form',
@@ -424,7 +424,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            EvidenceFrameCard(
+            const EvidenceFrameCard(
               frameName: 'Complete Frame',
               imageUrl: 'https://example.com/frame.jpg',
               state: EvidenceState.correct,
@@ -445,7 +445,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            EvidenceFrameCard(
+            const EvidenceFrameCard(
               frameName: 'Icon Test',
               state: EvidenceState.correct,
             ),
@@ -467,7 +467,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            EvidenceFrameCard(
+            const EvidenceFrameCard(
               frameName: '',
               state: EvidenceState.correct,
             ),
@@ -483,7 +483,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            EvidenceFrameCard(
+            const EvidenceFrameCard(
               frameName: 'Null Image',
               imageUrl: null,
               state: EvidenceState.correct,
@@ -500,7 +500,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            EvidenceFrameCard(
+            const EvidenceFrameCard(
               frameName: 'Frame',
               state: EvidenceState.correct,
               stateMessage: '',
@@ -517,7 +517,7 @@ void main() {
       await tester.pumpWidget(
         TestHarness(
           child: testScaffold(
-            SizedBox(
+            const SizedBox(
               width: 200,
               height: 150,
               child: EvidenceFrameCard(

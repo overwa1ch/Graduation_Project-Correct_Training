@@ -38,7 +38,7 @@ ThemeData createLightTheme() {
     cardTheme: CardThemeData(
       color: colorScheme.surface,
       elevation: 2,
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
         borderRadius: AppRadius.cardRadius,
       ),
       margin: AppSpacing.cardInsets,
@@ -54,7 +54,7 @@ ThemeData createLightTheme() {
           horizontal: AppSpacing.xl,
           vertical: AppSpacing.md,
         ),
-        shape: RoundedRectangleBorder(
+        shape: const RoundedRectangleBorder(
           borderRadius: AppRadius.buttonRadius,
         ),
         elevation: 4,
@@ -80,7 +80,7 @@ ThemeData createLightTheme() {
           horizontal: AppSpacing.xl,
           vertical: AppSpacing.md,
         ),
-        shape: RoundedRectangleBorder(
+        shape: const RoundedRectangleBorder(
           borderRadius: AppRadius.buttonRadius,
         ),
         side: BorderSide(
@@ -124,7 +124,7 @@ ThemeData createLightTheme() {
     dialogTheme: DialogThemeData(
       backgroundColor: colorScheme.surface,
       elevation: 8,
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
         borderRadius: AppRadius.dialogRadius,
       ),
       titleTextStyle: textTheme.headlineSmall?.copyWith(
@@ -151,7 +151,7 @@ ThemeData createLightTheme() {
       backgroundColor: colorScheme.primary,
       foregroundColor: colorScheme.onPrimary,
       elevation: 4,
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
         borderRadius: AppRadius.circularLg,
       ),
     ),
@@ -162,7 +162,7 @@ ThemeData createLightTheme() {
       selectedColor: colorScheme.primary,
       labelStyle: AppTypography.bodyBase,
       padding: AppSpacing.buttonInsets,
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
         borderRadius: AppRadius.circularSm,
       ),
     ),
@@ -222,7 +222,7 @@ ThemeData createDarkTheme() {
     cardTheme: CardThemeData(
       color: colorScheme.surfaceContainerHighest,
       elevation: 2,
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
         borderRadius: AppRadius.cardRadius,
       ),
       margin: AppSpacing.cardInsets,
@@ -238,7 +238,7 @@ ThemeData createDarkTheme() {
           horizontal: AppSpacing.xl,
           vertical: AppSpacing.md,
         ),
-        shape: RoundedRectangleBorder(
+        shape: const RoundedRectangleBorder(
           borderRadius: AppRadius.buttonRadius,
         ),
         elevation: 4,
@@ -264,7 +264,7 @@ ThemeData createDarkTheme() {
           horizontal: AppSpacing.xl,
           vertical: AppSpacing.md,
         ),
-        shape: RoundedRectangleBorder(
+        shape: const RoundedRectangleBorder(
           borderRadius: AppRadius.buttonRadius,
         ),
         side: BorderSide(
@@ -308,7 +308,7 @@ ThemeData createDarkTheme() {
     dialogTheme: DialogThemeData(
       backgroundColor: colorScheme.surfaceContainerHighest,
       elevation: 8,
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
         borderRadius: AppRadius.dialogRadius,
       ),
       titleTextStyle: textTheme.headlineSmall?.copyWith(
@@ -335,7 +335,7 @@ ThemeData createDarkTheme() {
       backgroundColor: colorScheme.primary,
       foregroundColor: colorScheme.onPrimary,
       elevation: 4,
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
         borderRadius: AppRadius.circularLg,
       ),
     ),
@@ -346,7 +346,7 @@ ThemeData createDarkTheme() {
       selectedColor: colorScheme.primary,
       labelStyle: AppTypography.bodyBase,
       padding: AppSpacing.buttonInsets,
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
         borderRadius: AppRadius.circularSm,
       ),
     ),

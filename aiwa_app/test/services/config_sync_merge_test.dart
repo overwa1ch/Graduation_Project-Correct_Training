@@ -157,10 +157,10 @@ void main() {
       expect(engineLine! < strictnessLine!, isTrue);
       expect(strictnessLine < strideLine!, isTrue);
       expect(strideLine < targetFpsLine!, isTrue);
-      expect(targetFpsLine! < resolutionLine!, isTrue);
-      expect(resolutionLine! < privacyLine!, isTrue);
-      expect(privacyLine! < cleanupLine!, isTrue);
-      expect(cleanupLine! < logsLine!, isTrue);
+      expect(targetFpsLine < resolutionLine!, isTrue);
+      expect(resolutionLine < privacyLine!, isTrue);
+      expect(privacyLine < cleanupLine!, isTrue);
+      expect(cleanupLine < logsLine!, isTrue);
     });
 
     test('writeRuntimeSnapshot - 写入完整配置快照', () async {
@@ -348,7 +348,7 @@ void main() {
     test('readAppRuntimeConfig handles permission errors', () async {
       // 注意：在大多数测试环境中难以模拟权限错误
       // 这里测试不存在的路径（回退到默认值）
-      final configPath = '/root/impossible/path/config.json';
+      const configPath = '/root/impossible/path/config.json';
       
       // 读取不可访问的路径应该使用默认值
       final cfg = await readAppRuntimeConfig(pathOverride: configPath);
@@ -620,7 +620,7 @@ void main() {
     });
 
     test('buildCliArgs with very long paths', () {
-      final longPath = '/very/long/path/' + ('nested/' * 100) + 'file.mp4';
+      final longPath = '/very/long/path/${'nested/' * 100}file.mp4';
       
       final args = buildCliArgs(
         pickedInput: longPath,

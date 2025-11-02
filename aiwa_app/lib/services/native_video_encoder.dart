@@ -5,7 +5,6 @@
 // - iOS: AVFoundation (AVAssetWriter)
 
 import 'dart:async';
-import 'dart:typed_data';
 import 'package:flutter/services.dart';
 
 /// Exception thrown when native video encoding fails

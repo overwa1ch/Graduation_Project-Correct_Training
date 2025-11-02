@@ -2887,7 +2887,7 @@ Future<void> _flushPerfLogs({
 try {
   if (!timingsMs.containsKey('evidenceSelect')) {
     final ev = evidence;
-    if (ev is Map && ((ev['generatedCount'] ?? 0) as num) > 0) {
+    if (((ev['generatedCount'] ?? 0) as num) > 0) {
       timingsMs['evidenceSelect'] = 1; // 占位 1ms，避免 0 或缺字段
     }
   }
@@ -2898,7 +2898,7 @@ try {
   try {
     if (!timingsMs.containsKey('evidenceSelect')) {
       final ev = evidence;
-      if (ev is Map && ((ev['generatedCount'] ?? 0) as num) > 0) {
+      if (((ev['generatedCount'] ?? 0) as num) > 0) {
         timingsMs['evidenceSelect'] = 1; // minimal placeholder ms
       }
     }
@@ -2921,7 +2921,7 @@ try {
   // Write evidence sidecar when evidence exists (generated/kept counts reported)
   try {
     final ev = evidence; // 这是传进来的 evidence 小结
-    if (ev is Map && (ev['generatedCount'] ?? 0) is num) {
+    if ((ev['generatedCount'] ?? 0) is num) {
     final generatedCount = ((ev['generatedCount'] ?? 0) as num).toInt();
     final keptCount      = ((ev['keptCount'] ?? 0) as num).toInt();
     final droppedCount   = ((ev['droppedCount'] ?? (generatedCount - keptCount)) as num).toInt();

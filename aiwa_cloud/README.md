@@ -38,7 +38,28 @@
 
 ---
 
-### 方案2：本地开发（Docker Compose）
+### 方案2：本地开发（SQLite - 推荐⭐）
+
+**无需 Docker，最简单！**
+
+详细步骤请查看：**[LOCAL_SETUP.md](./LOCAL_SETUP.md)**
+
+**简要步骤：**
+1. 进入 `core-api` 目录
+2. 复制 `env.sqlite.example` 为 `.env`
+3. 复制 `prisma/schema.sqlite.prisma` 为 `prisma/schema.prisma`
+4. 安装依赖：`npm install`
+5. 创建数据库：`npx prisma db push`
+6. 启动：`npm run dev`
+
+API 运行在：**http://localhost:3001**
+
+测试：
+```bash
+curl http://localhost:3001/health
+```
+
+### 方案3：本地开发（Docker Compose）
 
 ```bash
 cd aiwa_cloud
@@ -47,10 +68,7 @@ docker-compose up
 
 API 运行在：**http://localhost:3000**
 
-测试：
-```bash
-curl http://localhost:3000/health
-```
+⚠️ **注意：** 如果遇到 Docker 端口问题，建议使用上面的 SQLite 方案。
 
 ---
 
@@ -180,71 +198,42 @@ curl -X POST http://localhost:3000/v1/auth/refresh \
 
 ## 🔧 本地开发指南
 
-### 1. 克隆项目
+### 推荐：SQLite 版本（无需 Docker）
 
-```bash
-git clone <your-repo>
-cd Graduation_Project-Correct_Training/aiwa_cloud
-```
+**详细步骤请查看：** [LOCAL_SETUP.md](./LOCAL_SETUP.md)
 
-### 2. 配置环境
-
+**快速开始：**
 ```bash
 cd core-api
-cp env.example .env
-```
 
-编辑 `.env` 文件：
-```bash
-DATABASE_URL=postgresql://aiwa:aiwa_dev_password@localhost:5432/aiwa_auth
-JWT_ACCESS_SECRET=<生成一个随机字符串>
-JWT_REFRESH_SECRET=<生成另一个随机字符串>
-```
+# 配置环境
+Copy-Item env.sqlite.example .env
+Copy-Item prisma\schema.sqlite.prisma prisma\schema.prisma
+# Linux/Mac: cp env.sqlite.example .env && cp prisma/schema.sqlite.prisma prisma/schema.prisma
 
-生成密钥：
-```bash
+# 生成 JWT 密钥（填入 .env）
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
 
-### 3. 启动数据库
-
-```bash
-cd ..  # 回到 aiwa_cloud 目录
-docker-compose up postgres -d
-```
-
-### 4. 安装依赖
-
-```bash
-cd core-api
+# 安装并运行
 npm install
-```
-
-### 5. 运行迁移
-
-```bash
-npx prisma migrate dev
-```
-
-### 6. 启动开发服务器
-
-```bash
+npx prisma db push
 npm run dev
 ```
 
-API 运行在：http://localhost:3000
+API 运行在：**http://localhost:3001**
 
-### 7. 测试
+### 备选：Docker Compose 版本
+
+如果已配置 Docker：
 
 ```bash
-# 健康检查
-curl http://localhost:3000/health
-
-# 注册
-curl -X POST http://localhost:3000/v1/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"password123"}'
+cd aiwa_cloud
+docker-compose up
 ```
+
+API 运行在：**http://localhost:3000**
+
+⚠️ **如果遇到 Docker 问题，强烈推荐使用 SQLite 版本！**
 
 ---
 

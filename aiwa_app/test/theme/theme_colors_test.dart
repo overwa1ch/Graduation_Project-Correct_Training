@@ -113,7 +113,7 @@ void main() {
       // Test that colors work with Material widgets
       final container = Container(
         color: AppColors.surfacePrimary,
-        child: Text(
+        child: const Text(
           'Test',
           style: TextStyle(color: AppColors.textPrimary),
         ),
@@ -125,7 +125,7 @@ void main() {
     test('semantic colors work with Material widgets', () {
       final container = Container(
         color: SemanticColors.dataBackground,
-        child: Text(
+        child: const Text(
           'Success',
           style: TextStyle(color: SemanticColors.success),
         ),
@@ -136,8 +136,8 @@ void main() {
 
     test('colors maintain consistency across widgets', () {
       // Test that the same color reference produces consistent results
-      final color1 = AppColors.textPrimary;
-      final color2 = AppColors.textPrimary;
+      const color1 = AppColors.textPrimary;
+      const color2 = AppColors.textPrimary;
       
       expect(color1, equals(color2));
       expect(color1.hashCode, equals(color2.hashCode));
@@ -147,8 +147,8 @@ void main() {
   group('Color Accessibility', () {
     test('text colors have sufficient contrast on surface colors', () {
       // Test basic contrast requirements
-      final textOnDark = AppColors.textPrimary; // White
-      final darkSurface = AppColors.surfacePrimary; // Dark
+      const textOnDark = AppColors.textPrimary; // White
+      const darkSurface = AppColors.surfacePrimary; // Dark
       
       // White text on dark surface should have good contrast
       expect(textOnDark.red, greaterThan(200)); // White-ish

@@ -87,7 +87,7 @@ class _HomePageState extends State<HomePage> {
 
           // 编辑选项
           ListTile(
-            leading: Icon(Icons.edit, color: AppColors.textInvert),
+            leading: const Icon(Icons.edit, color: AppColors.textInvert),
             title: Text(
               'Edit',
               style: AppTypography.bodyBase.copyWith(
@@ -103,7 +103,7 @@ class _HomePageState extends State<HomePage> {
 
           // 删除选项
           ListTile(
-            leading: Icon(Icons.delete, color: AppColors.textInvert),
+            leading: const Icon(Icons.delete, color: AppColors.textInvert),
             title: Text(
               'Delete',
               style: AppTypography.bodyBase.copyWith(
@@ -145,10 +145,10 @@ class _HomePageState extends State<HomePage> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            const SnackBar(
               content: Text('Record updated'),
               backgroundColor: AppColors.brandPrimaryVariant,
-              duration: const Duration(seconds: 2),
+              duration: Duration(seconds: 2),
             ),
           );
         }
@@ -156,10 +156,10 @@ class _HomePageState extends State<HomePage> {
         debugPrint('[HomePage] Failed to update record: $e');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            const SnackBar(
               content: Text('Failed to update record'),
               backgroundColor: AppColors.surfaceSecondary,
-              duration: const Duration(seconds: 2),
+              duration: Duration(seconds: 2),
             ),
           );
         }
@@ -236,10 +236,10 @@ class _HomePageState extends State<HomePage> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            const SnackBar(
               content: Text('Record deleted'),
               backgroundColor: AppColors.brandPrimaryVariant,
-              duration: const Duration(seconds: 2),
+              duration: Duration(seconds: 2),
             ),
           );
         }
@@ -247,10 +247,10 @@ class _HomePageState extends State<HomePage> {
         debugPrint('[HomePage] Failed to delete record: $e');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            const SnackBar(
               content: Text('Failed to delete record'),
               backgroundColor: AppColors.surfaceSecondary,
-              duration: const Duration(seconds: 2),
+              duration: Duration(seconds: 2),
             ),
           );
         }
@@ -269,7 +269,7 @@ class _HomePageState extends State<HomePage> {
         child: PageContainer(
           child: Column(
             children: [
-              SizedBox(height: AppSpacing.xxxl),
+              const SizedBox(height: AppSpacing.xxxl),
 
               // 标题
               Text(
@@ -281,7 +281,7 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
 
-              SizedBox(height: AppSpacing.xl),
+              const SizedBox(height: AppSpacing.xl),
 
               // 历史记录网格
               Expanded(
@@ -334,7 +334,7 @@ class _HomePageState extends State<HomePage> {
   /// 历史记录网格
   Widget _buildHistoryGrid() {
     return GridView.builder(
-      padding: EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         childAspectRatio: 0.83, // 略高于正方形，适合显示内容
@@ -370,7 +370,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ],
         ),
-        padding: EdgeInsets.all(AppSpacing.md),
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -422,7 +422,7 @@ class _HomePageState extends State<HomePage> {
                 // 次数
                 Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.repeat,
                       color: AppColors.textInvert,
                       size: 14,

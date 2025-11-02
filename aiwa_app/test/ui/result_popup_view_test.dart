@@ -123,7 +123,7 @@ void main() {
 
   group('result_popup quality warning', () {
     test('lowConfidence=true → 显示警告', () {
-      final result = const AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 80,
         stability: 75,
         rhythm: 70,
@@ -138,7 +138,7 @@ void main() {
     });
 
     test('coverage < 0.7 → 显示警告', () {
-      final result = const AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 80,
         stability: 75,
         rhythm: 70,
@@ -153,7 +153,7 @@ void main() {
     });
 
     test('正常样例不显示警告', () {
-      final result = const AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 84,
         stability: 77,
         rhythm: 71,
@@ -168,7 +168,7 @@ void main() {
     });
 
     test('coverage=null, lowConfidence=null → 不显示警告', () {
-      final result = const AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 80,
         stability: 75,
         rhythm: 70,
@@ -183,7 +183,7 @@ void main() {
 
   group('result_popup widget', () {
     testWidgets('有 evidencePath 显示缩略图 widget', (WidgetTester tester) async {
-      final result = const AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 84,
         stability: 77,
         rhythm: 71,
@@ -202,7 +202,7 @@ void main() {
     });
 
     testWidgets('无 evidencePath 显示占位', (WidgetTester tester) async {
-      final result = const AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 72,
         stability: 70,
         rhythm: 68,
@@ -219,7 +219,7 @@ void main() {
     });
 
     testWidgets('lowConfidence=true 显示质量警告', (WidgetTester tester) async {
-      final result = const AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 80,
         stability: 75,
         rhythm: 70,
@@ -238,7 +238,7 @@ void main() {
     });
 
     testWidgets('coverage < 0.7 显示质量警告', (WidgetTester tester) async {
-      final result = const AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 80,
         stability: 75,
         rhythm: 70,
@@ -256,7 +256,7 @@ void main() {
     });
 
     testWidgets('正常样例不显示质量警告', (WidgetTester tester) async {
-      final result = const AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 84,
         stability: 77,
         rhythm: 71,
@@ -274,7 +274,7 @@ void main() {
     });
 
     testWidgets('total=59 背景为红色', (WidgetTester tester) async {
-      final result = const AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 59,
         stability: 58,
         rhythm: 60,
@@ -297,7 +297,7 @@ void main() {
     });
 
     testWidgets('total=70 背景为橙色', (WidgetTester tester) async {
-      final result = const AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 72,
         stability: 70,
         rhythm: 68,
@@ -320,7 +320,7 @@ void main() {
     });
 
     testWidgets('total=85 背景为绿色', (WidgetTester tester) async {
-      final result = const AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 85,
         stability: 83,
         rhythm: 88,
@@ -343,7 +343,7 @@ void main() {
     });
 
     testWidgets('显示所有详细分数', (WidgetTester tester) async {
-      final result = const AnalysisResultLite(
+      const result = AnalysisResultLite(
         posture: 84,
         stability: 77,
         rhythm: 71,

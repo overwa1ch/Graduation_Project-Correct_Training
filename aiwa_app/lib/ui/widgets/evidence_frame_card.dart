@@ -163,7 +163,7 @@ class EvidenceFrameCard extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
+          const Icon(
             Icons.cloud_queue,
             size: 10,
             // ✅ CORRECT: Using semantic color

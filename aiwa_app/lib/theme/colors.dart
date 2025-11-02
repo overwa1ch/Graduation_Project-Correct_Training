@@ -51,7 +51,7 @@ class SemanticColors {
 /// Material 3 ColorScheme mapping (简化版本)
 /// 不再支持主题切换，使用固定的深色主题配色
 ColorScheme createLightColorScheme() {
-  return ColorScheme.light(
+  return const ColorScheme.light(
     primary: AppColors.brandPrimaryVariant,
     onPrimary: AppColors.textInvert,
     secondary: AppColors.surfaceSecondary,
@@ -65,7 +65,7 @@ ColorScheme createLightColorScheme() {
 }
 
 ColorScheme createDarkColorScheme() {
-  return ColorScheme.dark(
+  return const ColorScheme.dark(
     primary: AppColors.brandPrimaryVariant,
     onPrimary: AppColors.textInvert,
     secondary: AppColors.surfaceSecondary,

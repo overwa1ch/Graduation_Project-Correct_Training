@@ -43,14 +43,14 @@ void main(List<String> args) {
       .toList();
   
   if (failedDirectories.isNotEmpty) {
-    print('\n❌ Coverage below ${threshold}% threshold:');
+    print('\n❌ Coverage below $threshold% threshold:');
     for (String dir in failedDirectories) {
       final data = directoryCoverage[dir]!;
       print('   $dir: ${data.coverage.toStringAsFixed(1)}% (${data.coveredLines}/${data.totalLines} lines)');
     }
     exit(1);
   } else {
-    print('\n✅ All directories meet ${threshold}% coverage threshold');
+    print('\n✅ All directories meet $threshold% coverage threshold');
     exit(0);
   }
 }

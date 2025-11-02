@@ -19,8 +19,8 @@ import { CONFIG } from '../config';
  * @returns 预签名 URL
  */
 export async function generatePresignedUploadUrl(
-  key: string,
-  contentType: string
+  _key: string,
+  _contentType: string
 ): Promise<string> {
   if (!CONFIG.aliyun.enabled) {
     throw new Error('Aliyun OSS is not enabled. Set USE_ALIYUN_OSS=true in .env');
@@ -51,7 +51,7 @@ export async function generatePresignedUploadUrl(
  * @param key 对象存储键（文件路径）
  * @returns 预签名 URL
  */
-export async function generatePresignedDownloadUrl(key: string): Promise<string> {
+export async function generatePresignedDownloadUrl(_key: string): Promise<string> {
   if (!CONFIG.aliyun.enabled) {
     throw new Error('Aliyun OSS is not enabled. Set USE_ALIYUN_OSS=true in .env');
   }
@@ -81,7 +81,7 @@ export async function generatePresignedDownloadUrl(key: string): Promise<string>
  * @param data 文件数据
  * @returns OSS URL
  */
-export async function uploadFile(key: string, data: Buffer): Promise<string> {
+export async function uploadFile(_key: string, _data: Buffer): Promise<string> {
   if (!CONFIG.aliyun.enabled) {
     throw new Error('Aliyun OSS is not enabled. Set USE_ALIYUN_OSS=true in .env');
   }
@@ -105,7 +105,7 @@ export async function uploadFile(key: string, data: Buffer): Promise<string> {
  * 删除文件（未来实现）
  * @param key 对象存储键（文件路径）
  */
-export async function deleteFile(key: string): Promise<void> {
+export async function deleteFile(_key: string): Promise<void> {
   if (!CONFIG.aliyun.enabled) {
     throw new Error('Aliyun OSS is not enabled. Set USE_ALIYUN_OSS=true in .env');
   }

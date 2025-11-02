@@ -29,9 +29,8 @@ class TestHarness extends StatelessWidget {
   Widget build(BuildContext context) {
     return MediaQuery(
       data: const MediaQueryData(
-        size: Size(1080, 1920), // Fixed test size (FHD portrait)
-        textScaleFactor: 1.0,
-        padding: EdgeInsets.zero,
+        size: Size(1080, 1920),
+        padding: EdgeInsets.zero, textScaler: TextScaler.linear(1.0),
         devicePixelRatio: 2.0,
       ),
       child: MaterialApp(

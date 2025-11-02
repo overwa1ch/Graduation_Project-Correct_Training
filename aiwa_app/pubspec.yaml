@@ -20,6 +20,10 @@ dependencies:
   video_player: ^2.8.2
   path: ^1.8.3
   
+  # 网络和存储
+  http: ^1.1.0
+  shared_preferences: ^2.2.2
+  
   aiwa_core:
     path: ../aiwa_core
 

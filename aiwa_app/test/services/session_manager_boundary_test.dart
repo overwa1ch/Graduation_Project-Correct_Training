@@ -16,12 +16,12 @@ void main() {
     tempDir = await Directory.systemTemp.createTemp('session_manager_boundary_test_');
   });
 
-  tearDown() async {
+  Future<void> tearDown() async {
     // Clean up temporary directory
     if (await tempDir.exists()) {
       await tempDir.delete(recursive: true);
     }
-  };
+  }
 
   group('SessionManager - Concurrent Creation', () {
     test('handles concurrent createSessionRoot calls', () async {
@@ -263,7 +263,7 @@ void main() {
 
       final sessions = await SessionManager.listSessions();
       expect(sessions.length, equals(100));
-    }, timeout: Timeout(Duration(seconds: 30)));
+    }, timeout: const Timeout(Duration(seconds: 30)));
 
     test('cleans up 100 old sessions efficiently', () async {
       // Create 100 sessions
@@ -276,7 +276,7 @@ void main() {
 
       final sessions = await SessionManager.listSessions();
       expect(sessions, isEmpty);
-    }, timeout: Timeout(Duration(seconds: 30)));
+    }, timeout: const Timeout(Duration(seconds: 30)));
   });
 
   group('SessionManager - Cross-Platform Compatibility', () {
