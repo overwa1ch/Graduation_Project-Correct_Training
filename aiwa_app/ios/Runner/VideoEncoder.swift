@@ -195,7 +195,7 @@ class VideoEncoder {
                 }
                 
                 // Only draw if both keypoints have reasonable confidence
-                if startScore > 0.3 && endScore > 0.3 {
+                if startScore >= confThreshold && endScore >= confThreshold {
                     let color = uiColor(from: conn["color"] as? Int ?? 0xFFFFFFFF)
                     let strokeWidth = CGFloat(conn["strokeWidth"] as? Double ?? 3.0)
                     
@@ -216,7 +216,7 @@ class VideoEncoder {
                     continue
                 }
                 
-                if score > 0.3 { // Only draw if minimum confidence
+                if score >= confThreshold {
                     let color = score >= confThreshold ? highConfColor : lowConfColor
                     cgContext.setFillColor(color.cgColor)
                     cgContext.fillEllipse(in: CGRect(x: x - radius, y: y - radius, width: radius * 2, height: radius * 2))

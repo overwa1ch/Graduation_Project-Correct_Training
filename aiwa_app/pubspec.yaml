@@ -24,6 +24,10 @@ dependencies:
   http: ^1.1.0
   shared_preferences: ^2.2.2
   
+  # MoveNet 姿态识别
+  tflite_flutter: ^0.12.1
+  image: ^4.1.7
+  
   aiwa_core:
     path: ../aiwa_core
 
@@ -40,4 +44,5 @@ flutter:
     - assets/tokens/
     - assets/config/
     - assets/rules/
+    - assets/models/
 

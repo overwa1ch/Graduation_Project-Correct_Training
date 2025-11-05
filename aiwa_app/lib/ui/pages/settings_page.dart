@@ -33,7 +33,7 @@ class _SettingsPageState extends State<SettingsPage> {
   
   // 表单字段
   int _thresholdMode = 0;                    // 0=Relaxed, 1=Strict
-  int _engineMode = 0;                       // 0=MLKit, 1=MoveNet, 2=MediaPipe, 3=Auto
+  int _engineMode = 0;                       // 0=MLKit, 1=MoveNet, 2=MoveNet-Thunder
   bool _cloudBackupEnabled = false;          // privacy.upload: video+keypoints
   bool _confirmVideoUpload = true;           // privacy.confirmVideoUpload
   
@@ -512,10 +512,8 @@ class _SettingsPageState extends State<SettingsPage> {
         return 0;
       case 'MoveNet':
         return 1;
-      case 'MediaPipe':
+      case 'MoveNet-Thunder':
         return 2;
-      case 'Auto':
-        return 3;
       default:
         return 1; // 默认 MoveNet
     }
@@ -529,9 +527,7 @@ class _SettingsPageState extends State<SettingsPage> {
       case 1:
         return 'MoveNet';
       case 2:
-        return 'MediaPipe';
-      case 3:
-        return 'Auto';
+        return 'MoveNet-Thunder';
       default:
         return 'MoveNet';
     }
@@ -807,27 +803,13 @@ class _SettingsPageState extends State<SettingsPage> {
           
           const SizedBox(height: AppSpacing.sm),
           
-          // MediaPipe 选项
+          // MoveNet-Thunder 选项
           _buildRadioOption(
-            label: 'MediaPipe',
+            label: 'MoveNet-Thunder',
             isSelected: _engineMode == 2,
             onTap: () {
               setState(() {
                 _engineMode = 2;
-                _detectChanges();
-              });
-            },
-          ),
-          
-          const SizedBox(height: AppSpacing.sm),
-          
-          // Auto 选项
-          _buildRadioOption(
-            label: 'Auto',
-            isSelected: _engineMode == 3,
-            onTap: () {
-              setState(() {
-                _engineMode = 3;
                 _detectChanges();
               });
             },

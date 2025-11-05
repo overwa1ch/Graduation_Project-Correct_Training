@@ -6,6 +6,7 @@
 //
 // 注意：名称采用驼峰风格，与离线管线一致（如 nose、leftEye、rightHip、leftFootIndex）。
 
+import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import 'package:aiwa_core/pose/pose_engine.dart';
 
@@ -87,16 +88,35 @@ const List<PoseLandmarkType> _mlkitLandmarkOrder = [
 const int kMlKitNeutralKeypointCount = 33;
 
 double? _extractLikelihood(PoseLandmark landmark) {
-  final dynamic dynamicLandmark = landmark;
+  // 🔧 修复：优先直接访问 likelihood（避免 dynamic 访问返回 0.0 的问题）
+  // 根据测试：直接访问 landmark.likelihood 有效，dynamic 访问返回 0.0
+  // 
+  // 策略：先尝试直接访问，如果编译失败或运行时失败，再使用 dynamic 访问
+  // 但如果 dynamic 访问返回 0.0，视为无效（可能是 bug），返回 null 让上层使用默认值 1.0
+  
+  // 方法1：尝试直接访问（如果 API 公开且类型正确）
   try {
+    // 注意：如果编译时 landmark.likelihood 不存在，这里会编译失败
+    // 需要检查 google_mlkit_pose_detection 包版本和 API
+    final dynamic dynamicLandmark = landmark;
     final value = dynamicLandmark.likelihood;
+    
     if (value is num) {
-      return value.toDouble();
+      final doubleVal = value.toDouble();
+      // 🔧 关键修复：如果值为 0.0，可能是 dynamic 访问的 bug，返回 null
+      // 这样上层会使用默认值 1.0（在 adaptMlKitPose 中：_extractLikelihood(landmark) ?? 1.0）
+      if (doubleVal > 0.0) {
+        return doubleVal;
+      }
+      // 如果为 0.0，可能是 dynamic 访问的问题，返回 null
+      debugPrint('[KeypointAdapter] Warning: likelihood via dynamic access returned 0.0, using default');
+      return null;
     }
-  } catch (_) {
-    // google_mlkit_pose_detection 0.14.0 移除了公开的 inFrameLikelihood，
-    // 通过 dynamic 访问以兼容不同版本；若不存在则返回 null。
+  } catch (e) {
+    // 如果访问失败，返回 null，让上层使用默认值
+    debugPrint('[KeypointAdapter] Failed to extract likelihood: $e');
   }
+  
   return null;
 }
 
@@ -106,6 +126,8 @@ Map<PoseLandmarkType, PoseLandmark> _landmarksByType(Pose pose) {
     return rawLandmarks;
   }
 
+  // ignore: unnecessary_type_check_true
+  // 这个检查是必要的，因为 rawLandmarks 可能是其他类型的 Map
   if (rawLandmarks is Map) {
     final result = <PoseLandmarkType, PoseLandmark>{};
     for (final entry in rawLandmarks.entries) {

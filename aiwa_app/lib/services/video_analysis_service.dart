@@ -22,8 +22,12 @@ import 'package:video_player/video_player.dart';
 import 'package:aiwa_app/services/keypoint_overlay_generator.dart';
 import 'package:aiwa_app/services/native_frame_extractor.dart';
 import 'package:aiwa_app/services/cancellation_token.dart';
+import 'package:aiwa_app/services/config_sync.dart';
+import 'package:aiwa_app/pose/pose_engine_factory.dart';
+import 'package:aiwa_app/pose/temporal_smoother.dart';
 
 import 'package:aiwa_core/core/errors.dart';
+import 'package:aiwa_core/pose/pose_engine.dart';
 import 'package:aiwa_core/pipeline/offline_pipeline.dart';
 import 'package:aiwa_core/pipeline/pose_input_converter.dart';
 import 'package:aiwa_core/pose/neutral_keypoint_series.dart';
@@ -116,21 +120,44 @@ class VideoAnalysisService {
     required String configPath,
     required String sessionId,
   }) async {
-    ml.PoseDetector? detector;
+    PoseEngine? engine;
     
     // 中间数据保存（用于降级存储）
     NeutralKeypointSeries? neutralSeries;
     Map<String, dynamic>? qualityMetrics;
     
     try {
+      // 0. 读取配置并创建引擎
+      final config = await readAppRuntimeConfig();
+      final engineName = (config['engine'] as String?)?.trim() ?? 'MLKit';
+      
+      debugPrint('[VideoAnalysis] Creating pose engine: $engineName');
+      engine = createPoseEngine(engineName);
+      
+      // 初始化引擎（按引擎类型设置不同的 minScore）
+      final isMoveNet = engineName.toLowerCase().contains('movenet');
+      final isMlkit = engineName.toLowerCase().contains('mlkit');
+      final poseConfig = PoseEngineConfig(
+        preferAccurate: true,
+        outputZ: false,
+        // MoveNet 分数偏低：推理阶段不筛，覆盖阶段再可视化
+        minScore: isMoveNet ? 0.0 : (isMlkit ? 0.2 : 0.3),
+        returnEmptyWhenLow: false,
+      );
+      await engine.init(poseConfig);
+      
+      final engineInfo = getEngineInfo(engineName);
+      debugPrint('[VideoAnalysis] Engine info: $engineInfo');
+      
       // 1. 发送 START 事件
       controller.add({
         'event': 'START',
         'sessionId': sessionId,
         'input': {'path': videoPath},
         'params': {
-          'engine': 'mlkit',
-          'model': 'accurate',
+          'engine': engineName,
+          'model': engineInfo['name'] ?? engineName,
+          'keypointCount': engineInfo['keypointCount'] ?? 'unknown',
           'stride': 2,
           'targetResolution': '720p',
         },
@@ -192,16 +219,10 @@ class VideoAnalysisService {
         return;
       }
 
-      detector = ml.PoseDetector(
-        options: ml.PoseDetectorOptions(
-          mode: ml.PoseDetectionMode.single,
-          model: ml.PoseDetectionModel.accurate,
-        ),
-      );
-
+      // 使用 PoseEngine 进行姿态检测
       final neutralFrames = await _inferPoses(
         token: token,
-        detector: detector,
+        engine: engine,
         frames: frames,
         videoInfo: videoInfo,
         stride: stride,
@@ -219,15 +240,61 @@ class VideoAnalysisService {
         },
       );
 
-      await detector.close();
-      detector = null;
-
       debugPrint('[VideoAnalysis] Completed pose detection for ${neutralFrames.length} frames');
 
       // 5. 发送质量指标
       final lowConfCount = neutralFrames.where((f) => f['lowConfidence'] == true).length;
       final lowConfRatio = neutralFrames.isEmpty ? 0.0 : lowConfCount / neutralFrames.length;
       final usableRatio = 1.0 - lowConfRatio;
+
+      // 🔍 诊断日志：统计必需关键点的覆盖率
+      final requiredNames = ['leftHip', 'rightHip', 'leftKnee', 'rightKnee', 'leftAnkle', 'rightAnkle'];
+      var framesWithAll6 = 0;
+      var framesWith6Reliable = 0;
+      final requiredStats = <String, int>{};
+      for (final name in requiredNames) {
+        requiredStats[name] = 0;
+      }
+      
+      for (final frame in neutralFrames) {
+        final keypoints = (frame['keypoints'] as List).map((k) => k as Map<String, dynamic>).toList();
+        var hasAll6 = true;
+        var has6Reliable = true;
+        
+        for (final name in requiredNames) {
+          final kp = keypoints.firstWhere(
+            (k) => k['name'] == name,
+            orElse: () => <String, dynamic>{'name': name, 'score': 0.0},
+          );
+          final score = (kp['score'] as num?)?.toDouble() ?? 0.0;
+          if (score > 0) {
+            requiredStats[name] = (requiredStats[name] ?? 0) + 1;
+          }
+          if (score == 0) {
+            hasAll6 = false;
+            has6Reliable = false;
+          } else if (score < 0.5) {
+            has6Reliable = false;
+          }
+        }
+        
+        if (hasAll6) framesWithAll6++;
+        if (has6Reliable) framesWith6Reliable++;
+      }
+      
+      final coverageByFrame = framesWith6Reliable / neutralFrames.length;
+      
+      debugPrint('[VideoAnalysis] 🔍 Coverage Diagnosis:');
+      debugPrint('[VideoAnalysis] 🔍   Total frames: ${neutralFrames.length}');
+      debugPrint('[VideoAnalysis] 🔍   Low confidence frames: $lowConfCount (${(lowConfRatio * 100).toStringAsFixed(1)}%)');
+      debugPrint('[VideoAnalysis] 🔍   Frames with all 6 required joints: $framesWithAll6 (${(framesWithAll6 / neutralFrames.length * 100).toStringAsFixed(1)}%)');
+      debugPrint('[VideoAnalysis] 🔍   Frames with all 6 reliable (score>=0.5): $framesWith6Reliable (${(coverageByFrame * 100).toStringAsFixed(1)}%)');
+      debugPrint('[VideoAnalysis] 🔍   Required joints detection rate:');
+      for (final name in requiredNames) {
+        final detected = requiredStats[name] ?? 0;
+        final rate = neutralFrames.isEmpty ? 0.0 : detected / neutralFrames.length;
+        debugPrint('[VideoAnalysis] 🔍     $name: $detected/${neutralFrames.length} (${(rate * 100).toStringAsFixed(1)}%)');
+      }
 
       // 保存质量指标用于降级存储
       qualityMetrics = {
@@ -243,6 +310,7 @@ class VideoAnalysisService {
       });
 
       debugPrint('[VideoAnalysis] Quality: ${(usableRatio * 100).toInt()}% usable');
+      debugPrint('[VideoAnalysis] 🔍 Expected coverage (from pipeline): ${(coverageByFrame * 100).toStringAsFixed(1)}%');
 
       // 6. 阶段 3：分析管道 (90-100%)
       controller.add({
@@ -546,7 +614,7 @@ class VideoAnalysisService {
         });
       }
     } finally {
-      await detector?.close();
+      await engine?.close();
       if (!controller.isClosed) {
         controller.close();
       }
@@ -660,10 +728,10 @@ class VideoAnalysisService {
     }
   }
 
-  /// ML Kit 逐帧姿态检测
+  /// 使用 PoseEngine 逐帧姿态检测
   static Future<List<Map<String, dynamic>>> _inferPoses({
     required CancellationToken token,
-    required ml.PoseDetector detector,
+    required PoseEngine engine,
     required List<File> frames,
     required _VideoInfo videoInfo,
     required int stride,
@@ -671,6 +739,13 @@ class VideoAnalysisService {
     void Function(int, int)? onProgress,
   }) async {
     final neutralFrames = <Map<String, dynamic>>[];
+    
+    // 🔧 时序平滑器：减少抖动和间歇性断线
+    final smoother = TemporalSmoother(
+      alpha: 0.6,         // 平衡平滑度和响应性
+      scoreDecay: 0.9,    // 缺失时分数衰减
+      maxMissingFrames: 5, // 最多补齐5帧
+    );
 
     for (int idx = 0; idx < frames.length; idx++) {
       // ✅ 增强检查点：每帧都检查取消（而不是每10帧）
@@ -706,83 +781,91 @@ class VideoAnalysisService {
           debugPrint('[VideoAnalysis]   Frame file: ${frameFile.path}');
         }
 
-        // ML Kit 推理
-        final inputImage = ml.InputImage.fromFilePath(frameFile.path);
-        final poses = await detector.processImage(inputImage);
+        // 读取帧图像字节（MoveNet 引擎需要）
+        final frameBytes = await frameFile.readAsBytes();
 
-        Map<String, dynamic> frameJson;
-        if (poses.isEmpty) {
-          // 空帧：生成占位关键点
-          frameJson = _emptyFrameJson(
-            width: videoInfo.width,
-            height: videoInfo.height,
-            frameIndex: frameIndex,
-            timestampMs: timestampMs,
-          );
+        // 使用 PoseEngine 推理
+        // 🔧 修复：同时传递 filePath（MLKit 使用）和 imageBytes（MoveNet 使用）
+        final engineInput = PoseEngineInput(
+          imageBytes: frameBytes,
+          filePath: frameFile.path, // MLKit 引擎使用文件路径避免 JPEG 格式问题
+          width: actualFrameWidth,
+          height: actualFrameHeight,
+          frameIndex: frameIndex,
+          timestampMs: timestampMs,
+          rotationDeg: 0,
+          mirrorHorizontally: false,
+        );
+
+        final rawFrame = await engine.infer(engineInput);
+        
+        // 🔧 应用时序平滑（减少抖动和间歇性断线）
+        final neutralFrame = smoother.smooth(rawFrame);
+
+        // 🔍 诊断日志：检查推理结果（前3帧详细，后续每10帧统计）
+        if (idx < 3 || idx % 10 == 0) {
+          debugPrint('[VideoAnalysis] 🔍 Frame $idx (frameIndex=$frameIndex):');
+          debugPrint('[VideoAnalysis] 🔍   Total keypoints: ${neutralFrame.keypoints.length}');
+          debugPrint('[VideoAnalysis] 🔍   Low confidence flag: ${neutralFrame.lowConfidence}');
           
-          if (idx < 3) {
-            debugPrint('[VideoAnalysis]   ⚠️ No poses detected');
-          }
-        } else {
-          // 有效帧：转换关键点
-          final pose = poses.first;
+          // 检查必需关键点（coverage计算需要的6个点）
+          final requiredNames = ['leftHip', 'rightHip', 'leftKnee', 'rightKnee', 'leftAnkle', 'rightAnkle'];
+          var requiredCount = 0;
+          var requiredReliableCount = 0;
+          final requiredDetails = <String, String>{};
           
-          // 调试日志：检查 ML Kit 返回的原始坐标
-          if (idx < 3) {
-            final sampleLandmark = pose.landmarks[ml.PoseLandmarkType.nose];
-            if (sampleLandmark != null) {
-              debugPrint('[VideoAnalysis]   ML Kit raw coordinates (nose):');
-              debugPrint('[VideoAnalysis]     x: ${sampleLandmark.x}, y: ${sampleLandmark.y}');
-              debugPrint('[VideoAnalysis]     likelihood: ${sampleLandmark.likelihood}');
-              debugPrint('[VideoAnalysis]   Normalization using: ${videoInfo.width}x${videoInfo.height}');
-              debugPrint('[VideoAnalysis]     Normalized x: ${sampleLandmark.x / videoInfo.width}');
-              debugPrint('[VideoAnalysis]     Normalized y: ${sampleLandmark.y / videoInfo.height}');
-              debugPrint('[VideoAnalysis]   Alternative normalization (using actual frame):');
-              debugPrint('[VideoAnalysis]     Normalized x: ${sampleLandmark.x / actualFrameWidth}');
-              debugPrint('[VideoAnalysis]     Normalized y: ${sampleLandmark.y / actualFrameHeight}');
-              
-              // 检查所有 keypoints 的 y 值
-              var yValues = pose.landmarks.values.map((lm) => lm.y).toList();
-              if (yValues.isNotEmpty) {
-                debugPrint('[VideoAnalysis]   All landmark y values (first 5): ${yValues.take(5).toList().join(", ")}...');
-                debugPrint('[VideoAnalysis]   Y value range: min=${yValues.reduce((a, b) => a < b ? a : b)}, max=${yValues.reduce((a, b) => a > b ? a : b)}');
-              }
+          for (final name in requiredNames) {
+            final matchingKps = neutralFrame.keypoints.where((k) => k.name == name).toList();
+            if (matchingKps.isNotEmpty) {
+              final kp = matchingKps.first;
+              requiredCount++;
+              final isReliable = kp.score >= 0.5;
+              if (isReliable) requiredReliableCount++;
+              requiredDetails[name] = 'score=${kp.score.toStringAsFixed(3)}, reliable=$isReliable';
+            } else {
+              requiredDetails[name] = 'MISSING';
             }
           }
           
-          // Use actual frame dimensions for normalization (ML Kit processes the actual frame)
-          final keypoints = _landmarksToNeutral(
-            pose.landmarks,
-            actualFrameWidth,
-            actualFrameHeight,
-          );
-
-          // 调试日志：检查归一化后的坐标
-          if (idx < 3 && keypoints.isNotEmpty) {
-            final sampleKp = keypoints.firstWhere(
-              (kp) => kp['name'] == 'nose',
-              orElse: () => keypoints.first,
-            );
-            debugPrint('[VideoAnalysis]   Normalized keypoint (nose):');
-            debugPrint('[VideoAnalysis]     x: ${sampleKp['x']}, y: ${sampleKp['y']}, score: ${sampleKp['score']}');
+          debugPrint('[VideoAnalysis] 🔍   Required joints (6): detected=$requiredCount, reliable=$requiredReliableCount');
+          if (idx < 3) {
+            // 前3帧输出详细信息
+            for (final name in requiredNames) {
+              debugPrint('[VideoAnalysis] 🔍     $name: ${requiredDetails[name]}');
+            }
           }
-
-          // 计算平均置信度
-          final avgScore = keypoints.isEmpty
-              ? 0.0
-              : keypoints
-                      .map((kp) => (kp['score'] as num).toDouble())
-                      .reduce((a, b) => a + b) /
-                  keypoints.length;
-
-          frameJson = {
-            'frameIndex': frameIndex,
-            'timestampMs': timestampMs,
-            'lowConfidence': avgScore < 0.7,
-            'mirrorApplied': false,
-            'keypoints': keypoints,
-          };
+          
+          // 统计置信度分布
+          if (neutralFrame.keypoints.isNotEmpty) {
+            final scores = neutralFrame.keypoints.map((k) => k.score).toList();
+            scores.sort();
+            final avgScore = scores.reduce((a, b) => a + b) / scores.length;
+            final minScore = scores.first;
+            final maxScore = scores.last;
+            final medianScore = scores[scores.length ~/ 2];
+            final scoreAbove05 = scores.where((s) => s >= 0.5).length;
+            
+            debugPrint('[VideoAnalysis] 🔍   Score stats: avg=${avgScore.toStringAsFixed(3)}, min=${minScore.toStringAsFixed(3)}, max=${maxScore.toStringAsFixed(3)}, median=${medianScore.toStringAsFixed(3)}');
+            debugPrint('[VideoAnalysis] 🔍   Score >= 0.5: $scoreAbove05/${scores.length} (${(scoreAbove05 / scores.length * 100).toStringAsFixed(1)}%)');
+          }
         }
+
+        // 转换 NeutralFrame 为 JSON 格式（用于管线）
+        final frameJson = {
+          'frameIndex': neutralFrame.frameIndex,
+          'timestampMs': neutralFrame.timestampMs,
+          'lowConfidence': neutralFrame.lowConfidence,
+          'mirrorApplied': neutralFrame.mirrorApplied,
+          'keypoints': neutralFrame.keypoints
+              .map((kp) => {
+                    'name': kp.name,
+                    'x': kp.x,
+                    'y': kp.y,
+                    'score': kp.score,
+                    if (kp.z != null) 'z': kp.z,
+                  })
+              .toList(),
+        };
 
         neutralFrames.add(frameJson);
       } catch (e) {
@@ -832,37 +915,8 @@ class VideoAnalysisService {
     };
   }
 
-  /// 将 ML Kit landmarks 转换为中立格式
-  static List<Map<String, dynamic>> _landmarksToNeutral(
-    Map<ml.PoseLandmarkType, ml.PoseLandmark> landmarks,
-    int imgW,
-    int imgH,
-  ) {
-    final result = <Map<String, dynamic>>[];
-
-    for (final entry in _kMlKitToNeutralMap.entries) {
-      final mlkitType = entry.key;
-      final neutralName = entry.value;
-
-      final landmark = landmarks[mlkitType];
-      if (landmark != null) {
-        // Normalize coordinates. Don't clamp to [0,1] as ML Kit can return coordinates
-        // outside image bounds (negative values). Clamp only to reasonable bounds to prevent
-        // extreme outliers from causing rendering issues.
-        final normalizedX = landmark.x / imgW;
-        final normalizedY = landmark.y / imgH;
-        result.add({
-          'name': neutralName,
-          'x': normalizedX.clamp(-0.5, 1.5),  // Allow some negative values but clamp extreme outliers
-          'y': normalizedY.clamp(-0.5, 1.5),  // Allow some negative values but clamp extreme outliers
-          'z': landmark.z,
-          'score': landmark.likelihood,
-        });
-      }
-    }
-
-    return result;
-  }
+  // 🔧 已移除：_landmarksToNeutral 函数已被 adaptMlKitPose (keypoint_adapter.dart) 替代
+  // 现在使用 PoseEngine 接口统一处理，不再需要此函数
 
   /// 构建 NeutralKeypointSeries
   static NeutralKeypointSeries _buildNeutralSeries({

@@ -94,9 +94,11 @@ class PoseEngineConfig {
 
 /// 引擎输入：让实现层可以同时支持多种来源（相机帧/视频解码帧/静态图）
 /// - imageBytes/rawBuffer: 可选的原始图像 buffer（某些平台不需要）
+/// - filePath: 可选的图像文件路径（用于 MLKit 的 fromFilePath，避免 JPEG 解码问题）
 /// - metadata: 至少要包含宽高，用于做坐标归一化
 class PoseEngineInput {
   final Uint8List? imageBytes;
+  final String? filePath; // 图像文件路径（用于 MLKit InputImage.fromFilePath）
   final int width;
   final int height;
   final int rotationDeg; // 图像旋转角（如相机传感器方向）
@@ -110,6 +112,7 @@ class PoseEngineInput {
     required this.frameIndex,
     required this.timestampMs,
     this.imageBytes,
+    this.filePath,
     this.rotationDeg = 0,
     this.mirrorHorizontally = false,
   });

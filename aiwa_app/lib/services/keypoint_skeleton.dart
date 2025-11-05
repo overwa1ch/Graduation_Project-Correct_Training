@@ -33,7 +33,8 @@ class KeypointSkeleton {
   static const double keypointRadius = 4.0;
   static const Color keypointHighConfidence = Color(0xFF4CAF50); // Green
   static const Color keypointLowConfidence = Color(0xFF9E9E9E); // Gray
-  static const double confidenceThreshold = 0.7;
+  // 🔧 降低 MLKit 绘制阈值，保证可视化先稳定
+  static const double confidenceThreshold = 0.3;
   
   /// All skeleton connections for ML Kit 33-point model
   static const List<SkeletonConnection> connections = [
@@ -254,11 +255,52 @@ class KeypointSkeleton {
   
   /// Get serializable connection data for native platform
   static List<Map<String, dynamic>> getConnectionsForNative() {
-    return connections.map((conn) => {
-      'start': conn.startPoint,
-      'end': conn.endPoint,
-      'color': colorToArgb(conn.color),
-      'strokeWidth': conn.strokeWidth,
+    // MLKit 适配器输出的名称为驼峰式，这里将连接表中的 snake_case 映射为驼峰式
+    const Map<String, String> alias = {
+      'nose': 'nose',
+      'left_eye_inner': 'leftEyeInner',
+      'left_eye': 'leftEye',
+      'left_eye_outer': 'leftEyeOuter',
+      'right_eye_inner': 'rightEyeInner',
+      'right_eye': 'rightEye',
+      'right_eye_outer': 'rightEyeOuter',
+      'left_ear': 'leftEar',
+      'right_ear': 'rightEar',
+      'mouth_left': 'leftMouth',
+      'mouth_right': 'rightMouth',
+      'left_shoulder': 'leftShoulder',
+      'right_shoulder': 'rightShoulder',
+      'left_elbow': 'leftElbow',
+      'right_elbow': 'rightElbow',
+      'left_wrist': 'leftWrist',
+      'right_wrist': 'rightWrist',
+      'left_pinky': 'leftPinky',
+      'right_pinky': 'rightPinky',
+      'left_index': 'leftIndex',
+      'right_index': 'rightIndex',
+      'left_thumb': 'leftThumb',
+      'right_thumb': 'rightThumb',
+      'left_hip': 'leftHip',
+      'right_hip': 'rightHip',
+      'left_knee': 'leftKnee',
+      'right_knee': 'rightKnee',
+      'left_ankle': 'leftAnkle',
+      'right_ankle': 'rightAnkle',
+      'left_heel': 'leftHeel',
+      'right_heel': 'rightHeel',
+      'left_foot_index': 'leftFootIndex',
+      'right_foot_index': 'rightFootIndex',
+    };
+
+    return connections.map((conn) {
+      final start = alias[conn.startPoint] ?? conn.startPoint;
+      final end = alias[conn.endPoint] ?? conn.endPoint;
+      return {
+        'start': start,
+        'end': end,
+        'color': colorToArgb(conn.color),
+        'strokeWidth': conn.strokeWidth,
+      };
     }).toList();
   }
   
@@ -269,6 +311,57 @@ class KeypointSkeleton {
       'highConfidenceColor': colorToArgb(keypointHighConfidence),
       'lowConfidenceColor': colorToArgb(keypointLowConfidence),
       'confidenceThreshold': confidenceThreshold,
+    };
+  }
+
+  // ========================= MoveNet (17-point) =========================
+  static List<Map<String, dynamic>> getConnectionsForNativeMoveNet() {
+    List<Map<String, dynamic>> build(String a, String b, Color c, {double w = 3.0}) =>
+        [
+          {
+            'start': a,
+            'end': b,
+            'color': colorToArgb(c),
+            'strokeWidth': w,
+          }
+        ];
+
+    final c = <Map<String, dynamic>>[];
+
+    // Head
+    c.addAll(build('nose', 'leftEye', colorHead));
+    c.addAll(build('nose', 'rightEye', colorHead));
+    c.addAll(build('leftEye', 'leftEar', colorHead));
+    c.addAll(build('rightEye', 'rightEar', colorHead));
+
+    // Torso
+    c.addAll(build('leftShoulder', 'rightShoulder', colorTorso, w: 4.0));
+    c.addAll(build('leftShoulder', 'leftHip', colorTorso, w: 4.0));
+    c.addAll(build('rightShoulder', 'rightHip', colorTorso, w: 4.0));
+    c.addAll(build('leftHip', 'rightHip', colorTorso, w: 4.0));
+
+    // Arms
+    c.addAll(build('leftShoulder', 'leftElbow', colorArms));
+    c.addAll(build('leftElbow', 'leftWrist', colorArms));
+    c.addAll(build('rightShoulder', 'rightElbow', colorArms));
+    c.addAll(build('rightElbow', 'rightWrist', colorArms));
+
+    // Legs
+    c.addAll(build('leftHip', 'leftKnee', colorLegs, w: 4.0));
+    c.addAll(build('leftKnee', 'leftAnkle', colorLegs, w: 4.0));
+    c.addAll(build('rightHip', 'rightKnee', colorLegs, w: 4.0));
+    c.addAll(build('rightKnee', 'rightAnkle', colorLegs, w: 4.0));
+
+    return c;
+  }
+
+  static Map<String, dynamic> getKeypointPropertiesForNativeMoveNet() {
+    return {
+      'radius': keypointRadius,
+      'highConfidenceColor': colorToArgb(keypointHighConfidence),
+      'lowConfidenceColor': colorToArgb(keypointLowConfidence),
+      // Lower temporarily to visualize low-confidence MoveNet outputs
+      'confidenceThreshold': 0.1,
     };
   }
 }

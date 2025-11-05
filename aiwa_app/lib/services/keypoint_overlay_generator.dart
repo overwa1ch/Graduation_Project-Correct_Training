@@ -106,8 +106,17 @@ class KeypointOverlayGenerator {
     }
 
     // 4. Get skeleton connections and properties
-    final connections = KeypointSkeleton.getConnectionsForNative();
-    final keypointProperties = KeypointSkeleton.getKeypointPropertiesForNative();
+    final engine = keypointsJson['engine'] as Map<String, dynamic>?;
+    final engineName = (engine?['name'] as String?) ?? '';
+    final isMoveNet = engineName.toLowerCase().contains('movenet')
+        || (frames.isNotEmpty && (frames.first as Map<String, dynamic>)['keypoints'] is List && ((frames.first as Map<String, dynamic>)['keypoints'] as List).length == 17);
+
+    final connections = isMoveNet
+        ? KeypointSkeleton.getConnectionsForNativeMoveNet()
+        : KeypointSkeleton.getConnectionsForNative();
+    final keypointProperties = isMoveNet
+        ? KeypointSkeleton.getKeypointPropertiesForNativeMoveNet()
+        : KeypointSkeleton.getKeypointPropertiesForNative();
 
     // 5. Generate output path
     final outputPath = p.join(sessionRoot, outputFileName);

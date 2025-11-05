@@ -80,7 +80,7 @@ const Map<String, dynamic> _defaultConfig = {
 
 /// 有效枚举值
 const Set<String> _validEngines = {
-  'MoveNet', 'MLKit', 'MediaPipe', 'Auto',
+  'MoveNet', 'MLKit', 'MoveNet-Thunder',
   // Accept engines used in tests and potential deployments
   'BlazePose', 'PoseNet'
 };

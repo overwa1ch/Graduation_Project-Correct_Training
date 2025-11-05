@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:aiwa_app/main.dart';
 import 'package:aiwa_app/services/config_sync.dart';
+import 'package:aiwa_app/services/auth_state.dart';
 import 'package:aiwa_app/adapters/result_adapter.dart';
 import '../test_helpers.dart';
 import '../helpers/fake_analysis.dart';
@@ -17,11 +18,16 @@ void main() {
   
   late Directory tempDir;
   late String originalWorkingDir;
+  late AuthState authState;
 
   setUp(() async {
     originalWorkingDir = Directory.current.path;
     tempDir = await Directory.systemTemp.createTemp('e2e_flow_test_');
     Directory.current = tempDir.path;
+    
+    // Create AuthState for tests
+    authState = AuthState();
+    await authState.initialize();
     
     // Create necessary directories
     await Directory('build/offline_out').create(recursive: true);
@@ -54,7 +60,7 @@ void main() {
 
   group('E2E - Complete User Flow', () {
     testWidgets('Full flow: welcome → settings → camera → result', (tester) async {
-      await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(MyApp(authState: authState));
       await safePumpAndSettle(tester);
 
       // Step 1: Welcome page - tap "开始使用"
@@ -146,7 +152,7 @@ void main() {
       // This test uses fake event replay instead of real CLI
       // It verifies the event handling and result display logic
       
-      await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(MyApp(authState: authState));
       await safePumpAndSettle(tester);
 
       // Navigate to home

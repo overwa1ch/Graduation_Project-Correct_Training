@@ -8,14 +8,21 @@ import 'package:aiwa_app/ui/pages/login_page.dart';
 import 'package:aiwa_app/ui/pages/register_page.dart';
 import 'package:aiwa_app/services/auth_state.dart';
 
+// 测试阶段可关闭登录拦截
+const bool kDisableAuthForTesting = true;
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // 初始化认证状态
-  final authState = AuthState();
-  await authState.initialize();
-  
-  runApp(MyApp(authState: authState));
+  if (!kDisableAuthForTesting) {
+    // 初始化认证状态
+    final authState = AuthState();
+    await authState.initialize();
+    runApp(MyApp(authState: authState));
+  } else {
+    // 测试时无需初始化认证
+    runApp(MyApp(authState: AuthState()));
+  }
 }
 
 class MyApp extends StatefulWidget {
@@ -55,19 +62,15 @@ class _MyAppState extends State<MyApp> {
       theme: createDarkTheme(),
       
       // 🔀 路由配置（添加认证守卫）
-      initialRoute: widget.authState.isAuthenticated ? '/home' : '/login',
+      initialRoute: kDisableAuthForTesting
+          ? '/home'
+          : (widget.authState.isAuthenticated ? '/home' : '/login'),
       onGenerateRoute: (settings) {
         // 自定义路由生成器，带认证检查
         Widget page;
         
-        // 认证路由（无需登录）
-        if (settings.name == '/login') {
-          page = const LoginPage();
-        } else if (settings.name == '/register') {
-          page = const RegisterPage();
-        } 
-        // 应用路由（需要登录）
-        else if (widget.authState.isAuthenticated) {
+        if (kDisableAuthForTesting) {
+          // 测试环境：所有页面直接放行
           switch (settings.name) {
             case '/welcome':
               page = const WelcomePage();
@@ -81,13 +84,45 @@ class _MyAppState extends State<MyApp> {
             case '/settings':
               page = const SettingsPage();
               break;
+            case '/login':
+              page = const LoginPage();
+              break;
+            case '/register':
+              page = const RegisterPage();
+              break;
             default:
               page = const HomePage();
           }
-        } 
-        // 未登录时重定向到登录页
-        else {
-          page = const LoginPage();
+        } else {
+          // 认证路由（无需登录）
+          if (settings.name == '/login') {
+            page = const LoginPage();
+          } else if (settings.name == '/register') {
+            page = const RegisterPage();
+          } 
+          // 应用路由（需要登录）
+          else if (widget.authState.isAuthenticated) {
+            switch (settings.name) {
+              case '/welcome':
+                page = const WelcomePage();
+                break;
+              case '/home':
+                page = const HomePage();
+                break;
+              case '/camera':
+                page = const CameraPage();
+                break;
+              case '/settings':
+                page = const SettingsPage();
+                break;
+              default:
+                page = const HomePage();
+            }
+          } 
+          // 未登录时重定向到登录页
+          else {
+            page = const LoginPage();
+          }
         }
         
         // 检查是否需要禁用动画
@@ -112,11 +147,17 @@ class _MyAppState extends State<MyApp> {
       
       // 未知路由处理
       onUnknownRoute: (settings) {
-        return MaterialPageRoute(
-          builder: (context) => widget.authState.isAuthenticated 
-              ? const HomePage() 
-              : const LoginPage(),
-        );
+        if (kDisableAuthForTesting) {
+          return MaterialPageRoute(
+            builder: (context) => const HomePage(),
+          );
+        } else {
+          return MaterialPageRoute(
+            builder: (context) => widget.authState.isAuthenticated 
+                ? const HomePage() 
+                : const LoginPage(),
+          );
+        }
       },
     );
   }

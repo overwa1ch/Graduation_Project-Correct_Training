@@ -17,11 +17,15 @@ import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import 'package:aiwa_core/pose/pose_engine.dart';
 
 import 'package:aiwa_app/pose/adapter/keypoint_adapter.dart';
+import 'package:aiwa_app/pose/per_joint_threshold.dart';
 
 class MlKitPoseEngine implements PoseEngine {
   late PoseDetector _detector;
   late PoseEngineConfig _config;
   bool _initialized = false;
+  
+  // 🔧 分关节阈值过滤器
+  late PerJointThresholdFilter _thresholdFilter;
 
   MlKitPoseEngine();
 
@@ -40,6 +44,10 @@ class MlKitPoseEngine implements PoseEngine {
           );
 
     _detector = PoseDetector(options: options);
+    
+    // 🔧 初始化分关节阈值过滤器（MLKit 使用较严格的阈值）
+    _thresholdFilter = PerJointThresholdFilter(PerJointThresholdConfig.mlkit);
+    
     _initialized = true;
   }
 
@@ -49,34 +57,45 @@ class MlKitPoseEngine implements PoseEngine {
       throw StateError('MlKitPoseEngine not initialized. Call init() first.');
     }
 
-    final Uint8List? bytes = input.imageBytes;
-    if (bytes == null) {
-      throw ArgumentError(
-          'MlKitPoseEngine requires imageBytes in PoseEngineInput.');
+    // 🔧 修复：优先使用 filePath（避免 JPEG 字节格式不匹配问题）
+    // - 如果提供 filePath，使用 InputImage.fromFilePath（自动处理 JPEG/PNG 等格式）
+    // - 如果没有 filePath，回退到 fromBytes（需要原始格式如 NV21/BGRA8888）
+    InputImage inputImage;
+    
+    if (input.filePath != null) {
+      // 使用文件路径（推荐方式，自动处理 JPEG/PNG 等编码格式）
+      inputImage = InputImage.fromFilePath(input.filePath!);
+    } else {
+      // 回退到原始字节方式（需要原始格式，不支持 JPEG 编码）
+      final Uint8List? bytes = input.imageBytes;
+      if (bytes == null) {
+        throw ArgumentError(
+            'MlKitPoseEngine requires either filePath or imageBytes (raw format) in PoseEngineInput.');
+      }
+
+      // 选择格式 + 计算 bytesPerRow
+      // - Android 使用 NV21（camera 插件最好配置 ImageFormatGroup.nv21）
+      // - iOS 使用 BGRA8888（camera 插件配置 ImageFormatGroup.bgra8888）
+      // 参见 google_mlkit_commons 的说明与示例。
+      final InputImageFormat format =
+          Platform.isIOS ? InputImageFormat.bgra8888 : InputImageFormat.nv21;
+
+      // 经验值：
+      // - NV21（Y 平面）通常 bytesPerRow ~= width
+      // - BGRA8888 每像素 4 字节，bytesPerRow = width * 4
+      // 如果你从 camera 的 plane 直接拿到 bytesPerRow，请以相机返回的为准。
+      final int bytesPerRow = Platform.isIOS ? (input.width * 4) : input.width;
+
+      inputImage = InputImage.fromBytes(
+        bytes: bytes,
+        metadata: InputImageMetadata(
+          size: ui.Size(input.width.toDouble(), input.height.toDouble()),
+          rotation: _rotationFromDeg(input.rotationDeg),
+          format: format,
+          bytesPerRow: bytesPerRow,
+        ),
+      );
     }
-
-    // 选择格式 + 计算 bytesPerRow
-    // - Android 使用 NV21（camera 插件最好配置 ImageFormatGroup.nv21）
-    // - iOS 使用 BGRA8888（camera 插件配置 ImageFormatGroup.bgra8888）
-    // 参见 google_mlkit_commons 的说明与示例。
-    final InputImageFormat format =
-        Platform.isIOS ? InputImageFormat.bgra8888 : InputImageFormat.nv21;
-
-    // 经验值：
-    // - NV21（Y 平面）通常 bytesPerRow ~= width
-    // - BGRA8888 每像素 4 字节，bytesPerRow = width * 4
-    // 如果你从 camera 的 plane 直接拿到 bytesPerRow，请以相机返回的为准。
-    final int bytesPerRow = Platform.isIOS ? (input.width * 4) : input.width;
-
-    final inputImage = InputImage.fromBytes(
-      bytes: bytes,
-      metadata: InputImageMetadata(
-        size: ui.Size(input.width.toDouble(), input.height.toDouble()),
-        rotation: _rotationFromDeg(input.rotationDeg),
-        format: format,
-        bytesPerRow: bytesPerRow,
-      ),
-    );
 
     final List<Pose> poses = await _detector.processImage(inputImage);
     if (poses.isEmpty) {
@@ -107,13 +126,15 @@ class MlKitPoseEngine implements PoseEngine {
             .toList(growable: false)
         : List<NeutralKeypoint>.from(keypoints, growable: false);
 
-    final filtered =
-        processed.where((kp) => kp.score >= 0.3).toList(growable: false);
-    final highConfidenceCount = processed.where((kp) => kp.score >= 0.5).length;
+    // 🔧 使用分关节阈值过滤（更智能的过滤策略）
+    // 先用基础阈值 0.2 过滤，再用分关节阈值
+    final preFiltered = processed.where((kp) => kp.score >= 0.2).toList(growable: false);
+    final filtered = _thresholdFilter.filter(preFiltered);
+    final highConfidenceCount = processed.where((kp) => kp.score >= 0.4).length;
     final highConfidenceRatio = kMlKitNeutralKeypointCount == 0
         ? 0.0
         : highConfidenceCount / kMlKitNeutralKeypointCount;
-    final bool lowConfidence = processed.isEmpty || highConfidenceRatio < 0.7;
+    final bool lowConfidence = processed.isEmpty || highConfidenceRatio < 0.6;
 
     return NeutralFrame(
       frameIndex: input.frameIndex,

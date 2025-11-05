@@ -82,11 +82,75 @@
   
 - **[tools_quick_start.md](03-guides/tools_quick_start.md)** - 工具快速开始指南
 
+- **[movenet_quick_start.md](03-guides/movenet_quick_start.md)** - MoveNet 快速开始指南
+  - 模型下载、配置引擎、使用说明
+  
+- **[event_bus_quick_start.md](03-guides/event_bus_quick_start.md)** - Event Bus 快速开始指南
+  - 事件流服务使用教程
+  
+- **[tool_quick_start.md](03-guides/tool_quick_start.md)** - 工具快速开始指南
+  
+- **[config_sync_guide.md](03-guides/config_sync_guide.md)** - 配置同步使用指南
+  
+- **[adapters_guide.md](03-guides/adapters_guide.md)** - 适配器使用指南
+
 ---
 
 ### 04-reports/ - 完成报告
 项目各阶段完成报告和总结
 
+#### 核心功能实现报告
+- **[cancellation_token_implementation_report.md](04-reports/cancellation_token_implementation_report.md)** - 统一取消令牌架构实施报告
+  
+- **[auth_integration_report.md](04-reports/auth_integration_report.md)** - 认证功能集成报告
+  
+- **[movenet_implementation.md](04-reports/movenet_implementation.md)** - MoveNet 姿态检测实现文档
+  
+- **[native_implementation.md](04-reports/native_implementation.md)** - 原生实现完成报告
+  
+- **[native_frame_extraction.md](04-reports/native_frame_extraction.md)** - 原生帧提取实现报告
+  
+- **[eventchannel_implementation.md](04-reports/eventchannel_implementation.md)** - EventChannel 实现完成报告
+
+#### 页面与功能实现报告
+- **[analysis_history_implementation.md](04-reports/analysis_history_implementation.md)** - 分析历史功能实现报告
+  
+- **[camera_layout_fix.md](04-reports/camera_layout_fix.md)** - 相机页面布局修复报告
+  
+- **[CAMERA_PAGE_FIX_SUMMARY.md](04-reports/CAMERA_PAGE_FIX_SUMMARY.md)** - 相机页面修复总结
+  
+- **[pages_optimization_summary.md](04-reports/pages_optimization_summary.md)** - 页面优化总结
+  
+- **[result_popup_dod.md](04-reports/result_popup_dod.md)** - 结果弹窗完成标准
+  
+- **[settings_page_dod.md](04-reports/settings_page_dod.md)** - 设置页面完成标准
+
+#### 其他功能实现报告
+- **[surface_mode_implementation.md](04-reports/surface_mode_implementation.md)** - Surface 模式实现报告
+  
+- **[surface_mode_code_review.md](04-reports/surface_mode_code_review.md)** - Surface 模式代码审查
+  
+- **[mirror_export_feature.md](04-reports/mirror_export_feature.md)** - 镜像导出功能报告
+  
+- **[tflite_version_fix.md](04-reports/tflite_version_fix.md)** - TFLite 版本修复报告
+
+#### 测试相关报告
+- **[testing_improvements_summary.md](04-reports/testing_improvements_summary.md)** - 测试改进总结
+  
+- **[testing_native_frame_extraction.md](04-reports/testing_native_frame_extraction.md)** - 原生帧提取测试报告
+
+#### 服务与适配器交付报告
+- **[services_implementation_summary.md](04-reports/services_implementation_summary.md)** - 服务层实现总结
+  
+- **[services_delivery.md](04-reports/services_delivery.md)** - 服务层交付报告
+  
+- **[config_sync_delivery.md](04-reports/config_sync_delivery.md)** - 配置同步交付报告
+  
+- **[adapters_delivery.md](04-reports/adapters_delivery.md)** - 适配器交付报告
+
+#### 其他阶段报告
+- **[low_priority_tasks_summary.md](04-reports/low_priority_tasks_summary.md)** - 低优先级任务总结
+  
 - **[ci_cd_complete.md](04-reports/ci_cd_complete.md)** - CI/CD 完成报告
   
 - **[tokens_sync_complete.md](04-reports/tokens_sync_complete.md)** - Tokens 同步完成报告
@@ -102,6 +166,12 @@
 - **[final_acceptance_report.md](04-reports/final_acceptance_report.md)** - 最终验收报告
   
 - **[implementation_summary.md](04-reports/implementation_summary.md)** - 实现总结
+  
+- **[PHASE3_FIX_IMPLEMENTATION_REPORT.md](04-reports/PHASE3_FIX_IMPLEMENTATION_REPORT.md)** - Phase 3 修复实施报告
+  
+- **[PHASE4_IMPLEMENTATION_SUMMARY.md](04-reports/PHASE4_IMPLEMENTATION_SUMMARY.md)** - Phase 4 实现总结
+  
+- **[PHASE5_HARDENING_SUMMARY.md](04-reports/PHASE5_HARDENING_SUMMARY.md)** - Phase 5 加固总结
   
 - **[sync_tokens_report.md](04-reports/sync_tokens_report.md)** - Tokens 同步报告
   
@@ -221,9 +291,19 @@
 
 ---
 
-**文档整理日期**：2025年10月28日  
-**文档版本**：v1.0  
+**文档整理日期**：2025年1月  
+**文档版本**：v1.1  
 **维护者**：AIWA 项目团队
+
+---
+
+## 📝 更新日志
+
+### v1.1 (2025年1月)
+- 新增 25+ 个实施报告文档
+- 新增 5 个使用指南文档
+- 优化文档分类结构
+- 完善文档索引
 
 
 

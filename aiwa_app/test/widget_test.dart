@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:aiwa_app/main.dart';
+import 'package:aiwa_app/services/auth_state.dart';
 import 'package:aiwa_app/ui/pages/settings_page.dart';
 
 /// Widget Tests
@@ -8,9 +9,17 @@ import 'package:aiwa_app/ui/pages/settings_page.dart';
 /// 测试应用的基本 Widget 渲染与导航功能
 
 void main() {
+  late AuthState authState;
+
+  setUpAll(() async {
+    // Create and initialize AuthState for all tests
+    authState = AuthState();
+    await authState.initialize();
+  });
+
   testWidgets('App loads and shows welcome page', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(MyApp(authState: authState));
 
     // Verify that welcome page is shown (initial route)
     expect(find.text('AIWA'), findsOneWidget);
@@ -19,7 +28,7 @@ void main() {
   });
 
   testWidgets('Navigation to home page works', (WidgetTester tester) async {
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(MyApp(authState: authState));
 
     // Tap the '开始使用' button
     await tester.tap(find.text('开始使用'));
@@ -30,7 +39,7 @@ void main() {
   });
 
   testWidgets('Bottom navigation works', (WidgetTester tester) async {
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(MyApp(authState: authState));
 
     // Navigate to home first
     await tester.tap(find.text('开始使用'));
