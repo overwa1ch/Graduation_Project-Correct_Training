@@ -1,77 +1,105 @@
-# 项目说明（AIWA Squat Offline Pipeline）
+# AIWA 项目协作指南
 
 ## 1. 项目概述
-- 仓库现拆分为三个 Dart/Flutter 包：
-  - `aiwa_core`：纯 Dart 核心逻辑（关键点解析、滤波、角度计算、计数、评分等）。
-  - `aiwa_cli`：纯 Dart 命令行工具，调用 `aiwa_core` 处理离线关键点 JSON。
-  - `aiwa_app`：Flutter 应用，集成 ML Kit 推理与 UI，可直接依赖 `aiwa_core` 复用算法。
-- 仍附带 `tools/` 目录（位于 `aiwa_core/tools`）提供 Python 基线脚本与规则、关键点示例数据，便于对照与调试。
+AIWA 是一个面向健身姿态纠正的全栈解决方案，前端采用 Flutter 构建移动端体验，后端基于 Fastify + Prisma 提供云端认证与会话管理能力。系统通过 PostgreSQL 持久化用户与分析数据，并预留对阿里云 OSS 的扩展支持，实现从姿态采集、历史记录管理到云端登录授权的完整闭环。详见 `aiwa_cloud/PROJECT_SUMMARY.md` 中的整体架构描述。
 
 ## 2. 安装、环境变量、运行与构建
-- **基础环境**：需要 [Dart SDK](https://dart.dev/get-dart) ≥ 3.4。安装后请确保 `dart` 命令在 `PATH` 中，或手动设置：
-  ```bash
-  export DART_SDK="/path/to/dart-sdk"
-  export PATH="$DART_SDK/bin:$PATH"
-  ```
-- **核心与 CLI 依赖安装**：
-  ```bash
-  cd aiwa_core
-  dart pub get
+### 通用要求
+- Node.js ≥ 20（用于后端 core-api 服务）。
+- 已安装 pnpm 包管理器（所有原本 `npm` 的脚本请改用 `pnpm`）。
+- Flutter SDK ≥ 3.4（用于移动端 `aiwa_app`）。
 
-  cd ../aiwa_cli
-  dart pub get
-  ```
-- **运行 CLI**（默认使用测试夹带样例，可通过参数覆盖）：
-  ```bash
-  cd aiwa_cli
-  dart run bin/aiwa_cli.dart \
-    --keypoints ../aiwa_core/test/fixtures/kp_sample.json \
-    --rule ../aiwa_core/test/fixtures/squat.v1.json \
-    --strictness relaxed \
-    --out build/offline_out
-  ```
-  > 纯 Dart CLI 当前仅支持 `--keypoints` 文件模式；视频推理请使用 Flutter 工程。
-- **构建本地可执行文件**：
-  ```bash
-  cd aiwa_cli
-  dart compile exe bin/aiwa_cli.dart -o build/aiwa_cli
-  ```
-- **核心单元测试**：
-  ```bash
-  cd aiwa_core
-  dart test
-  ```
-- 若需要在工具链中安装 Node 相关依赖，请使用 `pnpm` 替换 `npm`（例如 `pnpm install`），仓库当前未提供前端依赖。
+### 后端（aiwa_cloud/core-api）
+1. 复制环境变量模板并按需填写数据库、JWT 以及可选的阿里云配置：
+   ```bash
+   cp env.example .env
+   ```
+   关键变量包括 `DATABASE_URL`、`JWT_ACCESS_SECRET`、`JWT_REFRESH_SECRET`、`PORT`、`CORS_ORIGIN`，以及按需启用的 `USE_ALIYUN_OSS` 和相关 OSS 凭据。详细字段说明见 `aiwa_cloud/core-api/env.example`。
+2. 安装依赖并生成 Prisma 客户端：
+   ```bash
+   pnpm install
+   pnpm prisma:generate
+   ```
+3. 初始化数据库（开发环境可选择迁移或直接推送 Schema）：
+   ```bash
+   pnpm prisma:migrate
+   # 或
+   pnpm prisma:push
+   ```
+4. 运行与构建：
+   ```bash
+   pnpm dev         # 开发模式（Fastify + tsx 热重载）
+   pnpm build       # TypeScript 编译到 dist/
+   pnpm start       # 生产环境启动（需先 build）
+   pnpm lint        # 代码规范检查
+   pnpm prisma:studio  # 打开 Prisma Studio 调试数据
+   ```
 
-## 3. 目录结构、路由与接口
-- **整体结构**：
-  ```
-  aiwa_core/
-  ├── lib/                 # 核心算法模块（core、math、pipeline、pose、result、spec）
-  ├── test/                # 纯 Dart 单元测试与夹带数据
-  ├── tools/               # Python 基线脚本与示例数据
-  └── pubspec.*
+### 前端（aiwa_app）
+1. 安装依赖：
+   ```bash
+   flutter pub get
+   ```
+2. 运行与调试：
+   ```bash
+   flutter run
+   ```
+3. 构建产物：
+   ```bash
+   flutter build apk    # Android 包
+   flutter build ios    # iOS（需 macOS 环境）
+   flutter build web    # Web 预览（可选）
+   ```
+4. 前端会通过 `aiwa_core` 本地 Dart 包与后端 REST API 协同，确保 `.env` 中的后端地址与应用配置保持一致。
 
-  aiwa_cli/
-  ├── bin/aiwa_cli.dart    # CLI 入口
-  ├── configs/             # 默认混合/证据配置
-  └── pubspec.*
+## 3. 目录结构、页面路由与 API
+### 主要目录
+```
+├── aiwa_app/                 # Flutter 客户端（姿态采集、历史记录、设置等）
+│   ├── lib/
+│   │   ├── main.dart         # 入口与路由守卫
+│   │   ├── ui/pages/         # 登录、注册、欢迎、主页、相机、设置等页面
+│   │   ├── ui/widgets/       # 复用组件
+│   │   ├── services/         # 认证状态、历史记录等服务层
+│   │   └── theme/            # 设计语言与 Token
+├── aiwa_core/                # 纯 Dart 核心逻辑与工具库
+├── aiwa_cloud/
+│   └── core-api/             # Fastify 后端（认证、会话、作业触发）
+│       ├── src/
+│       │   ├── main.ts       # 应用入口
+│       │   ├── config.ts     # 配置加载
+│       │   ├── middleware/   # JWT 鉴权中间件
+│       │   └── modules/auth/ # 用户认证模块
+│       ├── prisma/           # 数据库 Schema
+│       └── docker-compose.yml# 本地服务编排
+├── assets/、docs/            # 设计资产与说明文档
+└── 其他 aiwa_* 子项目        # CLI、runner 等扩展模块
+```
+目录详情可参考 `aiwa_cloud/PROJECT_SUMMARY.md`。
 
-  aiwa_app/                # Flutter 应用（保留原平台工程与 UI）
-  ```
-- **前端/页面路由**：仓库仍未包含 Web/前端页面；Flutter 应用示例为计数器壳工程。
-- **API 接口**：当前实现为离线 CLI 工具，不暴露 HTTP/REST API。输入通过文件（关键点 JSON、规则 JSON）提供，输出生成 `angles.csv` 与 `result.json`；如需服务化，可在此基础上封装。
+### 前端路由
+`aiwa_app/lib/main.dart` 定义了基于 `MaterialApp` 的路由守卫：
+- 未登录：`/login`（登录页）、`/register`（注册页）。
+- 登录后：`/welcome`（欢迎页）、`/home`（历史记录主页）、`/camera`（姿态采集）、`/settings`（设置）。
+所有受保护页面会根据 `AuthState` 状态重定向，未知路由回退到首页或登录页。
 
-## 4. 技术栈与依赖
-- **语言与工具**：Dart 3、`args`（CLI 参数解析）、`dart test` 单元测试框架。
-- **核心依赖**（位于 `aiwa_core`）：
-  - `csv`：生成角度 CSV 输出。
-  - `path`：处理文件路径、导出中立关键点。
-- **CLI 依赖**：`args`（命令行参数解析）。
-- **Flutter 侧**：`google_mlkit_pose_detection`（相机推理）、`flutter_test`、`flutter_lints`。
-- **工具脚本**：`aiwa_core/tools/python_baseline.py` 提供 Python 参考实现，便于结果对比。
+### 后端 API
+`aiwa_cloud/core-api/README.md` 列出了 REST 接口：
+- 认证模块：`POST /v1/auth/register`、`POST /v1/auth/login`、`POST /v1/auth/refresh`。
+- 会话管理：`POST /v1/sessions`、`POST /v1/sessions/:id/finalize`、`GET /v1/sessions/:id`。
+- 作业编排：`POST /v1/sessions/:id/jobs/reinfer`、`POST /v1/sessions/:id/jobs/advice`、`GET /v1/jobs/:id`。
+- 结果查询：`GET /v1/sessions/:id/results`。
+`src/modules/auth/auth.routes.ts` 已实现认证相关路由，其余接口可根据 README 约定扩展。
 
-## 5. 贡献与注意事项
-- 修改或新增脚本时，请在对应包目录更新文档与依赖说明。
-- 提交前运行 `dart test`（核心）或相应 `flutter test`，确保新增逻辑的稳定性；若涉及代码生成，请执行 `dart run build_runner build --delete-conflicting-outputs` 并提交生成文件。
-- 确保 CLI 入参与输出路径在文档或 README 中更新，以便团队成员快速复现。
+## 4. 技术栈与关键依赖
+- **Flutter + Dart**：移动端 UI 与交互核心（依赖 `google_mlkit_pose_detection`、`image_picker`、`video_player`、`shared_preferences` 等）。参见 `aiwa_app/pubspec.yaml`。
+- **aiwa_core**：封装通用 CSV、路径等工具逻辑，供 Flutter 端复用。
+- **Fastify + TypeScript**：后端 Web 框架，结合 `@fastify/jwt`、`zod` 做认证与数据校验。依赖列表详见 `aiwa_cloud/core-api/package.json`。
+- **Prisma + PostgreSQL**：关系型数据访问层，`prisma` 目录维护 Schema，命令通过 pnpm 调用。
+- **安全与加密**：`bcrypt` 负责密码哈希，JWT 秘钥需通过 OpenSSL 或 Node `crypto` 生成，具体要求见 `aiwa_cloud/core-api/README.md`。
+- **云端扩展**：环境变量预留阿里云 OSS、S3、SQS 等集成接口，详见 `aiwa_cloud/PROJECT_SUMMARY.md`。
+
+## 5. pnpm 使用约定
+- 所有后端 Node.js 子项目一律使用 `pnpm` 执行依赖安装与脚本命令（如 `pnpm install`、`pnpm dev`、`pnpm prisma:migrate`）。
+- 如需在 CI 或脚本中更新命令，请确保先运行 `pnpm install` 并提交 `pnpm-lock.yaml`。
+- 避免混用 `npm` 或 `yarn`，以免生成多余锁文件。
