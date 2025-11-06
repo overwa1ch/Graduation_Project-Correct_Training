@@ -7,7 +7,7 @@
 ## 🗂️ 目录导航
 
 ### 00-project — 项目基础档案
-- **[00-project/architecture.md](project/architecture.md)**：当前分支的整体系统架构、组件边界与数据流向。
+- **[00-project/architecture.md](00-project/architecture.md)**：当前分支的整体系统架构、组件边界与数据流向。
 - **[00-project/project_summary.md](00-project/project_summary.md)**：阶段性交付总结、完成事项与统计。
 - **[00-project/agents.md](00-project/agents.md)**：AIWA Squat Offline Pipeline 的项目说明、依赖与目录索引。
 
