@@ -42,10 +42,17 @@ Container(
 使用黑白+绿色的简化配色：
 - **成功/高分**: `brandPrimaryVariant = #4A7220` (深绿色)
 - **错误/警告/中分**: `surfaceSecondary = #2B2B2B` (深灰色)
-- **阴影**: `surfaceSecondary.withOpacity(0.25)` (深灰色半透明)
+- **阴影**: 使用 `AppShadows.standard` 预设（深灰色半透明）
 
-### 3. 静态颜色系统
-不再支持主题切换，所有颜色使用静态常量。
+### 3. 主题系统
+虽然代码中保留了 `createLightTheme()` 和 `createDarkTheme()` 两个函数，但实际应用使用固定的深色主题（`createDarkTheme()`）。所有颜色常量都是静态的，不支持运行时主题切换。
+
+**主题相关函数**：
+- `createLightTheme()` - 创建浅色主题 ThemeData（未使用）
+- `createDarkTheme()` - 创建深色主题 ThemeData（实际使用）
+- `createLightColorScheme()` - 创建浅色 ColorScheme
+- `createDarkColorScheme()` - 创建深色 ColorScheme
+- `createTextTheme({Color? color})` - 创建 TextTheme，将设计 tokens 映射到 Material Design 文本样式
 
 ## 使用方法
 
@@ -63,16 +70,30 @@ Container(
   ),
 )
 
-// 使用语义颜色
+// 使用语义颜色（推荐用于业务逻辑）
 Container(
-  color: SemanticColors.success,  // 等同于 brandPrimaryVariant
+  color: SemanticColors.success,  // 成功/高分 - 等同于 brandPrimaryVariant
   child: Text('Success'),
 )
 
 Container(
-  color: SemanticColors.error,    // 等同于 surfaceSecondary
+  color: SemanticColors.warning,  // 警告/中分 - 等同于 surfaceSecondary
+  child: Text('Warning'),
+)
+
+Container(
+  color: SemanticColors.error,    // 错误/低分 - 等同于 surfaceSecondary
   child: Text('Error'),
 )
+
+// 数据可视化颜色
+Container(
+  color: SemanticColors.dataHighlight,  // 数据高亮
+)
+
+// 云端增强指示器
+Icon(Icons.cloud, color: SemanticColors.cloudEnhanced)  // 云端增强
+Icon(Icons.sync, color: SemanticColors.cloudProcessing) // 处理中
 ```
 
 ### 分数颜色逻辑
@@ -93,12 +114,28 @@ Color getScoreColor(int score) {
 ### 阴影使用
 
 ```dart
-// 正确的阴影使用方式
-BoxShadow(
-  color: AppColors.surfaceSecondary.withOpacity(0.25),
-  offset: const Offset(0, 4),
-  blurRadius: 4,
+import 'package:aiwa_app/theme/spacing.dart';
+
+// ✅ 推荐：使用预设阴影
+Container(
+  decoration: BoxDecoration(
+    boxShadow: [AppShadows.standard],  // 标准阴影
+  ),
 )
+
+// 或使用 elevation 预设
+Container(
+  decoration: BoxDecoration(
+    boxShadow: AppShadows.elevation2,  // Material elevation 2
+  ),
+)
+
+// ❌ 不推荐：手动创建阴影（应使用预设）
+// BoxShadow(
+//   color: AppColors.surfaceSecondary.withOpacity(0.25),
+//   offset: const Offset(0, 4),
+//   blurRadius: 4,
+// )
 ```
 
 ### 使用字体
@@ -106,16 +143,31 @@ BoxShadow(
 ```dart
 import 'package:aiwa_app/theme/typography.dart';
 
+// 直接使用预设文本样式
 Text(
   'Heading',
   style: AppTypography.h1,
 )
 
-// 或使用 Theme.of(context)
+// 使用字体粗细常量
+Text(
+  'Custom Text',
+  style: TextStyle(
+    fontFamily: AppTypography.fontFamily,
+    fontWeight: AppTypography.extraBold,
+    fontSize: 18,
+  ),
+)
+
+// 或使用 Theme.of(context) 访问 TextTheme
 Text(
   'Heading',
   style: Theme.of(context).textTheme.displayLarge,
 )
+
+// createTextTheme 函数用于创建 TextTheme，通常由 createLightTheme/createDarkTheme 内部调用
+// 如需自定义文本主题，可以直接调用：
+final customTextTheme = createTextTheme(color: AppColors.textPrimary);
 ```
 
 ### 使用间距和圆角
@@ -123,12 +175,40 @@ Text(
 ```dart
 import 'package:aiwa_app/theme/spacing.dart';
 
+// 基础间距
 Container(
-  padding: AppSpacing.cardInsets,
-  margin: AppSpacing.pageInsets,
+  padding: AppSpacing.cardInsets,  // EdgeInsets.all(12)
+  margin: AppSpacing.pageInsets,   // EdgeInsets.all(16)
+  child: Column(
+    children: [
+      Text('Item 1'),
+      SizedBox(height: AppSpacing.md),  // 12px
+      Text('Item 2'),
+    ],
+  ),
+)
+
+// 组件间距（Gap）
+Row(
+  children: [
+    Text('Label'),
+    SizedBox(width: AppSpacing.gapMd),  // 8px gap
+    Text('Value'),
+  ],
+)
+
+// 圆角和阴影
+Container(
   decoration: BoxDecoration(
-    borderRadius: AppRadius.cardRadius,
+    borderRadius: AppRadius.cardRadius,  // BorderRadius.all(Radius.circular(8))
     boxShadow: [AppShadows.standard],
+  ),
+)
+
+// 使用预设的 BorderRadius
+Container(
+  decoration: BoxDecoration(
+    borderRadius: AppRadius.circularLg,  // 16px 圆角
   ),
 )
 ```
@@ -144,15 +224,31 @@ Container(
 - **Text Primary**: `#FFFFFF` - 白色文本
 - **Text Invert**: `#FFFFFF` - 白色文本（反色）
 - **Text On Surface**: `#000000` - 黑色文本
+- **Neutral Light**: `#D9D9D9` - 浅灰色（用于UI组件）
 
 ### 字体 (typography.json)
 
-- **Font Family**: Inter
+**字体家族**：
+- `AppTypography.fontFamily` - "Inter"
+
+**字体粗细常量**：
+- `AppTypography.regular` - FontWeight.w400
+- `AppTypography.semiBold` - FontWeight.w600
+- `AppTypography.bold` - FontWeight.w700
+- `AppTypography.extraBold` - FontWeight.w800
+
+**预设文本样式**：
 - **H1**: 48px, ExtraBold (800)
 - **H2**: 32px, ExtraBold (800)
 - **Heading**: 24px, SemiBold (600)
+- **Subheading**: 20px, Regular (400)
 - **Body Base**: 16px, Regular (400)
+- **Body Bold**: 16px, Bold (700)
 - **Button**: 20px, ExtraBold (800)
+- **Caption**: 14px, Regular (400)
+
+**辅助函数**：
+- `createTextTheme({Color? color})` - 创建 Material 3 TextTheme，将设计 tokens 映射到 Material Design 文本样式
 
 ### 间距 (spacing.json)
 
@@ -162,13 +258,73 @@ Container(
 - **lg**: 16px
 - **xl**: 24px
 - **xxl**: 32px
+- **xxxl**: 40px
+- **huge**: 64px
+
+**Padding 预设**（用于组件内边距）：
+- **buttonPadding**: 8px
+- **cardPadding**: 12px
+- **pagePadding**: 16px
+- **sectionPadding**: 64px
+
+**EdgeInsets 预设**：
+- `AppSpacing.buttonInsets` - EdgeInsets.all(8)
+- `AppSpacing.cardInsets` - EdgeInsets.all(12)
+- `AppSpacing.pageInsets` - EdgeInsets.all(16)
+- `AppSpacing.sectionInsets` - EdgeInsets.all(64)
+
+**Gap 间距**（用于组件间距）：
+- **gapXs**: 2px
+- **gapSm**: 4px
+- **gapMd**: 8px
+- **gapLg**: 10px
+- **gapXl**: 20px
+- **gapXxl**: 28px
+- **gapXxxl**: 30px
+- **gapHuge**: 40px
+
+**方向性间距**：
+- `AppSpacing.horizontalSm/Md/Lg/Xl` - 水平方向间距
+- `AppSpacing.verticalSm/Md/Lg/Xl` - 垂直方向间距
 
 ### 圆角 (radius.json)
 
+**基础圆角值**：
 - **sm**: 8px
 - **md**: 12px
 - **lg**: 16px
+- **xl**: 24px
 - **full**: 999px
+
+**组件专用圆角**：
+- **button**: 8px
+- **card**: 8px
+- **input**: 8px
+- **dialog**: 12px
+
+**预设 BorderRadius**：
+- `AppRadius.buttonRadius` - 按钮圆角
+- `AppRadius.cardRadius` - 卡片圆角
+- `AppRadius.inputRadius` - 输入框圆角
+- `AppRadius.dialogRadius` - 对话框圆角
+- `AppRadius.circularSm` - 8px 圆角
+- `AppRadius.circularMd` - 12px 圆角
+- `AppRadius.circularLg` - 16px 圆角
+- `AppRadius.circularXl` - 24px 圆角
+- `AppRadius.circularFull` - 999px 圆角（圆形/半圆形）
+
+### 阴影 (AppShadows)
+
+**预设阴影**：
+- `AppShadows.standard` - 标准阴影 (0px 4px 4px rgba(0,0,0,0.25))
+- `AppShadows.inset` - 内阴影
+- `AppShadows.textShadow` - 文本阴影
+
+**Material Elevation 预设**：
+- `AppShadows.elevation1` - Material elevation 1
+- `AppShadows.elevation2` - Material elevation 2
+- `AppShadows.elevation3` - Material elevation 3 (等同于 standard)
+- `AppShadows.elevation4` - Material elevation 4
 
 ## 测试
 
@@ -211,7 +367,7 @@ flutter test test/tokens_schema_test.dart
 
 1. **不要使用Material原生颜色**: 禁止使用 `Colors.red`、`Colors.green`、`Colors.orange`、`Colors.black` 等
 2. **统一使用AppColors常量**: 所有颜色都通过 `AppColors.*` 或 `SemanticColors.*` 引用
-3. **阴影统一使用surfaceSecondary**: 不再使用 `Colors.black`
+3. **阴影统一使用预设**: 使用 `AppShadows.standard` 或 `AppShadows.elevation*`，不再手动创建阴影或使用 `Colors.black`
 4. **静态颜色系统**: 不再支持主题切换，所有颜色为静态常量
 5. **不要直接修改 tokens/*.json**: 这些文件应该从 Figma 自动生成
 6. **保持 Dart 常量与 JSON 同步**: 更新 JSON 后需要手动更新对应的 Dart 常量
@@ -223,21 +379,15 @@ flutter test test/tokens_schema_test.dart
 ```dart
 Widget buildScoreCard(String label, int score) {
   final Color scoreColor = score >= 80 
-    ? AppColors.brandPrimaryVariant  // 高分 - 绿色
-    : AppColors.surfaceSecondary;    // 低分/中分 - 灰色
+    ? SemanticColors.success  // 高分 - 绿色
+    : SemanticColors.error;  // 低分/中分 - 灰色
     
   return Container(
     decoration: BoxDecoration(
       color: AppColors.surfaceSecondary,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: AppRadius.cardRadius,  // 使用预设圆角
       border: Border.all(color: scoreColor, width: 2),
-      boxShadow: [
-        BoxShadow(
-          color: AppColors.surfaceSecondary.withOpacity(0.25),
-          offset: const Offset(0, 4),
-          blurRadius: 4,
-        ),
-      ],
+      boxShadow: [AppShadows.standard],  // 使用预设阴影
     ),
     child: Text(
       score.toString(),
@@ -251,19 +401,19 @@ Widget buildScoreCard(String label, int score) {
 
 ```dart
 Container(
-  padding: const EdgeInsets.all(12),
+  padding: AppSpacing.cardInsets,  // 使用预设内边距
   decoration: BoxDecoration(
-    color: AppColors.surfaceSecondary.withOpacity(0.2),
-    borderRadius: BorderRadius.circular(8),
-    border: Border.all(color: AppColors.surfaceSecondary, width: 1),
+    color: SemanticColors.warning.withOpacity(0.2),
+    borderRadius: AppRadius.cardRadius,  // 使用预设圆角
+    border: Border.all(color: SemanticColors.warning, width: 1),
   ),
   child: Row(
     children: [
-      Icon(Icons.warning, color: AppColors.surfaceSecondary, size: 20),
-      const SizedBox(width: 8),
+      Icon(Icons.warning, color: SemanticColors.warning, size: 20),
+      SizedBox(width: AppSpacing.gapSm),  // 使用预设间距
       Text(
         'Warning message',
-        style: TextStyle(color: AppColors.surfaceSecondary),
+        style: TextStyle(color: SemanticColors.warning),
       ),
     ],
   ),
@@ -274,19 +424,19 @@ Container(
 
 ```dart
 Container(
-  padding: const EdgeInsets.all(16),
+  padding: AppSpacing.pageInsets,  // 使用预设内边距
   decoration: BoxDecoration(
-    color: AppColors.surfaceSecondary.withOpacity(0.1),
-    borderRadius: BorderRadius.circular(8),
-    border: Border.all(color: AppColors.surfaceSecondary, width: 1),
+    color: SemanticColors.error.withOpacity(0.1),
+    borderRadius: AppRadius.cardRadius,  // 使用预设圆角
+    border: Border.all(color: SemanticColors.error, width: 1),
   ),
   child: Row(
     children: [
-      Icon(Icons.error, color: AppColors.surfaceSecondary, size: 24),
-      const SizedBox(width: 8),
+      Icon(Icons.error, color: SemanticColors.error, size: 24),
+      SizedBox(width: AppSpacing.gapSm),  // 使用预设间距
       Text(
         'Error message',
-        style: TextStyle(color: AppColors.surfaceSecondary),
+        style: TextStyle(color: SemanticColors.error),
       ),
     ],
   ),

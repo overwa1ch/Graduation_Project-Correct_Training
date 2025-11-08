@@ -7,7 +7,7 @@ import 'package:test/test.dart';
 
 import 'package:aiwa_core/pipeline/offline_pipeline.dart';
 import 'package:aiwa_core/pipeline/pose_input_converter.dart';
-import 'package:aiwa_core/pose/kp_models.dart';
+import 'package:aiwa_core/pose/neutral_keypoint_series.dart';
 import 'package:aiwa_core/spec/rule_models.dart';
 import 'package:aiwa_core/spec/rule_parser.dart';
 
@@ -17,8 +17,8 @@ void main() {
     final kpPath = p.join(root, 'test', 'fixtures', 'kp_sample.json');
     final rulePath = p.join(root, 'test', 'fixtures', 'squat.v1.json');
 
-    final kp = parseKeypointSeries(await File(kpPath).readAsString());
-    final poseSeries = poseSeriesFromLegacy(kp);
+    final neutralKp = parseNeutralKeypointSeries(await File(kpPath).readAsString());
+    final poseSeries = poseSeriesFromNeutral(neutralKp);
     final rs = parseRuleSet(await File(rulePath).readAsString());
     final pipe = OfflinePipeline(rs, Strictness.relaxed);
     final out = await pipe.run(poseSeries);

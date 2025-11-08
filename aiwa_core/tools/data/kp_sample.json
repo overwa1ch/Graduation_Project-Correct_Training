@@ -1,58 +1,245 @@
 {
-  "fps": 10.0,
+  "version": "vB1.1",
+  "video": {
+    "basename": "kp_sample",
+    "fpsIntended": 10.0,
+    "width": 10,
+    "height": 10,
+    "durationMs": 800
+  },
+  "engine": {
+    "name": "movenet",
+    "model": "movenet17",
+    "sdkVersion": "legacy-converted"
+  },
+  "sampling": {
+    "stride": 1,
+    "effectiveFps": 10.0
+  },
   "frames": [
     {
-      "t": 0,
-      "pts": [
-        [2.5, 1.5, 1.0], [2.4, 1.4, 1.0], [2.6, 1.4, 1.0], [2.3, 1.4, 1.0], [2.7, 1.4, 1.0], [2.0, 2.0, 1.0], [3.0, 2.0, 1.0], [2.0, 2.5, 1.0], [3.0, 2.5, 1.0], [2.0, 3.0, 1.0], [3.0, 3.0, 1.0], [2.0, 4.0, 1.0], [3.0, 4.0, 1.0], [2.0, 6.0, 1.0], [3.0, 6.0, 1.0], [2.0, 8.0, 1.0], [3.0, 8.0, 1.0]
+      "frameIndex": 0,
+      "timestampMs": 0,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name": "nose", "x": 0.25, "y": 0.15, "score": 1.0},
+        {"name": "leftEye", "x": 0.24, "y": 0.14, "score": 1.0},
+        {"name": "rightEye", "x": 0.26, "y": 0.14, "score": 1.0},
+        {"name": "leftEar", "x": 0.23, "y": 0.14, "score": 1.0},
+        {"name": "rightEar", "x": 0.27, "y": 0.14, "score": 1.0},
+        {"name": "leftShoulder", "x": 0.2, "y": 0.2, "score": 1.0},
+        {"name": "rightShoulder", "x": 0.3, "y": 0.2, "score": 1.0},
+        {"name": "leftElbow", "x": 0.2, "y": 0.25, "score": 1.0},
+        {"name": "rightElbow", "x": 0.3, "y": 0.25, "score": 1.0},
+        {"name": "leftWrist", "x": 0.2, "y": 0.3, "score": 1.0},
+        {"name": "rightWrist", "x": 0.3, "y": 0.3, "score": 1.0},
+        {"name": "leftHip", "x": 0.2, "y": 0.4, "score": 1.0},
+        {"name": "rightHip", "x": 0.3, "y": 0.4, "score": 1.0},
+        {"name": "leftKnee", "x": 0.2, "y": 0.6, "score": 1.0},
+        {"name": "rightKnee", "x": 0.3, "y": 0.6, "score": 1.0},
+        {"name": "leftAnkle", "x": 0.2, "y": 0.8, "score": 1.0},
+        {"name": "rightAnkle", "x": 0.3, "y": 0.8, "score": 1.0}
       ]
     },
     {
-      "t": 100,
-      "pts": [
-        [2.5, 1.5, 1.0], [2.4, 1.4, 1.0], [2.6, 1.4, 1.0], [2.3, 1.4, 1.0], [2.7, 1.4, 1.0], [2.0, 2.0, 1.0], [3.0, 2.0, 1.0], [2.0, 2.5, 1.0], [3.0, 2.5, 1.0], [2.0, 3.0, 1.0], [3.0, 3.0, 1.0], [2.0, 4.0, 1.0], [3.0, 4.0, 1.0], [2.0, 6.0, 1.0], [3.0, 6.0, 1.0], [2.25, 7.45595, 1.0], [3.25, 7.45595, 1.0]
+      "frameIndex": 1,
+      "timestampMs": 100,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name": "nose", "x": 0.25, "y": 0.15, "score": 1.0},
+        {"name": "leftEye", "x": 0.24, "y": 0.14, "score": 1.0},
+        {"name": "rightEye", "x": 0.26, "y": 0.14, "score": 1.0},
+        {"name": "leftEar", "x": 0.23, "y": 0.14, "score": 1.0},
+        {"name": "rightEar", "x": 0.27, "y": 0.14, "score": 1.0},
+        {"name": "leftShoulder", "x": 0.2, "y": 0.2, "score": 1.0},
+        {"name": "rightShoulder", "x": 0.3, "y": 0.2, "score": 1.0},
+        {"name": "leftElbow", "x": 0.2, "y": 0.25, "score": 1.0},
+        {"name": "rightElbow", "x": 0.3, "y": 0.25, "score": 1.0},
+        {"name": "leftWrist", "x": 0.2, "y": 0.3, "score": 1.0},
+        {"name": "rightWrist", "x": 0.3, "y": 0.3, "score": 1.0},
+        {"name": "leftHip", "x": 0.2, "y": 0.4, "score": 1.0},
+        {"name": "rightHip", "x": 0.3, "y": 0.4, "score": 1.0},
+        {"name": "leftKnee", "x": 0.2, "y": 0.6, "score": 1.0},
+        {"name": "rightKnee", "x": 0.3, "y": 0.6, "score": 1.0},
+        {"name": "leftAnkle", "x": 0.225, "y": 0.745595, "score": 1.0},
+        {"name": "rightAnkle", "x": 0.325, "y": 0.745595, "score": 1.0}
       ]
     },
     {
-      "t": 200,
-      "pts": [
-        [2.5, 1.5, 1.0], [2.4, 1.4, 1.0], [2.6, 1.4, 1.0], [2.3, 1.4, 1.0], [2.7, 1.4, 1.0], [2.0, 2.0, 1.0], [3.0, 2.0, 1.0], [2.0, 2.5, 1.0], [3.0, 2.5, 1.0], [2.0, 3.0, 1.0], [3.0, 3.0, 1.0], [2.0, 4.0, 1.0], [3.0, 4.0, 1.0], [2.0, 6.0, 1.0], [3.0, 6.0, 1.0], [2.5, 6.9119, 1.0], [3.5, 6.9119, 1.0]
+      "frameIndex": 2,
+      "timestampMs": 200,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name": "nose", "x": 0.25, "y": 0.15, "score": 1.0},
+        {"name": "leftEye", "x": 0.24, "y": 0.14, "score": 1.0},
+        {"name": "rightEye", "x": 0.26, "y": 0.14, "score": 1.0},
+        {"name": "leftEar", "x": 0.23, "y": 0.14, "score": 1.0},
+        {"name": "rightEar", "x": 0.27, "y": 0.14, "score": 1.0},
+        {"name": "leftShoulder", "x": 0.2, "y": 0.2, "score": 1.0},
+        {"name": "rightShoulder", "x": 0.3, "y": 0.2, "score": 1.0},
+        {"name": "leftElbow", "x": 0.2, "y": 0.25, "score": 1.0},
+        {"name": "rightElbow", "x": 0.3, "y": 0.25, "score": 1.0},
+        {"name": "leftWrist", "x": 0.2, "y": 0.3, "score": 1.0},
+        {"name": "rightWrist", "x": 0.3, "y": 0.3, "score": 1.0},
+        {"name": "leftHip", "x": 0.2, "y": 0.4, "score": 1.0},
+        {"name": "rightHip", "x": 0.3, "y": 0.4, "score": 1.0},
+        {"name": "leftKnee", "x": 0.2, "y": 0.6, "score": 1.0},
+        {"name": "rightKnee", "x": 0.3, "y": 0.6, "score": 1.0},
+        {"name": "leftAnkle", "x": 0.25, "y": 0.69119, "score": 1.0},
+        {"name": "rightAnkle", "x": 0.35, "y": 0.69119, "score": 1.0}
       ]
     },
     {
-      "t": 300,
-      "pts": [
-        [2.5, 1.5, 1.0], [2.4, 1.4, 1.0], [2.6, 1.4, 1.0], [2.3, 1.4, 1.0], [2.7, 1.4, 1.0], [2.0, 2.0, 1.0], [3.0, 2.0, 1.0], [2.0, 2.5, 1.0], [3.0, 2.5, 1.0], [2.0, 3.0, 1.0], [3.0, 3.0, 1.0], [2.0, 4.0, 1.0], [3.0, 4.0, 1.0], [2.0, 6.0, 1.0], [3.0, 6.0, 1.0], [2.75, 6.36785, 1.0], [3.75, 6.36785, 1.0]
+      "frameIndex": 3,
+      "timestampMs": 300,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name": "nose", "x": 0.25, "y": 0.15, "score": 1.0},
+        {"name": "leftEye", "x": 0.24, "y": 0.14, "score": 1.0},
+        {"name": "rightEye", "x": 0.26, "y": 0.14, "score": 1.0},
+        {"name": "leftEar", "x": 0.23, "y": 0.14, "score": 1.0},
+        {"name": "rightEar", "x": 0.27, "y": 0.14, "score": 1.0},
+        {"name": "leftShoulder", "x": 0.2, "y": 0.2, "score": 1.0},
+        {"name": "rightShoulder", "x": 0.3, "y": 0.2, "score": 1.0},
+        {"name": "leftElbow", "x": 0.2, "y": 0.25, "score": 1.0},
+        {"name": "rightElbow", "x": 0.3, "y": 0.25, "score": 1.0},
+        {"name": "leftWrist", "x": 0.2, "y": 0.3, "score": 1.0},
+        {"name": "rightWrist", "x": 0.3, "y": 0.3, "score": 1.0},
+        {"name": "leftHip", "x": 0.2, "y": 0.4, "score": 1.0},
+        {"name": "rightHip", "x": 0.3, "y": 0.4, "score": 1.0},
+        {"name": "leftKnee", "x": 0.2, "y": 0.6, "score": 1.0},
+        {"name": "rightKnee", "x": 0.3, "y": 0.6, "score": 1.0},
+        {"name": "leftAnkle", "x": 0.275, "y": 0.636785, "score": 1.0},
+        {"name": "rightAnkle", "x": 0.375, "y": 0.636785, "score": 1.0}
       ]
     },
     {
-      "t": 400,
-      "pts": [
-        [2.5, 1.5, 1.0], [2.4, 1.4, 1.0], [2.6, 1.4, 1.0], [2.3, 1.4, 1.0], [2.7, 1.4, 1.0], [2.0, 2.0, 1.0], [3.0, 2.0, 1.0], [2.0, 2.5, 1.0], [3.0, 2.5, 1.0], [2.0, 3.0, 1.0], [3.0, 3.0, 1.0], [2.0, 4.0, 1.0], [3.0, 4.0, 1.0], [2.0, 6.0, 1.0], [3.0, 6.0, 1.0], [3.0, 5.8238, 1.0], [4.0, 5.8238, 1.0]
+      "frameIndex": 4,
+      "timestampMs": 400,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name": "nose", "x": 0.25, "y": 0.15, "score": 1.0},
+        {"name": "leftEye", "x": 0.24, "y": 0.14, "score": 1.0},
+        {"name": "rightEye", "x": 0.26, "y": 0.14, "score": 1.0},
+        {"name": "leftEar", "x": 0.23, "y": 0.14, "score": 1.0},
+        {"name": "rightEar", "x": 0.27, "y": 0.14, "score": 1.0},
+        {"name": "leftShoulder", "x": 0.2, "y": 0.2, "score": 1.0},
+        {"name": "rightShoulder", "x": 0.3, "y": 0.2, "score": 1.0},
+        {"name": "leftElbow", "x": 0.2, "y": 0.25, "score": 1.0},
+        {"name": "rightElbow", "x": 0.3, "y": 0.25, "score": 1.0},
+        {"name": "leftWrist", "x": 0.2, "y": 0.3, "score": 1.0},
+        {"name": "rightWrist", "x": 0.3, "y": 0.3, "score": 1.0},
+        {"name": "leftHip", "x": 0.2, "y": 0.4, "score": 1.0},
+        {"name": "rightHip", "x": 0.3, "y": 0.4, "score": 1.0},
+        {"name": "leftKnee", "x": 0.2, "y": 0.6, "score": 1.0},
+        {"name": "rightKnee", "x": 0.3, "y": 0.6, "score": 1.0},
+        {"name": "leftAnkle", "x": 0.3, "y": 0.58238, "score": 1.0},
+        {"name": "rightAnkle", "x": 0.4, "y": 0.58238, "score": 1.0}
       ]
     },
     {
-      "t": 500,
-      "pts": [
-        [2.5, 1.5, 1.0], [2.4, 1.4, 1.0], [2.6, 1.4, 1.0], [2.3, 1.4, 1.0], [2.7, 1.4, 1.0], [2.0, 2.0, 1.0], [3.0, 2.0, 1.0], [2.0, 2.5, 1.0], [3.0, 2.5, 1.0], [2.0, 3.0, 1.0], [3.0, 3.0, 1.0], [2.0, 4.0, 1.0], [3.0, 4.0, 1.0], [2.0, 6.0, 1.0], [3.0, 6.0, 1.0], [2.75, 6.36785, 1.0], [3.75, 6.36785, 1.0]
+      "frameIndex": 5,
+      "timestampMs": 500,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name": "nose", "x": 0.25, "y": 0.15, "score": 1.0},
+        {"name": "leftEye", "x": 0.24, "y": 0.14, "score": 1.0},
+        {"name": "rightEye", "x": 0.26, "y": 0.14, "score": 1.0},
+        {"name": "leftEar", "x": 0.23, "y": 0.14, "score": 1.0},
+        {"name": "rightEar", "x": 0.27, "y": 0.14, "score": 1.0},
+        {"name": "leftShoulder", "x": 0.2, "y": 0.2, "score": 1.0},
+        {"name": "rightShoulder", "x": 0.3, "y": 0.2, "score": 1.0},
+        {"name": "leftElbow", "x": 0.2, "y": 0.25, "score": 1.0},
+        {"name": "rightElbow", "x": 0.3, "y": 0.25, "score": 1.0},
+        {"name": "leftWrist", "x": 0.2, "y": 0.3, "score": 1.0},
+        {"name": "rightWrist", "x": 0.3, "y": 0.3, "score": 1.0},
+        {"name": "leftHip", "x": 0.2, "y": 0.4, "score": 1.0},
+        {"name": "rightHip", "x": 0.3, "y": 0.4, "score": 1.0},
+        {"name": "leftKnee", "x": 0.2, "y": 0.6, "score": 1.0},
+        {"name": "rightKnee", "x": 0.3, "y": 0.6, "score": 1.0},
+        {"name": "leftAnkle", "x": 0.275, "y": 0.636785, "score": 1.0},
+        {"name": "rightAnkle", "x": 0.375, "y": 0.636785, "score": 1.0}
       ]
     },
     {
-      "t": 600,
-      "pts": [
-        [2.5, 1.5, 1.0], [2.4, 1.4, 1.0], [2.6, 1.4, 1.0], [2.3, 1.4, 1.0], [2.7, 1.4, 1.0], [2.0, 2.0, 1.0], [3.0, 2.0, 1.0], [2.0, 2.5, 1.0], [3.0, 2.5, 1.0], [2.0, 3.0, 1.0], [3.0, 3.0, 1.0], [2.0, 4.0, 1.0], [3.0, 4.0, 1.0], [2.0, 6.0, 1.0], [3.0, 6.0, 1.0], [2.5, 6.9119, 1.0], [3.5, 6.9119, 1.0]
+      "frameIndex": 6,
+      "timestampMs": 600,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name": "nose", "x": 0.25, "y": 0.15, "score": 1.0},
+        {"name": "leftEye", "x": 0.24, "y": 0.14, "score": 1.0},
+        {"name": "rightEye", "x": 0.26, "y": 0.14, "score": 1.0},
+        {"name": "leftEar", "x": 0.23, "y": 0.14, "score": 1.0},
+        {"name": "rightEar", "x": 0.27, "y": 0.14, "score": 1.0},
+        {"name": "leftShoulder", "x": 0.2, "y": 0.2, "score": 1.0},
+        {"name": "rightShoulder", "x": 0.3, "y": 0.2, "score": 1.0},
+        {"name": "leftElbow", "x": 0.2, "y": 0.25, "score": 1.0},
+        {"name": "rightElbow", "x": 0.3, "y": 0.25, "score": 1.0},
+        {"name": "leftWrist", "x": 0.2, "y": 0.3, "score": 1.0},
+        {"name": "rightWrist", "x": 0.3, "y": 0.3, "score": 1.0},
+        {"name": "leftHip", "x": 0.2, "y": 0.4, "score": 1.0},
+        {"name": "rightHip", "x": 0.3, "y": 0.4, "score": 1.0},
+        {"name": "leftKnee", "x": 0.2, "y": 0.6, "score": 1.0},
+        {"name": "rightKnee", "x": 0.3, "y": 0.6, "score": 1.0},
+        {"name": "leftAnkle", "x": 0.25, "y": 0.69119, "score": 1.0},
+        {"name": "rightAnkle", "x": 0.35, "y": 0.69119, "score": 1.0}
       ]
     },
     {
-      "t": 700,
-      "pts": [
-        [2.5, 1.5, 1.0], [2.4, 1.4, 1.0], [2.6, 1.4, 1.0], [2.3, 1.4, 1.0], [2.7, 1.4, 1.0], [2.0, 2.0, 1.0], [3.0, 2.0, 1.0], [2.0, 2.5, 1.0], [3.0, 2.5, 1.0], [2.0, 3.0, 1.0], [3.0, 3.0, 1.0], [2.0, 4.0, 1.0], [3.0, 4.0, 1.0], [2.0, 6.0, 1.0], [3.0, 6.0, 1.0], [2.25, 7.45595, 1.0], [3.25, 7.45595, 1.0]
+      "frameIndex": 7,
+      "timestampMs": 700,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name": "nose", "x": 0.25, "y": 0.15, "score": 1.0},
+        {"name": "leftEye", "x": 0.24, "y": 0.14, "score": 1.0},
+        {"name": "rightEye", "x": 0.26, "y": 0.14, "score": 1.0},
+        {"name": "leftEar", "x": 0.23, "y": 0.14, "score": 1.0},
+        {"name": "rightEar", "x": 0.27, "y": 0.14, "score": 1.0},
+        {"name": "leftShoulder", "x": 0.2, "y": 0.2, "score": 1.0},
+        {"name": "rightShoulder", "x": 0.3, "y": 0.2, "score": 1.0},
+        {"name": "leftElbow", "x": 0.2, "y": 0.25, "score": 1.0},
+        {"name": "rightElbow", "x": 0.3, "y": 0.25, "score": 1.0},
+        {"name": "leftWrist", "x": 0.2, "y": 0.3, "score": 1.0},
+        {"name": "rightWrist", "x": 0.3, "y": 0.3, "score": 1.0},
+        {"name": "leftHip", "x": 0.2, "y": 0.4, "score": 1.0},
+        {"name": "rightHip", "x": 0.3, "y": 0.4, "score": 1.0},
+        {"name": "leftKnee", "x": 0.2, "y": 0.6, "score": 1.0},
+        {"name": "rightKnee", "x": 0.3, "y": 0.6, "score": 1.0},
+        {"name": "leftAnkle", "x": 0.225, "y": 0.745595, "score": 1.0},
+        {"name": "rightAnkle", "x": 0.325, "y": 0.745595, "score": 1.0}
       ]
     },
     {
-      "t": 800,
-      "pts": [
-        [2.5, 1.5, 1.0], [2.4, 1.4, 1.0], [2.6, 1.4, 1.0], [2.3, 1.4, 1.0], [2.7, 1.4, 1.0], [2.0, 2.0, 1.0], [3.0, 2.0, 1.0], [2.0, 2.5, 1.0], [3.0, 2.5, 1.0], [2.0, 3.0, 1.0], [3.0, 3.0, 1.0], [2.0, 4.0, 1.0], [3.0, 4.0, 1.0], [2.0, 6.0, 1.0], [3.0, 6.0, 1.0], [2.0, 8.0, 1.0], [3.0, 8.0, 1.0]
+      "frameIndex": 8,
+      "timestampMs": 800,
+      "lowConfidence": false,
+      "mirrorApplied": false,
+      "keypoints": [
+        {"name": "nose", "x": 0.25, "y": 0.15, "score": 1.0},
+        {"name": "leftEye", "x": 0.24, "y": 0.14, "score": 1.0},
+        {"name": "rightEye", "x": 0.26, "y": 0.14, "score": 1.0},
+        {"name": "leftEar", "x": 0.23, "y": 0.14, "score": 1.0},
+        {"name": "rightEar", "x": 0.27, "y": 0.14, "score": 1.0},
+        {"name": "leftShoulder", "x": 0.2, "y": 0.2, "score": 1.0},
+        {"name": "rightShoulder", "x": 0.3, "y": 0.2, "score": 1.0},
+        {"name": "leftElbow", "x": 0.2, "y": 0.25, "score": 1.0},
+        {"name": "rightElbow", "x": 0.3, "y": 0.25, "score": 1.0},
+        {"name": "leftWrist", "x": 0.2, "y": 0.3, "score": 1.0},
+        {"name": "rightWrist", "x": 0.3, "y": 0.3, "score": 1.0},
+        {"name": "leftHip", "x": 0.2, "y": 0.4, "score": 1.0},
+        {"name": "rightHip", "x": 0.3, "y": 0.4, "score": 1.0},
+        {"name": "leftKnee", "x": 0.2, "y": 0.6, "score": 1.0},
+        {"name": "rightKnee", "x": 0.3, "y": 0.6, "score": 1.0},
+        {"name": "leftAnkle", "x": 0.2, "y": 0.8, "score": 1.0},
+        {"name": "rightAnkle", "x": 0.3, "y": 0.8, "score": 1.0}
       ]
     }
   ]

@@ -23,10 +23,10 @@
 //   print('Event: ${event['event']}, sessionId: ${event['sessionId']}');
 // }
 //
-// // 2) 从 CLI 子进程
+// // 2) 从外部进程（如果有独立的分析工具）
 // final stream = analysisEventsFromCli(
 //   dartBin: 'dart',
-//   args: ['run', 'aiwa_cli/bin/aiwa_cli.dart', '--input', videoPath, '--out', sessionRoot],
+//   args: ['run', 'some_analyzer.dart', '--input', videoPath, '--out', sessionRoot],
 //   warmupTimeout: Duration(seconds: 10),
 // );
 //

@@ -3,8 +3,8 @@ import 'dart:math' as math;
 import '../core/errors.dart';
 import '../core/perf_timer.dart';
 import '../core/rounding.dart';
-import '../math/angles.dart';
-import '../math/one_euro.dart';
+import '../core/angles.dart';
+import '../core/one_euro.dart';
 import '../pose/keypoint_names.dart';
 import 'pose_series.dart';
 import '../result/csv_export.dart';
@@ -29,35 +29,20 @@ class OfflinePipeline {
     final filteredPts = _filterKeypoints(series);
     timer?.lap('filtering');
     
-    // 🔍 诊断：统计过滤后的关键点检测情况
-    _diagnoseFilteredKeypoints(filteredPts, series.frames);
-    
     final rawAngles = _computeAngles(filteredPts);
     timer?.lap('angles');
-
-    // 🔍 诊断：统计角度计算结果
-    final kneeLValidCount = rawAngles.kneeL.where((v) => v != null).length;
-    final kneeRValidCount = rawAngles.kneeR.where((v) => v != null).length;
-    final trunkValidCount = rawAngles.trunk.where((v) => v != null).length;
-    print('[OfflinePipeline] 🔍 Angle computation results:');
-    print('[OfflinePipeline] 🔍   Total frames: ${rawAngles.kneeL.length}');
-    print('[OfflinePipeline] 🔍   Left knee valid: $kneeLValidCount (${(kneeLValidCount / rawAngles.kneeL.length * 100).toStringAsFixed(1)}%)');
-    print('[OfflinePipeline] 🔍   Right knee valid: $kneeRValidCount (${(kneeRValidCount / rawAngles.kneeR.length * 100).toStringAsFixed(1)}%)');
-    print('[OfflinePipeline] 🔍   Trunk valid: $trunkValidCount (${(trunkValidCount / rawAngles.trunk.length * 100).toStringAsFixed(1)}%)');
 
     final hasAnyKnee = rawAngles.kneeL.any((v) => v != null) ||
         rawAngles.kneeR.any((v) => v != null);
     if (!hasAnyKnee) {
-      // 🔍 详细诊断：为什么没有knee angles
-      _diagnoseKneeAngleFailure(series.frames, filteredPts, rawAngles);
-      throw AngleComputeFailed('No valid knee angles available for analysis.');
+      throw AngleComputeFailed(
+          'No valid knee angles available: ensure lower body keypoints (hip, knee, ankle) are detected.');
     }
 
     final hasTrunk = rawAngles.trunk.any((v) => v != null);
     if (!hasTrunk) {
-      // 🔍 详细诊断：为什么没有trunk angles
-      _diagnoseTrunkAngleFailure(series.frames, filteredPts, rawAngles);
-      throw AngleComputeFailed('No valid trunk angles available for analysis.');
+      throw AngleComputeFailed(
+          'No valid trunk angles available: ensure shoulder and hip keypoints are detected.');
     }
 
     final angles = _smoothAngles(series.fps, rawAngles);
@@ -241,44 +226,32 @@ class OfflinePipeline {
     final issues = issuesCollector.toList();
 
     final weights = rules.scoreWeights;
-    print('[OfflinePipeline] 📊 Computing scores: strictness=${strictness.value}');
-    print('[OfflinePipeline] 📊 reps.length=${reps.length}, qualifiedRepMetrics.length=${qualifiedRepMetrics.length}');
     
     final scores = qualifiedRepMetrics.isEmpty
-        ? (() {
-            print('[OfflinePipeline] 📊 Using _computeScoresNoReps (no qualified reps)');
-            final computed = _computeScoresNoReps(
-              mainKnee: mainKnee,
-              trunk: angles.trunk,
-              trunkThreshold:
-                  strictness == Strictness.strict ? trunkStrict : trunkRelaxed,
-              allReps: reps,
-              depthTarget: minValley.toDouble(),
-              detectionThreshold: detectionThreshold.toDouble(),
-              tempoEccentric: tempoEccentric,
-              tempoRatio: tempoRatio,
-              weights: weights,
-            );
-            print('[OfflinePipeline] 📊 _computeScoresNoReps result: $computed');
-            return computed;
-          })()
-        : (() {
-            print('[OfflinePipeline] 📊 Using _computeScores (${qualifiedRepMetrics.length} qualified reps)');
-            final computed = _computeScores(
-              repMetrics: qualifiedRepMetrics,
-              depthStrict: depthStrict,
-              depthRelaxed: depthRelaxed,
-              trunkStrict: trunkStrict,
-              trunkRelaxed: trunkRelaxed,
-              kneeOutStrict: kneeOutStrict,
-              kneeOutRelaxed: kneeOutRelaxed,
-              tempoEccentric: tempoEccentric,
-              tempoRatio: tempoRatio,
-              weights: weights,
-            );
-            print('[OfflinePipeline] 📊 _computeScores result: $computed');
-            return computed;
-          })();
+        ? _computeScoresNoReps(
+            mainKnee: mainKnee,
+            trunk: angles.trunk,
+            trunkThreshold:
+                strictness == Strictness.strict ? trunkStrict : trunkRelaxed,
+            allReps: reps,
+            depthTarget: minValley.toDouble(),
+            detectionThreshold: detectionThreshold.toDouble(),
+            tempoEccentric: tempoEccentric,
+            tempoRatio: tempoRatio,
+            weights: weights,
+          )
+        : _computeScores(
+            repMetrics: qualifiedRepMetrics,
+            depthStrict: depthStrict,
+            depthRelaxed: depthRelaxed,
+            trunkStrict: trunkStrict,
+            trunkRelaxed: trunkRelaxed,
+            kneeOutStrict: kneeOutStrict,
+            kneeOutRelaxed: kneeOutRelaxed,
+            tempoEccentric: tempoEccentric,
+            tempoRatio: tempoRatio,
+            weights: weights,
+          );
 
     final feedback = _generateFeedback(
       strictness: strictness,
@@ -287,10 +260,6 @@ class OfflinePipeline {
       targetAngle: minValley.toDouble(),
       detectionThreshold: detectionThreshold.toDouble(),
     );
-
-    print('[OfflinePipeline] 📝 Building resultJson');
-    print('[OfflinePipeline] 📝 meta.strictness: ${strictness.value}');
-    print('[OfflinePipeline] 📝 scores to write: $scores');
     
     final resultJson = <String, dynamic>{
       'meta': {
@@ -944,8 +913,8 @@ double? _kneeOutAngle(
     }
     final thigh = V2(kneePt.x - hipPt.x, kneePt.y - hipPt.y);
     final shank = V2(anklePt.x - kneePt.x, anklePt.y - kneePt.y);
-    final thighDeg = _angleFromVertical(thigh);
-    final shankDeg = _angleFromVertical(shank);
+    final thighDeg = angleFromVertical(thigh);
+    final shankDeg = angleFromVertical(shank);
     return (thighDeg + shankDeg) / 2.0;
   } catch (_) {
     return null;
@@ -978,13 +947,6 @@ double? _trunkAngle(Map<String, _PoseCoord?> pts) {
   }
 }
 
-double _angleFromVertical(V2 v) {
-  final n = math.sqrt(v.x * v.x + v.y * v.y);
-  if (n == 0) throw StateError('Zero-length vector');
-  final cosv = (v.y / n).clamp(-1.0, 1.0);
-  final deg = math.acos(cosv) * 180.0 / math.pi;
-  return deg <= 90 ? deg : 180 - deg;
-}
 
 List<Map<String, _PoseCoord?>> _filterKeypoints(PoseSeries series) {
   final frameCount = series.frames.length;
@@ -1033,164 +995,6 @@ List<Map<String, _PoseCoord?>> _filterKeypoints(PoseSeries series) {
   }
 
   return frames;
-}
-
-/// 诊断过滤后的关键点检测情况
-void _diagnoseFilteredKeypoints(
-  List<Map<String, _PoseCoord?>> filteredPts,
-  List<PoseFrame> originalFrames,
-) {
-  if (filteredPts.isEmpty) {
-    print('[OfflinePipeline] 🔍 ⚠️  No filtered points available');
-    return;
-  }
-
-  final requiredJoints = [kLeftHip, kLeftKnee, kLeftAnkle, kRightHip, kRightKnee, kRightAnkle];
-  final stats = <String, int>{};
-  
-  for (final joint in requiredJoints) {
-    stats[joint] = 0;
-  }
-
-  // 统计过滤后的关键点
-  for (final pts in filteredPts) {
-    for (final joint in requiredJoints) {
-      if (pts[joint] != null) {
-        stats[joint] = (stats[joint] ?? 0) + 1;
-      }
-    }
-  }
-
-  // 统计原始关键点的置信度
-  final originalStats = <String, Map<String, dynamic>>{};
-  for (final joint in requiredJoints) {
-    originalStats[joint] = {'detected': 0, 'reliable': 0, 'totalScore': 0.0};
-  }
-
-  for (final frame in originalFrames) {
-    for (final joint in requiredJoints) {
-      final kp = frame.keypoints[joint];
-      if (kp != null) {
-        originalStats[joint]!['detected'] = (originalStats[joint]!['detected'] as int) + 1;
-        originalStats[joint]!['totalScore'] = (originalStats[joint]!['totalScore'] as double) + kp.score;
-        if (kp.isReliable) {
-          originalStats[joint]!['reliable'] = (originalStats[joint]!['reliable'] as int) + 1;
-        }
-      }
-    }
-  }
-
-  print('[OfflinePipeline] 🔍 Filtered keypoints statistics:');
-  print('[OfflinePipeline] 🔍   Total frames: ${filteredPts.length}');
-  for (final joint in requiredJoints) {
-    final filteredCount = stats[joint] ?? 0;
-    final filteredPercent = (filteredCount / filteredPts.length * 100).toStringAsFixed(1);
-    final orig = originalStats[joint]!;
-    final origDetected = orig['detected'] as int;
-    final origReliable = orig['reliable'] as int;
-    final avgScore = origDetected > 0 ? (orig['totalScore'] as double) / origDetected : 0.0;
-    final reliablePercent = originalFrames.isNotEmpty ? (origReliable / originalFrames.length * 100).toStringAsFixed(1) : '0.0';
-    
-    print('[OfflinePipeline] 🔍   $joint:');
-    print('[OfflinePipeline] 🔍     Original: detected=$origDetected/${originalFrames.length}, reliable=$origReliable (${reliablePercent}%), avgScore=${avgScore.toStringAsFixed(3)}');
-    print('[OfflinePipeline] 🔍     Filtered: $filteredCount/${filteredPts.length} (${filteredPercent}%)');
-  }
-}
-
-/// 诊断knee角度计算失败的原因
-void _diagnoseKneeAngleFailure(
-  List<PoseFrame> frames,
-  List<Map<String, _PoseCoord?>> filteredPts,
-  ({List<double?> kneeL, List<double?> kneeR, List<double?> trunk}) rawAngles,
-) {
-  print('[OfflinePipeline] 🔍 ⚠️  Knee angle computation failure diagnosis:');
-  print('[OfflinePipeline] 🔍   Total frames: ${frames.length}');
-  print('[OfflinePipeline] 🔍   Left knee angles: ${rawAngles.kneeL.where((v) => v != null).length}/${rawAngles.kneeL.length} valid');
-  print('[OfflinePipeline] 🔍   Right knee angles: ${rawAngles.kneeR.where((v) => v != null).length}/${rawAngles.kneeR.length} valid');
-  
-  // 检查前5个失败的帧
-  int failureSampleCount = 0;
-  const maxSamples = 5;
-  
-  for (var i = 0; i < filteredPts.length && failureSampleCount < maxSamples; i++) {
-    final pts = filteredPts[i];
-    final leftKneeAngle = rawAngles.kneeL[i];
-    final rightKneeAngle = rawAngles.kneeR[i];
-    
-    if (leftKneeAngle == null && rightKneeAngle == null) {
-      failureSampleCount++;
-      final frame = i < frames.length ? frames[i] : null;
-      final missingLeft = <String>[];
-      final missingRight = <String>[];
-      
-      if (pts[kLeftHip] == null) missingLeft.add('leftHip');
-      if (pts[kLeftKnee] == null) missingLeft.add('leftKnee');
-      if (pts[kLeftAnkle] == null) missingLeft.add('leftAnkle');
-      
-      if (pts[kRightHip] == null) missingRight.add('rightHip');
-      if (pts[kRightKnee] == null) missingRight.add('rightKnee');
-      if (pts[kRightAnkle] == null) missingRight.add('rightAnkle');
-      
-      print('[OfflinePipeline] 🔍   Frame $i failure:');
-      if (frame != null) {
-        final leftHipKp = frame.keypoints[kLeftHip];
-        final leftKneeKp = frame.keypoints[kLeftKnee];
-        final leftAnkleKp = frame.keypoints[kLeftAnkle];
-        final rightHipKp = frame.keypoints[kRightHip];
-        final rightKneeKp = frame.keypoints[kRightKnee];
-        final rightAnkleKp = frame.keypoints[kRightAnkle];
-        
-        print('[OfflinePipeline] 🔍     Left side: hip=${leftHipKp?.score.toStringAsFixed(3) ?? "null"} (reliable=${leftHipKp?.isReliable ?? false}), knee=${leftKneeKp?.score.toStringAsFixed(3) ?? "null"} (reliable=${leftKneeKp?.isReliable ?? false}), ankle=${leftAnkleKp?.score.toStringAsFixed(3) ?? "null"} (reliable=${leftAnkleKp?.isReliable ?? false})');
-        print('[OfflinePipeline] 🔍     Right side: hip=${rightHipKp?.score.toStringAsFixed(3) ?? "null"} (reliable=${rightHipKp?.isReliable ?? false}), knee=${rightKneeKp?.score.toStringAsFixed(3) ?? "null"} (reliable=${rightKneeKp?.isReliable ?? false}), ankle=${rightAnkleKp?.score.toStringAsFixed(3) ?? "null"} (reliable=${rightAnkleKp?.isReliable ?? false})');
-      }
-      print('[OfflinePipeline] 🔍     Missing after filter: left=[${missingLeft.join(", ")}], right=[${missingRight.join(", ")}]');
-    }
-  }
-}
-
-/// 诊断trunk角度计算失败的原因
-void _diagnoseTrunkAngleFailure(
-  List<PoseFrame> frames,
-  List<Map<String, _PoseCoord?>> filteredPts,
-  ({List<double?> kneeL, List<double?> kneeR, List<double?> trunk}) rawAngles,
-) {
-  print('[OfflinePipeline] 🔍 ⚠️  Trunk angle computation failure diagnosis:');
-  print('[OfflinePipeline] 🔍   Total frames: ${frames.length}');
-  print('[OfflinePipeline] 🔍   Trunk angles: ${rawAngles.trunk.where((v) => v != null).length}/${rawAngles.trunk.length} valid');
-  
-  // 检查前5个失败的帧
-  int failureSampleCount = 0;
-  const maxSamples = 5;
-  
-  for (var i = 0; i < filteredPts.length && failureSampleCount < maxSamples; i++) {
-    final pts = filteredPts[i];
-    final trunkAngle = rawAngles.trunk[i];
-    
-    if (trunkAngle == null) {
-      failureSampleCount++;
-      final frame = i < frames.length ? frames[i] : null;
-      final missing = <String>[];
-      
-      if (pts[kLeftShoulder] == null) missing.add('leftShoulder');
-      if (pts[kRightShoulder] == null) missing.add('rightShoulder');
-      if (pts[kLeftHip] == null) missing.add('leftHip');
-      if (pts[kRightHip] == null) missing.add('rightHip');
-      
-      print('[OfflinePipeline] 🔍   Frame $i failure:');
-      if (frame != null) {
-        final leftShoulderKp = frame.keypoints[kLeftShoulder];
-        final rightShoulderKp = frame.keypoints[kRightShoulder];
-        final leftHipKp = frame.keypoints[kLeftHip];
-        final rightHipKp = frame.keypoints[kRightHip];
-        
-        print('[OfflinePipeline] 🔍     Left shoulder: ${leftShoulderKp?.score.toStringAsFixed(3) ?? "null"} (reliable=${leftShoulderKp?.isReliable ?? false})');
-        print('[OfflinePipeline] 🔍     Right shoulder: ${rightShoulderKp?.score.toStringAsFixed(3) ?? "null"} (reliable=${rightShoulderKp?.isReliable ?? false})');
-        print('[OfflinePipeline] 🔍     Left hip: ${leftHipKp?.score.toStringAsFixed(3) ?? "null"} (reliable=${leftHipKp?.isReliable ?? false})');
-        print('[OfflinePipeline] 🔍     Right hip: ${rightHipKp?.score.toStringAsFixed(3) ?? "null"} (reliable=${rightHipKp?.isReliable ?? false})');
-      }
-      print('[OfflinePipeline] 🔍     Missing after filter: [${missing.join(", ")}]');
-    }
-  }
 }
 
 List<_PoseCoord?> _interpolateCoords(List<_PoseCoord?> values,

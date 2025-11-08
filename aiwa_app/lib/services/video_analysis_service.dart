@@ -967,42 +967,6 @@ class VideoAnalysisService {
     );
   }
 
-  /// NeutralKeypointSeries 转 JSON
-  static Map<String, dynamic> _neutralSeriesToJson(NeutralKeypointSeries series) {
-    return {
-      'version': series.version,
-      'video': {
-        'basename': series.video.basename,
-        'fpsIntended': series.video.fpsIntended,
-        'width': series.video.width,
-        'height': series.video.height,
-        'durationMs': series.video.durationMs,
-      },
-      'engine': {
-        'name': series.engine.name,
-        'model': series.engine.model,
-        'sdkVersion': series.engine.sdkVersion,
-      },
-      'sampling': {
-        'stride': series.sampling.stride,
-        'effectiveFps': series.sampling.effectiveFps,
-      },
-      'frames': series.frames.map((f) => {
-        'frameIndex': f.frameIndex,
-        'timestampMs': f.timestampMs,
-        'lowConfidence': f.lowConfidence,
-        'mirrorApplied': f.mirrorApplied,
-        'keypoints': f.keypoints.map((kp) => {
-          'name': kp.name,
-          'x': kp.x,
-          'y': kp.y,
-          'z': kp.z,
-          'score': kp.score,
-        }).toList(),
-      }).toList(),
-    };
-  }
-
   /// 加载规则集
   static Future<RuleSet> _loadRuleSet() async {
     try {
@@ -1023,7 +987,7 @@ class VideoAnalysisService {
     // 1. neutral_keypoints.json
     final neutralFile = File(p.join(sessionRoot, 'neutral_keypoints.json'));
     await neutralFile.writeAsString(
-      const JsonEncoder.withIndent('  ').convert(_neutralSeriesToJson(neutralSeries)),
+      const JsonEncoder.withIndent('  ').convert(neutralKeypointSeriesToJson(neutralSeries)),
     );
 
     // 2. result.json
@@ -1179,7 +1143,7 @@ class VideoAnalysisService {
     // 1. 保存 neutral_keypoints.json（核心数据）
     final neutralFile = File(p.join(sessionRoot, 'neutral_keypoints.json'));
     await neutralFile.writeAsString(
-      const JsonEncoder.withIndent('  ').convert(_neutralSeriesToJson(neutralSeries)),
+      const JsonEncoder.withIndent('  ').convert(neutralKeypointSeriesToJson(neutralSeries)),
     );
 
     // 2. 保存降级版 result.json

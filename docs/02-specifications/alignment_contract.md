@@ -6,11 +6,15 @@
 
 ---
 
-## 1) 输入契约（不变 + 明确化）
+## 1) 输入契约（更新至 vB1.1 格式）
 - **关键点文件 (kp.json)**  
-  - 结构：`{ "fps": number, "frames": [ { "t": int(ms), "pts": [ [x,y,score]*N ] } ] }`（像素坐标，原点左上；`score ∈ [0,1]`）。  
-  - **模型限定（A 阶段）**：仅 **MoveNet17**；BlazePose33 的映射与适配不在 A 阶段对齐范围内。  
-  - 缺点/`score=0`：该点本帧**不参与角度计算**，计入覆盖率统计（见 §5）。  
+  - **格式要求**：必须为 vB1.1 格式（`version: "vB1.1"`）
+  - 结构：`{ "version": "vB1.1", "video": {...}, "engine": {...}, "sampling": {...}, "frames": [...] }`
+  - **坐标系统**：归一化到 [0,1] 范围（原点左上），`x, y ∈ [0,1]`；`score ∈ [0,1]`
+  - **关键点命名**：使用标准名称（snake_case），如 `left_hip`, `right_knee`, `left_ankle`
+  - **模型限定（A 阶段）**：仅 **MoveNet17** 的 17 个关键点；BlazePose33 的映射与适配不在 A 阶段对齐范围内
+  - 缺点/`score=0`：该点本帧**不参与角度计算**，计入覆盖率统计（见 §5）
+  - **注意**：旧格式（`{fps, frames}`）已不再支持（自 Milestone A v1.2 起）  
 
 - **规则文件 (squat.v1.json)**  
   - 字段集：`modelAdapters, phases, counts, metrics, scoreWeights, strictness`；版本：`v1`，含 `relaxed/strict` 两档。

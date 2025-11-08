@@ -52,6 +52,9 @@
 - **[WORKER_CONTRACT.md](07-cloud/WORKER_CONTRACT.md)**、**[DATA_SCHEMAS.md](07-cloud/DATA_SCHEMAS.md)**：云端工人协议与数据结构。
 - **[PLAN_VALIDATION_REPORT.md](07-cloud/PLAN_VALIDATION_REPORT.md)**、**[project_phase_summary.md](07-cloud/project_phase_summary.md)**：阶段总结与上线计划。
 
+### 08-decisions — 技术决策记录
+- **[strict_deserialization_strategy.md](08-decisions/strict_deserialization_strategy.md)**：严格反序列化策略决策记录，包含当前实现状态、未来场景分析和实施建议。
+
 ### perf — 性能预算
 - **[BUDGET.md](perf/BUDGET.md)**：性能指标、设备分级与预算。
 

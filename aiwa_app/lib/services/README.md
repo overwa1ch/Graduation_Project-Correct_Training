@@ -52,14 +52,17 @@ await for (final event in stream) {
 }
 ```
 
-### 2. 从 CLI 子进程读取（桌面平台）
+### 2. 从外部进程读取（扩展场景）
+
+> **注意**：aiwa_app 已内置完整的离线分析能力，通常无需外部工具。
 
 ```dart
+// 仅作为示例，实际使用时请使用内置分析功能
 final stream = analysisEventsFromCli(
   dartBin: 'dart',
   args: [
     'run', 
-    '../aiwa_cli/bin/aiwa_cli.dart',
+    'some_analyzer.dart',
     '--input', videoPath,
     '--out', outputDir,
     '--config', configPath,

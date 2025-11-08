@@ -116,18 +116,8 @@ run-as com.example.aiwa_app
 ls files/aiwa/offline_out/
 ```
 
-## 🎯 与 aiwa_runner 对比
-
-| 特性 | aiwa_app（新） | aiwa_runner |
-|------|----------------|-------------|
-| 自动导出 | ✅ | ✅ |
-| 导出位置 | `files/export/` | `files/export/` |
-| 完整流程 | 视频 → 分析 → 导出 | 帧 → 分析 → 导出 |
-| 降级模式 | 支持 | 不支持 |
-
 ---
 
 **实现日期**：2024-10-31  
-**版本**：v1.1  
-**参考**：`aiwa_runner/lib/runner_orchestrator.dart` (第 342-359 行)
+**版本**：v1.1
 

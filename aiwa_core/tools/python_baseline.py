@@ -3,7 +3,7 @@
 """
 Milestone A script (v1.1-compatible, aligned with Dart golden)
 - 接收 v1.1 squat.v1.json 规则
-- 接收 A 阶段 keypoints: frames[].pts = [[x,y,score]*17]
+- 接收 vB1.1 格式 keypoints (neutral keypoint series)
 - 输出 angles.csv 与 result.json，字段与 Dart 侧 golden 对齐：
   - angles.csv: 表头 + t_ms,knee_L,knee_R,trunk_deg
   - result.json: { meta, quality, repCount, reps[], scores, issues[], evidence[] }
@@ -78,22 +78,58 @@ def parse_rule_v11(rule_dict: Dict[str, Any]) -> Dict[str, Any]:
             raise RuntimeError(f"RULES_PARSE_ERROR: missing '{k}'")
     return out
 
-def read_kp_array_triple(path: str) -> Tuple[float, List[Dict[str, Any]]]:
+def read_kp_vb11(path: str) -> Tuple[float, List[Dict[str, Any]]]:
+    """读取 vB1.1 格式关键点数据，转换为内部处理格式"""
     data = load_json(path)
-    fps = float(data.get('fps', 30))
+    
+    # 验证版本
+    version = data.get('version', '')
+    if version != 'vB1.1':
+        raise RuntimeError(f"Unsupported keypoints version '{version}' (expected vB1.1)")
+    
+    # 提取元数据
+    sampling = data.get('sampling', {})
+    fps = float(sampling.get('effectiveFps', 30.0))
+    
+    video = data.get('video', {})
+    width = float(video.get('width', 1))
+    height = float(video.get('height', 1))
+    
+    # MoveNet17 关键点名称映射（按索引顺序）
+    movenet17_names = [
+        'nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear',
+        'left_shoulder', 'right_shoulder', 'left_elbow', 'right_elbow',
+        'left_wrist', 'right_wrist', 'left_hip', 'right_hip',
+        'left_knee', 'right_knee', 'left_ankle', 'right_ankle'
+    ]
+    
     frames_out = []
     for fr in data.get('frames', []):
-        pts = fr.get('pts', [])
+        timestamp_ms = int(fr.get('timestampMs', 0))
+        keypoints = fr.get('keypoints', [])
+        
+        # 构建名称到关键点的映射
+        kp_map = {kp['name']: kp for kp in keypoints}
+        
+        # 按 MoveNet17 顺序提取关键点，将归一化坐标转换为像素坐标
         pts_arr = []
-        for p in pts:
-            if isinstance(p, list) and len(p) >= 3:
-                pts_arr.append([float(p[0]), float(p[1]), float(p[2])])
-            elif isinstance(p, dict):
-                pts_arr.append([float(p.get('x', 0.0)), float(p.get('y', 0.0)), float(p.get('score', 0.0))])
+        for name in movenet17_names:
+            if name in kp_map:
+                kp = kp_map[name]
+                x_pixel = float(kp.get('x', 0.0)) * width
+                y_pixel = float(kp.get('y', 0.0)) * height
+                score = float(kp.get('score', 0.0))
+                pts_arr.append([x_pixel, y_pixel, score])
             else:
+                # 缺失的关键点使用零分
                 pts_arr.append([0.0, 0.0, 0.0])
-        frames_out.append({'t': int(fr.get('t', 0)), 'pts': pts_arr})
+        
+        frames_out.append({'t': timestamp_ms, 'pts': pts_arr})
+    
     return fps, frames_out
+
+# 向后兼容别名
+read_kp_array_triple = read_kp_vb11
 
 # MoveNet17 indices (A stage)
 L_SH, R_SH = 5, 6

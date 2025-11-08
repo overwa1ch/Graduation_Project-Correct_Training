@@ -28,8 +28,6 @@ class PoseFrame {
     required this.lowConfidence,
     required this.keypoints,
   });
-
-  PoseLandmark? landmark(String name) => keypoints[name];
 }
 
 class PoseSeriesMetadata {
@@ -62,16 +60,6 @@ class PoseSeries {
     required this.frames,
     required this.metadata,
   });
-
-  bool get isEmpty => frames.isEmpty;
-
-  PoseSeries copyWith({double? fps, List<PoseFrame>? frames}) {
-    return PoseSeries(
-      fps: fps ?? this.fps,
-      frames: frames ?? this.frames,
-      metadata: metadata,
-    );
-  }
 }
 
 const List<String> kPoseSeriesRequiredJoints = [

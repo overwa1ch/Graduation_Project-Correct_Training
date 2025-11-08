@@ -53,11 +53,13 @@ Future<void> exampleCliProcess() async {
   print('=== Example 2: Reading from CLI subprocess ===');
 
   try {
+    // 示例：从外部分析工具读取事件流
+    // 实际使用中，aiwa_app 已内置离线分析能力，无需外部工具
     final stream = analysisEventsFromCli(
       dartBin: 'dart',
       args: [
         'run',
-        '../aiwa_cli/bin/aiwa_cli.dart',
+        'some_analyzer.dart',
         '--input',
         'assets/videos/squat_sample.mp4',
         '--out',
