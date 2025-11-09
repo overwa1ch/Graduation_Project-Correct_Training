@@ -9,6 +9,7 @@
 // - 符合生理先验：躯干稳定，远端易遮挡
 
 import 'package:aiwa_core/pose/pose_engine.dart';
+import 'package:aiwa_core/pose/keypoint_names.dart';
 
 /// 关节组类型
 enum JointGroup {
@@ -60,10 +61,6 @@ class PerJointThresholdFilter {
     'rightShoulder': JointGroup.core,
     'leftHip': JointGroup.core,
     'rightHip': JointGroup.core,
-    'left_shoulder': JointGroup.core,
-    'right_shoulder': JointGroup.core,
-    'left_hip': JointGroup.core,
-    'right_hip': JointGroup.core,
 
     // 主要关节
     'leftElbow': JointGroup.major,
@@ -72,12 +69,6 @@ class PerJointThresholdFilter {
     'rightKnee': JointGroup.major,
     'leftAnkle': JointGroup.major,
     'rightAnkle': JointGroup.major,
-    'left_elbow': JointGroup.major,
-    'right_elbow': JointGroup.major,
-    'left_knee': JointGroup.major,
-    'right_knee': JointGroup.major,
-    'left_ankle': JointGroup.major,
-    'right_ankle': JointGroup.major,
 
     // 外围关节
     'leftWrist': JointGroup.peripheral,
@@ -92,18 +83,6 @@ class PerJointThresholdFilter {
     'rightHeel': JointGroup.peripheral,
     'leftFootIndex': JointGroup.peripheral,
     'rightFootIndex': JointGroup.peripheral,
-    'left_wrist': JointGroup.peripheral,
-    'right_wrist': JointGroup.peripheral,
-    'left_pinky': JointGroup.peripheral,
-    'right_pinky': JointGroup.peripheral,
-    'left_index': JointGroup.peripheral,
-    'right_index': JointGroup.peripheral,
-    'left_thumb': JointGroup.peripheral,
-    'right_thumb': JointGroup.peripheral,
-    'left_heel': JointGroup.peripheral,
-    'right_heel': JointGroup.peripheral,
-    'left_foot_index': JointGroup.peripheral,
-    'right_foot_index': JointGroup.peripheral,
 
     // 面部
     'nose': JointGroup.peripheral,
@@ -115,21 +94,16 @@ class PerJointThresholdFilter {
     'rightEyeInner': JointGroup.peripheral,
     'leftEyeOuter': JointGroup.peripheral,
     'rightEyeOuter': JointGroup.peripheral,
-    'left_eye': JointGroup.peripheral,
-    'right_eye': JointGroup.peripheral,
-    'left_ear': JointGroup.peripheral,
-    'right_ear': JointGroup.peripheral,
-    'left_eye_inner': JointGroup.peripheral,
-    'right_eye_inner': JointGroup.peripheral,
-    'left_eye_outer': JointGroup.peripheral,
-    'right_eye_outer': JointGroup.peripheral,
+    'leftMouth': JointGroup.peripheral,
+    'rightMouth': JointGroup.peripheral,
   };
 
   PerJointThresholdFilter(this.config);
 
   /// 根据关节名称获取阈值
   double getThresholdForJoint(String jointName) {
-    final group = _jointGroupMap[jointName] ?? JointGroup.peripheral;
+    final normalized = normalizeNeutralKeypointName(jointName);
+    final group = _jointGroupMap[normalized] ?? JointGroup.peripheral;
     switch (group) {
       case JointGroup.core:
         return config.coreThreshold;

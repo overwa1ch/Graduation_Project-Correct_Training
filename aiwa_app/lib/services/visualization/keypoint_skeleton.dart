@@ -5,6 +5,8 @@
 
 import 'dart:ui';
 
+import 'package:aiwa_core/pose/keypoint_names.dart';
+
 /// Represents a connection between two keypoints (a "bone")
 class SkeletonConnection {
   final String startPoint;
@@ -255,46 +257,9 @@ class KeypointSkeleton {
   
   /// Get serializable connection data for native platform
   static List<Map<String, dynamic>> getConnectionsForNative() {
-    // MLKit 适配器输出的名称为驼峰式，这里将连接表中的 snake_case 映射为驼峰式
-    const Map<String, String> alias = {
-      'nose': 'nose',
-      'left_eye_inner': 'leftEyeInner',
-      'left_eye': 'leftEye',
-      'left_eye_outer': 'leftEyeOuter',
-      'right_eye_inner': 'rightEyeInner',
-      'right_eye': 'rightEye',
-      'right_eye_outer': 'rightEyeOuter',
-      'left_ear': 'leftEar',
-      'right_ear': 'rightEar',
-      'mouth_left': 'leftMouth',
-      'mouth_right': 'rightMouth',
-      'left_shoulder': 'leftShoulder',
-      'right_shoulder': 'rightShoulder',
-      'left_elbow': 'leftElbow',
-      'right_elbow': 'rightElbow',
-      'left_wrist': 'leftWrist',
-      'right_wrist': 'rightWrist',
-      'left_pinky': 'leftPinky',
-      'right_pinky': 'rightPinky',
-      'left_index': 'leftIndex',
-      'right_index': 'rightIndex',
-      'left_thumb': 'leftThumb',
-      'right_thumb': 'rightThumb',
-      'left_hip': 'leftHip',
-      'right_hip': 'rightHip',
-      'left_knee': 'leftKnee',
-      'right_knee': 'rightKnee',
-      'left_ankle': 'leftAnkle',
-      'right_ankle': 'rightAnkle',
-      'left_heel': 'leftHeel',
-      'right_heel': 'rightHeel',
-      'left_foot_index': 'leftFootIndex',
-      'right_foot_index': 'rightFootIndex',
-    };
-
     return connections.map((conn) {
-      final start = alias[conn.startPoint] ?? conn.startPoint;
-      final end = alias[conn.endPoint] ?? conn.endPoint;
+      final start = normalizeNeutralKeypointName(conn.startPoint);
+      final end = normalizeNeutralKeypointName(conn.endPoint);
       return {
         'start': start,
         'end': end,

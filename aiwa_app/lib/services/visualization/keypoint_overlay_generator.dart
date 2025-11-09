@@ -10,6 +10,7 @@ import 'package:path/path.dart' as p;
 
 import 'package:aiwa_app/services/native/native_video_encoder.dart';
 import 'package:aiwa_app/services/visualization/keypoint_skeleton.dart';
+import 'package:aiwa_core/pose/keypoint_names.dart';
 
 /// Generator for creating keypoint overlay videos
 class KeypointOverlayGenerator {
@@ -86,12 +87,12 @@ class KeypointOverlayGenerator {
       if (i < frames.length) {
         final frameJson = frames[i] as Map<String, dynamic>;
         final keypoints = frameJson['keypoints'] as List<dynamic>;
-        
+
         // Convert keypoints to format expected by encoder
         final keypointsList = keypoints.map((kp) {
           final kpMap = kp as Map<String, dynamic>;
           return {
-            'name': kpMap['name'] as String,
+            'name': normalizeNeutralKeypointName(kpMap['name'] as String),
             'x': (kpMap['x'] as num).toDouble(),
             'y': (kpMap['y'] as num).toDouble(),
             'score': (kpMap['score'] as num).toDouble(),
