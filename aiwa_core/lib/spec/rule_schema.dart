@@ -22,7 +22,7 @@ List _ensureList(Object? v, String path) {
   return v as List;
 }
 
-({double relaxed, double strict}) _validateStrictnessMap(
+void _validateStrictnessMap(
   Map<String, dynamic> map,
   String path, {
   required double min,
@@ -51,8 +51,6 @@ List _ensureList(Object? v, String path) {
           '$path.strict must equal $path.relaxed (got $strict vs $relaxed)');
     }
   }
-
-  return (relaxed: relaxed, strict: strict);
 }
 
 void validateRuleMap(Map<String, dynamic> m) {

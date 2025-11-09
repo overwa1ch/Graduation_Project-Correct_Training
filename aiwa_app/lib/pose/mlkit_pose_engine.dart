@@ -11,8 +11,6 @@ import 'dart:typed_data';
 import 'dart:ui' as ui show Size;
 
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
-// 如果你的工程里没有直接引用 commons，可以删掉下一行；保留也没问题。
-// import 'package:google_mlkit_commons/google_mlkit_commons.dart';
 
 import 'package:aiwa_core/pose/pose_engine.dart';
 
@@ -76,7 +74,6 @@ class MlKitPoseEngine implements PoseEngine {
       // 选择格式 + 计算 bytesPerRow
       // - Android 使用 NV21（camera 插件最好配置 ImageFormatGroup.nv21）
       // - iOS 使用 BGRA8888（camera 插件配置 ImageFormatGroup.bgra8888）
-      // 参见 google_mlkit_commons 的说明与示例。
       final InputImageFormat format =
           Platform.isIOS ? InputImageFormat.bgra8888 : InputImageFormat.nv21;
 

@@ -37,6 +37,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
+import 'package:aiwa_app/adapters/evidence_resolver.dart';
 
 // ============================================================================
 // 异常类型（契约违反/读取错误）
@@ -426,7 +427,7 @@ AnalysisResultLite mapToLite(Map<String, dynamic> raw) {
   }
 
   // 解析证据路径（可能为 null）
-  final evidencePath = _extractEvidencePath(raw);
+  final evidencePath = resolveSnapshotPath(raw);
 
   // 解析质量指标（可选）
   bool? lowConfidence;
@@ -561,36 +562,4 @@ AnalysisResultLite mapToLite(Map<String, dynamic> raw) {
   );
 }
 
-// ============================================================================
-// 私有辅助函数：提取证据路径
-// ============================================================================
-
-/// 从 evidence 数组中提取第一个快照路径
-///
-/// 规则（证据降级策略）：
-/// - 若 evidence 缺失或为空 → null
-/// - 若 evidence[0].snapshotPath 为空/全空白 → null
-/// - 否则返回 snapshotPath（保持原始相对路径）
-String? _extractEvidencePath(Map<String, dynamic> raw) {
-  if (!raw.containsKey('evidence') || raw['evidence'] is! List) {
-    return null;
-  }
-
-  final evidence = raw['evidence'] as List;
-  if (evidence.isEmpty) {
-    return null;
-  }
-
-  final first = evidence[0];
-  if (first is! Map) {
-    return null;
-  }
-
-  final snapshot = first['snapshotPath'];
-  if (snapshot is! String || snapshot.trim().isEmpty) {
-    return null;
-  }
-
-  return snapshot;
-}
 

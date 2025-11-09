@@ -13,7 +13,8 @@ export interface LoginInput {
 }
 
 export interface AuthTokens {
-  accessToken: string;
+  userId: string;
+  email: string;
   refreshToken: string;
 }
 
@@ -72,7 +73,7 @@ export class AuthService {
   }
 
   // Refresh access token
-  async refresh(refreshToken: string): Promise<{ accessToken: string }> {
+  async refresh(refreshToken: string): Promise<{ userId: string; email: string }> {
     // Find refresh token
     const token = await prisma.refreshToken.findUnique({
       where: { token: refreshToken },
@@ -96,33 +97,15 @@ export class AuthService {
       throw new Error('User not found or inactive');
     }
 
-    // Generate new access token
-    const accessToken = this.generateAccessToken(user.id, user.email);
-
-    return { accessToken };
+    // Return user info for JWT generation
+    return { userId: user.id, email: user.email };
   }
 
   // Generate tokens
   private async generateTokens(userId: string, email: string): Promise<AuthTokens> {
-    const accessToken = this.generateAccessToken(userId, email);
     const refreshToken = await this.generateRefreshToken(userId);
 
-    return { accessToken, refreshToken };
-  }
-
-  // Generate access token (JWT)
-  private generateAccessToken(userId: string, email: string): string {
-    // In production, use RS256 with private key
-    // For now, using HS256 with secret
-    const payload = {
-      sub: userId,
-      email,
-      type: 'access',
-    };
-
-    // This would be signed with RS256 in production
-    // For simplicity, we'll use the JWT library in the controller
-    return JSON.stringify(payload); // Placeholder - actual signing happens in controller
+    return { userId, email, refreshToken };
   }
 
   // Generate refresh token
@@ -143,6 +126,7 @@ export class AuthService {
   }
 
   // Revoke refresh token (logout)
+  // 注意：此方法当前未使用，保留用于未来实现登出功能
   async revokeRefreshToken(token: string): Promise<void> {
     await prisma.refreshToken.updateMany({
       where: { token },
@@ -151,6 +135,7 @@ export class AuthService {
   }
 
   // Revoke all user's refresh tokens (logout all devices)
+  // 注意：此方法当前未使用，保留用于未来实现"登出所有设备"功能
   async revokeAllUserTokens(userId: string): Promise<void> {
     await prisma.refreshToken.updateMany({
       where: { userId, revokedAt: null },

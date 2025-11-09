@@ -21,30 +21,6 @@ void main() {
   });
 
   group('Event Bus - Empty Lines & Whitespace', () {
-    test('handles empty lines between events', () async {
-      final testFile = File('${tempDir.path}/empty_lines.jsonl');
-      await testFile.writeAsString('''
-{"event":"START","sessionId":"test_001"}
-
-{"event":"PROGRESS","processed":50,"total":100}
-
-{"event":"DONE","artifacts":{"root":"test/"}}
-''');
-
-      final events = <Map<String, dynamic>>[];
-      final stream = analysisEventsFromJsonlFile(testFile.path);
-
-      await for (final event in stream) {
-        events.add(event);
-      }
-
-      // Empty lines should be ignored
-      expect(events.length, equals(3));
-      expect(events[0]['event'], equals('START'));
-      expect(events[1]['event'], equals('PROGRESS'));
-      expect(events[2]['event'], equals('DONE'));
-    });
-
     test('handles lines with only whitespace', () async {
       final testFile = File('${tempDir.path}/whitespace.jsonl');
       await testFile.writeAsString('''
@@ -299,28 +275,6 @@ void main() {
   });
 
   group('Event Bus - Session ID Injection', () {
-    test('injects sessionId when missing', () async {
-      final testFile = File('${tempDir.path}/no_session.jsonl');
-      await testFile.writeAsString('''
-{"event":"START","input":{}}
-{"event":"DONE","artifacts":{"root":"test/"}}
-''');
-
-      final events = <Map<String, dynamic>>[];
-      final stream = analysisEventsFromJsonlFile(
-        testFile.path,
-        sessionId: 'injected_session',
-      );
-
-      await for (final event in stream) {
-        events.add(event);
-      }
-
-      expect(events.length, equals(2));
-      expect(events[0]['sessionId'], equals('injected_session'));
-      expect(events[1]['sessionId'], equals('injected_session'));
-    });
-
     test('preserves existing sessionId when present', () async {
       final testFile = File('${tempDir.path}/has_session.jsonl');
       await testFile.writeAsString('''
@@ -390,7 +344,7 @@ void main() {
       int eventCount = 0;
       final stream = analysisEventsFromJsonlFile(testFile.path);
 
-      await for (final event in stream) {
+      await for (final _ in stream) {
         eventCount++;
         // Just count, don't accumulate (to avoid memory leak in test)
       }

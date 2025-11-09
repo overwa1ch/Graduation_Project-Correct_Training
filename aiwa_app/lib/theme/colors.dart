@@ -50,6 +50,9 @@ class SemanticColors {
 
 /// Material 3 ColorScheme mapping (简化版本)
 /// 不再支持主题切换，使用固定的深色主题配色
+/// 
+/// 注意：createLightColorScheme() 和 createLightTheme() 仅用于测试，
+/// 生产环境使用 createDarkColorScheme() 和 createDarkTheme()
 ColorScheme createLightColorScheme() {
   return const ColorScheme.light(
     primary: AppColors.brandPrimaryVariant,

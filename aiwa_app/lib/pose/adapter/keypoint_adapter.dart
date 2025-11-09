@@ -147,9 +147,7 @@ Map<PoseLandmarkType, PoseLandmark> _landmarksByType(Pose pose) {
 
       final PoseLandmarkType type =
           key is PoseLandmarkType ? key : landmark.type;
-      if (type != null) {
-        result[type] = landmark;
-      }
+      result[type] = landmark;
     }
     if (result.isNotEmpty) {
       return result;

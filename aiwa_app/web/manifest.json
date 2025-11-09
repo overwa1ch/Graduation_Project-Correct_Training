@@ -1,11 +1,11 @@
 {
-    "name": "aiwa_milestone_a",
-    "short_name": "aiwa_milestone_a",
+    "name": "AIWA",
+    "short_name": "AIWA",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "AIWA - AI Workout Assistant",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

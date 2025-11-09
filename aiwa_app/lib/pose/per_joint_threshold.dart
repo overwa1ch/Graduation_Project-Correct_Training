@@ -149,17 +149,17 @@ class PerJointThresholdFilter {
   }
 
   /// 过滤帧（更新关键点列表）
-  NeutralFrame filterFrame(NeutralFrame frame) {
-    final filtered = filter(frame.keypoints);
-    return NeutralFrame(
-      frameIndex: frame.frameIndex,
-      timestampMs: frame.timestampMs,
-      width: frame.width,
-      height: frame.height,
-      keypoints: filtered,
-      lowConfidence: frame.lowConfidence,
-      mirrorApplied: frame.mirrorApplied,
-    );
-  }
+  /// 注意：当前未使用，保留用于未来可能的 API 需求
+  // NeutralFrame filterFrame(NeutralFrame frame) {
+  //   final filtered = filter(frame.keypoints);
+  //   return NeutralFrame(
+  //     frameIndex: frame.frameIndex,
+  //     timestampMs: frame.timestampMs,
+  //     width: frame.width,
+  //     height: frame.height,
+  //     keypoints: filtered,
+  //     lowConfidence: frame.lowConfidence,
+  //     mirrorApplied: frame.mirrorApplied,
+  //   );
+  // }
 }
-

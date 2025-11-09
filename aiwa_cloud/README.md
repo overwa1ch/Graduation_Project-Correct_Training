@@ -23,7 +23,7 @@
 
 **适合毕业设计，约 200 元/月！**
 
-详细步骤请查看：**[ALIYUN_DEPLOYMENT.md](./ALIYUN_DEPLOYMENT.md)**
+详细步骤请查看：**[ALIYUN_DEPLOYMENT.md](../docs/07-cloud/ALIYUN_DEPLOYMENT.md)**
 
 **简要步骤：**
 1. 创建阿里云 RDS PostgreSQL 数据库
@@ -42,7 +42,7 @@
 
 **无需 Docker，最简单！**
 
-详细步骤请查看：**[LOCAL_SETUP.md](./LOCAL_SETUP.md)**
+详细步骤请查看：**[LOCAL_SETUP.md](../docs/03-guides/LOCAL_SETUP.md)**
 
 **简要步骤：**
 1. 进入 `core-api` 目录
@@ -117,8 +117,9 @@ aiwa_cloud/
 │
 ├── my-app/                    # Next.js 管理后台（可选）
 ├── docker-compose.yml         # ✅ 本地开发
-├── ALIYUN_DEPLOYMENT.md       # ✅ 阿里云部署指南
 └── README.md                  # 本文件
+
+> 📖 **文档已整理到 `docs/` 目录**，详见 [文档中心](../docs/README.md)
 ```
 
 ---
@@ -200,7 +201,7 @@ curl -X POST http://localhost:3000/v1/auth/refresh \
 
 ### 推荐：SQLite 版本（无需 Docker）
 
-**详细步骤请查看：** [LOCAL_SETUP.md](./LOCAL_SETUP.md)
+**详细步骤请查看：** [LOCAL_SETUP.md](../docs/03-guides/LOCAL_SETUP.md)
 
 **快速开始：**
 ```bash
@@ -234,6 +235,123 @@ docker-compose up
 API 运行在：**http://localhost:3000**
 
 ⚠️ **如果遇到 Docker 问题，强烈推荐使用 SQLite 版本！**
+
+---
+
+## 🛠️ 工具脚本说明
+
+项目提供了一些自动化脚本，帮助简化开发和测试流程。所有脚本位于 `core-api/` 目录下。
+
+### 设置脚本
+
+#### `setup-sqlite.ps1` (Windows) / `setup-sqlite.sh` (Linux/Mac)
+**用途：** 自动配置 SQLite 开发环境
+
+**功能：**
+- 自动复制环境变量模板（`env.sqlite.example` → `.env`）
+- 自动复制 SQLite Schema（`schema.sqlite.prisma` → `schema.prisma`）
+- 自动生成 JWT 密钥
+- 自动安装依赖
+- 自动创建数据库
+
+**使用方法：**
+```powershell
+# Windows
+cd core-api
+.\setup-sqlite.ps1
+
+# Linux/Mac
+cd core-api
+chmod +x setup-sqlite.sh
+./setup-sqlite.sh
+```
+
+**适用场景：** 首次设置本地开发环境时使用
+
+---
+
+### 故障排查脚本
+
+#### `fix-port.ps1` (Windows)
+**用途：** 修复 Windows 端口权限问题
+
+**功能：**
+- 自动检测端口冲突
+- 修改 `.env` 文件中的端口配置
+- 推荐使用端口 8080（避免 Windows 保留端口范围）
+
+**使用方法：**
+```powershell
+cd core-api
+.\fix-port.ps1
+```
+
+**适用场景：** 遇到 `EACCES: permission denied` 端口错误时使用
+
+**注意：** 默认配置已使用端口 8080，通常不需要此脚本
+
+---
+
+### 测试脚本
+
+#### `测试API.ps1` (Windows)
+**用途：** 基础 API 功能测试
+
+**测试内容：**
+1. 健康检查（`GET /health`）
+2. 用户注册（`POST /v1/auth/register`）
+3. 用户登录（`POST /v1/auth/login`）
+
+**使用方法：**
+```powershell
+# 确保 API 服务正在运行
+cd core-api
+npm run dev
+
+# 在另一个终端运行测试
+cd core-api
+.\测试API.ps1
+```
+
+**适用场景：** 快速验证 API 是否正常工作
+
+---
+
+#### `comprehensive-test.ps1` (Windows)
+**用途：** 全面的 API 功能测试
+
+**测试内容：**
+1. 健康检查
+2. 正常注册/登录流程
+3. 重复注册（应失败）
+4. 密码验证（太短应失败）
+5. 错误密码登录（应失败）
+6. Token 刷新功能
+7. 多次并发测试
+
+**使用方法：**
+```powershell
+# 确保 API 服务正在运行
+cd core-api
+npm run dev
+
+# 在另一个终端运行全面测试
+cd core-api
+.\comprehensive-test.ps1
+```
+
+**适用场景：** 完整的功能测试和回归测试
+
+---
+
+### 脚本使用建议
+
+1. **首次设置：** 使用 `setup-sqlite.ps1` 或 `setup-sqlite.sh`
+2. **日常测试：** 使用 `测试API.ps1` 快速验证
+3. **完整测试：** 使用 `comprehensive-test.ps1` 进行全面测试
+4. **端口问题：** 使用 `fix-port.ps1` 修复（通常不需要）
+
+**注意：** 所有测试脚本默认使用 `http://localhost:8080`，如果修改了端口，需要手动编辑脚本中的 `$baseUrl` 变量。
 
 ---
 
@@ -379,7 +497,10 @@ docker-compose up       # 重新启动
 
 ## 📖 更多文档
 
-- 📖 **[阿里云部署指南](./ALIYUN_DEPLOYMENT.md)** - 完整部署教程
+- 📖 **[阿里云部署指南](../docs/07-cloud/ALIYUN_DEPLOYMENT.md)** - 完整部署教程
+- 📖 **[本地开发指南](../docs/03-guides/LOCAL_SETUP.md)** - SQLite 本地开发教程
+- 📖 **[快速开始指南](../docs/03-guides/QUICK_START.md)** - 5分钟快速体验
+- 📖 **[文档中心](../docs/README.md)** - 查看所有项目文档
 - 🗄️ **[数据库 Schema](./core-api/prisma/schema.prisma)** - 数据模型
 
 ---

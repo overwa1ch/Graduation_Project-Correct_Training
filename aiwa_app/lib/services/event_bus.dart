@@ -3,9 +3,9 @@
 // Purpose: 事件层服务 - 统一输出分析事件流（基于 docs/protocols/stdout_events.md）
 //
 // 实现三种事件源：
-// 1. analysisEventsFromJsonlFile - 从 JSONL 文件读取（离线演示/测试）
-// 2. analysisEventsFromCli - 从 CLI 子进程读取（开发/桌面）
-// 3. analysisEventsFromIsolate - 从 Isolate 读取（移动端）
+// 1. analysisEventsFromJsonlFile - 从 JSONL 文件读取（离线演示/测试）✅ 使用中
+// 2. analysisEventsFromCli - 从 CLI 子进程读取（开发/桌面）⚠️ 仅在测试中使用，保留用于未来扩展
+// 3. analysisEventsFromIsolate - 从 Isolate 读取（移动端）⚠️ 未使用，当前实现为主线程模式
 //
 // 契约要求：
 // - 事件名: START | PHASE | PROGRESS | METRIC | EVIDENCE | DONE | ERROR
@@ -236,6 +236,9 @@ Stream<Map<String, dynamic>> analysisEventsFromJsonlFile(
 
 /// 从 CLI 子进程读取分析事件流
 ///
+/// ⚠️ 注意：此函数当前仅在测试中使用（event_bus_basic_test.dart）。
+/// 实际业务代码中未使用，保留用于未来可能的 CLI 工具集成。
+///
 /// 参数:
 /// - [dartBin]: Dart 可执行文件路径（例如 'dart'）
 /// - [args]: CLI 参数列表
@@ -442,6 +445,10 @@ Stream<Map<String, dynamic>> analysisEventsFromCli({
 // ============================================================================
 
 /// 从 Isolate 读取分析事件流
+///
+/// ⚠️ 注意：此函数当前未在实际代码中使用。
+/// 由于 ML Kit 和 VideoPlayer 需要主 Isolate，当前实现实际在主线程中运行。
+/// 保留此接口用于未来可能的真正 Isolate 实现。
 ///
 /// 参数:
 /// - [inputPath]: 输入视频路径

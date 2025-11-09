@@ -1,6 +1,11 @@
 // diagnostics_logger.dart
 // Version: v1.0
 // Purpose: Append minimal, privacy-safe diagnostics events to <sessionRoot>/diagnostics.log (JSON Lines)
+//
+// ⚠️ STATUS: TEMPORARILY DISABLED
+// This service is currently not in use. The functionality was temporarily removed from camera_page.dart
+// and may be restored in the future when integrated with AnalysisSessionManager.
+// See: lib/ui/pages/camera_page.dart line 53 for details.
 
 import 'dart:convert';
 import 'dart:io';

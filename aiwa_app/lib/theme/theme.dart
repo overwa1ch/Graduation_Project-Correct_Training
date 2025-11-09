@@ -11,7 +11,9 @@ import 'package:aiwa_app/theme/spacing.dart';
 /// All values are derived from design tokens - no hardcoded values
 /// See: lib/theme/tokens/ for raw token data
 
-/// Light theme
+/// Light theme (仅用于测试)
+/// 
+/// 注意：此函数仅用于测试，生产环境使用 createDarkTheme()
 ThemeData createLightTheme() {
   final colorScheme = createLightColorScheme();
   final textTheme = createTextTheme(color: colorScheme.onSurface);

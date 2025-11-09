@@ -1,6 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { AuthService } from './auth.service';
 import { z } from 'zod';
+import { CONFIG } from '../../config';
 
 const authService = new AuthService();
 
@@ -30,10 +31,10 @@ export async function register(
     // Register user
     const tokens = await authService.register(input);
 
-    // Sign JWT tokens
+    // Sign JWT access token
     const accessToken = request.server.jwt.sign(
-      { sub: tokens.accessToken, type: 'access' },
-      { expiresIn: '15m' }
+      { sub: tokens.userId, email: tokens.email, type: 'access' },
+      { expiresIn: CONFIG.jwt.accessExpiresIn }
     );
 
     reply.code(201).send({
@@ -73,10 +74,10 @@ export async function login(
     // Login user
     const tokens = await authService.login(input);
 
-    // Sign JWT tokens
+    // Sign JWT access token
     const accessToken = request.server.jwt.sign(
-      { sub: tokens.accessToken, type: 'access' },
-      { expiresIn: '15m' }
+      { sub: tokens.userId, email: tokens.email, type: 'access' },
+      { expiresIn: CONFIG.jwt.accessExpiresIn }
     );
 
     reply.send({
@@ -118,8 +119,8 @@ export async function refresh(
 
     // Sign new access token
     const accessToken = request.server.jwt.sign(
-      { sub: result.accessToken, type: 'access' },
-      { expiresIn: '15m' }
+      { sub: result.userId, email: result.email, type: 'access' },
+      { expiresIn: CONFIG.jwt.accessExpiresIn }
     );
 
     reply.send({

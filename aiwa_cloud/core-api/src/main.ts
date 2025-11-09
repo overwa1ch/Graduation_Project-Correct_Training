@@ -3,10 +3,6 @@ import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import { CONFIG } from './config';
 import { authRoutes } from './modules/auth/auth.routes';
-// 注释掉不需要的路由模块（未来可扩展）
-// import { sessionsRoutes } from './modules/sessions/sessions.routes';
-// import { jobsRoutes } from './modules/jobs/jobs.routes';
-// import { resultsRoutes } from './modules/results/results.routes';
 
 const fastify = Fastify({
   logger: {
@@ -32,17 +28,15 @@ async function start() {
         status: 'ok', 
         timestamp: new Date().toISOString(),
         service: 'aiwa-auth-api',
-        version: '1.0.0'
+        version: '3.0.0'
       };
     });
 
     // Register routes (仅认证模块)
     await fastify.register(authRoutes, { prefix: '/v1/auth' });
     
-    // 未来扩展：会话管理、作业管理、结果查询
-    // await fastify.register(sessionsRoutes, { prefix: '/v1/sessions' });
-    // await fastify.register(jobsRoutes, { prefix: '/v1' });
-    // await fastify.register(resultsRoutes, { prefix: '/v1' });
+    // 未来扩展：可在此添加其他路由模块
+    // 例如：会话管理、文件上传、用户信息管理等
 
     // Error handler
     fastify.setErrorHandler((error, request, reply) => {

@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "aiwa_milestone_a" "\0"
+            VALUE "FileDescription", "AIWA" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "aiwa_milestone_a" "\0"
+            VALUE "InternalName", "aiwa_app" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2025 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "aiwa_milestone_a.exe" "\0"
-            VALUE "ProductName", "aiwa_milestone_a" "\0"
+            VALUE "OriginalFilename", "aiwa_app.exe" "\0"
+            VALUE "ProductName", "AIWA" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

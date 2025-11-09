@@ -72,7 +72,7 @@ AIWA 是一个面向健身姿态纠正的全栈解决方案，前端采用 Flutt
 │       │   └── modules/auth/ # 用户认证模块
 │       ├── prisma/           # 数据库 Schema
 │       └── docker-compose.yml# 本地服务编排
-├── assets/、docs/            # 设计资产与说明文档
+├── docs/                     # 说明文档
 └── 其他 aiwa_* 子项目        # CLI、runner 等扩展模块
 ```
 目录详情可参考 `aiwa_cloud/PROJECT_SUMMARY.md`。

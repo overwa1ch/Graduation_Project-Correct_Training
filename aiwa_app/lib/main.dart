@@ -9,7 +9,8 @@ import 'package:aiwa_app/ui/pages/register_page.dart';
 import 'package:aiwa_app/services/auth_state.dart';
 
 // 测试阶段可关闭登录拦截
-const bool kDisableAuthForTesting = true;
+// 生产环境应设置为 false，或通过环境变量控制
+const bool kDisableAuthForTesting = false;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

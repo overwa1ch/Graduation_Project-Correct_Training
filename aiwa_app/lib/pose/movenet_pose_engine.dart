@@ -9,7 +9,6 @@
 // - 坐标格式：[y, x, confidence]
 // - 归一化坐标 [0, 1]
 
-import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
@@ -28,7 +27,7 @@ enum MovenetModel {
 class MovenetPoseEngine implements PoseEngine {
   late Interpreter _interpreter;
   late PoseEngineConfig _config;
-  late MovenetModel _modelType;
+  final MovenetModel _modelType;
   bool _initialized = false;
   
   // 🔧 分关节阈值过滤器
@@ -244,7 +243,7 @@ class MovenetPoseEngine implements PoseEngine {
     // 使用 image 包解码
     img.Image? image = img.decodeImage(bytes);
     if (image == null) {
-      throw FormatException('Failed to decode image');
+      throw const FormatException('Failed to decode image');
     }
 
     // 🔧 Letterbox 缩放：保持宽高比，短边填充
@@ -296,8 +295,6 @@ class MovenetPoseEngine implements PoseEngine {
 
     return inputBytes;
   }
-
-  // 注意：_resizeAndCropImage 被内联实现并记录 scale/offset，保留此位置供未来复用（已内联，避免未使用告警）
 
   /// 解析 MoveNet 输出为 NeutralKeypoint 列表
   /// 

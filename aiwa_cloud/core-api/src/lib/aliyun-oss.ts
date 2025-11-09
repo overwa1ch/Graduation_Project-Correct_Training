@@ -1,13 +1,15 @@
 /**
- * 阿里云 OSS 客户端（可选功能）
+ * 阿里云 OSS 客户端（预留功能 - 当前未实现）
  * 
- * 使用说明：
- * 1. 如果需要文件存储功能，设置环境变量 USE_ALIYUN_OSS=true
+ * ⚠️ 注意：此文件为预留接口，当前版本（v3.0）仅提供认证功能，不需要文件存储。
+ * 
+ * 未来扩展时使用：
+ * 1. 设置环境变量 USE_ALIYUN_OSS=true
  * 2. 安装依赖: npm install ali-oss
  * 3. 配置环境变量: ALIYUN_ACCESS_KEY_ID, ALIYUN_SECRET_ACCESS_KEY, ALIYUN_OSS_BUCKET
- * 4. 取消下面代码的注释
+ * 4. 实现下面的函数（取消注释并完成实现）
  * 
- * 当前状态：未实现（登录功能不需要）
+ * 当前状态：所有函数仅抛出错误，需要完整实现才能使用
  */
 
 import { CONFIG } from '../config';

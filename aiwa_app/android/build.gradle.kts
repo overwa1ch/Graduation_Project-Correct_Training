@@ -2,14 +2,6 @@ allprojects {
     repositories {
         google()
         mavenCentral()
-        // Add Arthenica repository for FFmpeg-Kit
-        maven {
-            url = uri("https://www.arthenica.com/maven")
-        }
-        // Alternative: JitPack (community-maintained mirrors)
-        maven {
-            url = uri("https://jitpack.io")
-        }
     }
 }
 

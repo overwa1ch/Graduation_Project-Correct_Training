@@ -128,9 +128,6 @@ def read_kp_vb11(path: str) -> Tuple[float, List[Dict[str, Any]]]:
     
     return fps, frames_out
 
-# 向后兼容别名
-read_kp_array_triple = read_kp_vb11
-
 # MoveNet17 indices (A stage)
 L_SH, R_SH = 5, 6
 L_HIP, R_HIP = 11, 12
@@ -161,7 +158,7 @@ def pipeline(
 
     rule_raw = load_json(rule_path)
     rule = parse_rule_v11(rule_raw)
-    fps, frames = read_kp_array_triple(kp_path)
+    fps, frames = read_kp_vb11(kp_path)
     if fps_override: fps = float(fps_override)
 
     # quality
@@ -201,7 +198,6 @@ def pipeline(
     # -------- LOCF 仅用于分段（修复 NaN 造成的相位滞后）--------
     km_seg = knee_main.copy()
     if km_seg.size:
-        import numpy as np
         mask = ~np.isnan(km_seg)
         if mask.any():
             first = int(np.argmax(mask))  # 第一个非 NaN 的下标

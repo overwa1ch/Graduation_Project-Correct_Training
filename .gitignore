@@ -1,12 +1,220 @@
-# 忽略虚拟环境
+# ============================================
+# Python / Virtual Environment
+# ============================================
 .venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
 
-# 忽略数据文件
+# ============================================
+# Node.js / npm / pnpm / yarn
+# ============================================
+node_modules/
+*/node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ============================================
+# Flutter / Dart
+# ============================================
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+**/Flutter/ephemeral/
+**/Pods/
+flutter/ephemeral/
+# Tool directory lock file (development tool, not a published package)
+tool/pubspec.lock
+
+# ============================================
+# Build Output
+# ============================================
+dist/
+build/
+*/dist/
+*/build/
+*.tsbuildinfo
+.next/
+out/
+**/.next/
+**/out/
+/.next/
+/out/
+/build
+
+# ============================================
+# Environment Variables
+# ============================================
+.env
+.env.local
+.env.production
+.env.*.local
+*/.env
+*/.env.local
+*/.env.production
+.env*
+
+# ============================================
+# Database
+# ============================================
+*.sqlite
+*.sqlite3
+*.db
+prisma/migrations/dev.db
+prisma/dev.db
+**/prisma/migrations/dev.db
+**/prisma/dev.db
+prisma/*.db
+prisma/*.db-journal
+
+# ============================================
+# Data Files (with exceptions)
+# ============================================
 *.csv
 result.json
 # Allow committed golden artifacts under examples/
 !examples/**/expected/*.csv
 !examples/**/expected/result.json
-__pycache__/
 
+# ============================================
+# IDE / Editor
+# ============================================
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+*.swp
+*.swo
+*~
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+**/xcuserdata/
+**/dgph
+
+# ============================================
+# OS Files
+# ============================================
+.DS_Store
+Thumbs.db
+
+# ============================================
+# Android
+# ============================================
+gradle-wrapper.jar
+/.gradle
+/captures/
+/gradlew
+/gradlew.bat
+/local.properties
+GeneratedPluginRegistrant.java
+.cxx/
+# Remember to never publicly share your keystore.
+# See https://flutter.dev/to/reference-keystore
+key.properties
+**/*.keystore
+**/*.jks
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# ============================================
+# Windows
+# ============================================
+x64/
+x86/
+*.[Cc]ache
+!*.[Cc]ache/
+
+# ============================================
+# Testing / Coverage
+# ============================================
+coverage/
+/coverage
+*.test.js
+*.spec.js
+
+# ============================================
+# Temporary Files
+# ============================================
+tmp/
+temp/
+*.tmp
 *.patch
+
+# ============================================
+# Logs
+# ============================================
+logs/
+*.log
+
+# ============================================
+# Docker
+# ============================================
+# Note: .dockerignore should be committed, not ignored
+
+# ============================================
+# Vercel
+# ============================================
+.vercel
+
+# ============================================
+# Drizzle
+# ============================================
+drizzle/
+**/drizzle/
+
+# ============================================
+# Generated Files
+# ============================================
+**/generated/
+next-env.d.ts
+
+# ============================================
+# Project-Specific Output Directories
+# ============================================
+# Python baseline script outputs
+**/tools/baseline_outputs/
+# Test output directories
+test_output/
+**/test_output/
+
+# ============================================
+# Miscellaneous
+# ============================================
+*.class
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+*.pem
+
+# ============================================
+# Symbolication / Obfuscation
+# ============================================
+app.*.symbols
+app.*.map.json
