@@ -27,10 +27,10 @@ import 'package:aiwa_app/pose/temporal_smoother.dart';
 
 import 'package:aiwa_core/core/errors.dart';
 import 'package:aiwa_core/pose/pose_engine.dart';
+import 'package:aiwa_core/pose/keypoint_names.dart';
 import 'package:aiwa_core/pipeline/offline_pipeline.dart';
 import 'package:aiwa_core/pipeline/pose_input_converter.dart';
 import 'package:aiwa_core/pose/neutral_keypoint_series.dart';
-import 'package:aiwa_core/pose/keypoint_names.dart';
 import 'package:aiwa_core/spec/rule_models.dart';
 import 'package:aiwa_core/spec/rule_parser.dart';
 
@@ -896,16 +896,16 @@ class VideoAnalysisService {
     required int frameIndex,
     required int timestampMs,
   }) {
-    final keypoints = <Map<String, dynamic>>[
-      for (final name in kNeutralKeypointNames)
-        {
-          'name': name,
-          'x': 0.5,
-          'y': 0.5,
-          'z': 0.0,
-          'score': 0.0,
-        }
-    ];
+    final keypoints = <Map<String, dynamic>>[];
+    for (final name in kNeutralKeypointNames) {
+      keypoints.add({
+        'name': name,
+        'x': 0.5,
+        'y': 0.5,
+        'z': 0.0,
+        'score': 0.0,
+      });
+    }
 
     return {
       'frameIndex': frameIndex,
@@ -1208,4 +1208,7 @@ class VideoAnalysisService {
     }
   }
 
+  // 🔧 已移除：_kNeutralKeypointNames 本地列表，改用 aiwa_core/pose/keypoint_names.dart 中的 kNeutralKeypointNames
+  // 🔧 已移除：_kMlKitToNeutralMap 映射已不再使用
+  // 现在使用 keypoint_adapter.dart 中的 adaptMlKitPose 函数进行转换
 }

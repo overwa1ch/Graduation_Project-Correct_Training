@@ -4,7 +4,6 @@
 
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 
@@ -87,8 +86,9 @@ class KeypointOverlayGenerator {
       if (i < frames.length) {
         final frameJson = frames[i] as Map<String, dynamic>;
         final keypoints = frameJson['keypoints'] as List<dynamic>;
-
+        
         // Convert keypoints to format expected by encoder
+        // Normalize keypoint names to canonical camelCase form
         final keypointsList = keypoints.map((kp) {
           final kpMap = kp as Map<String, dynamic>;
           return {
