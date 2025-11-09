@@ -6,8 +6,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:aiwa_app/ui/pages/camera_page.dart';
-import 'package:aiwa_app/services/event_bus.dart';
-import 'package:aiwa_app/services/analysis_session_manager.dart';
+import 'package:aiwa_app/services/analysis/event_bus.dart';
+import 'package:aiwa_app/services/analysis/analysis_session_manager.dart';
 
 void main() {
   // Disable shadows in tests to prevent layout overflow

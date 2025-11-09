@@ -43,45 +43,18 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:aiwa_app/services/video_analysis_service.dart';
-import 'package:aiwa_app/services/cancellation_token.dart';
+import 'package:aiwa_app/services/analysis/video_analysis_service.dart';
+import 'package:aiwa_app/services/utils/cancellation_token.dart';
 import 'package:aiwa_core/spec/rule_models.dart';
+import 'package:aiwa_core/core/errors.dart';
 
 // ============================================================================
 // 异常类型（契约违反/解析错误/CLI 异常）
 // ============================================================================
-
-/// JSON 解析异常（行级错误）
-class EventParseException implements Exception {
-  final int line;
-  final String raw;
-  final Object? cause;
-
-  EventParseException({required this.line, required this.raw, this.cause});
-
-  @override
-  String toString() => 'EventParseException(line=$line, cause=$cause)';
-}
-
-/// 契约违反异常（字段缺失/类型错误）
-class ContractViolation implements Exception {
-  final String message;
-
-  ContractViolation(this.message);
-
-  @override
-  String toString() => 'ContractViolation($message)';
-}
-
-/// CLI 子进程退出异常
-class CliExitException implements Exception {
-  final int exitCode;
-
-  CliExitException(this.exitCode);
-
-  @override
-  String toString() => 'CliExitException(exitCode=$exitCode)';
-}
+// ✅ 迁移到 aiwa_core/core/errors.dart 统一错误体系
+// - EventParseException → EventParseError
+// - ContractViolation → ContractViolationError
+// - CliExitException → CliExecutionError
 
 // ============================================================================
 // 公开接口 1: 从 JSONL 文件读取事件
@@ -172,7 +145,7 @@ Stream<Map<String, dynamic>> analysisEventsFromJsonlFile(
               // 跳过畸形 JSON 行但不关闭流
               debugLog?.call('[JSONL] Line $lineNumber: JSON parse error, skipped: $e');
               return;
-            } on ContractViolation catch (e) {
+            } on ContractViolationError catch (e) {
               _emitErrorAndClose(
                 controller: controller,
                 sessionId: currentSessionId ?? _generateSessionId(),
@@ -250,8 +223,8 @@ Stream<Map<String, dynamic>> analysisEventsFromJsonlFile(
 ///
 /// 行为:
 /// - 缓存最近 50 行 stderr
-/// - warmupTimeout 内未收到首条事件 → 抛 ContractViolation，下发 ERROR
-/// - 子进程退出码非 0 → 抛 CliExitException，下发 ERROR（附带 stderr 尾部）
+/// - warmupTimeout 内未收到首条事件 → 抛 ContractViolationError，下发 ERROR
+/// - 子进程退出码非 0 → 抛 CliExecutionError，下发 ERROR（附带 stderr 尾部）
 /// - 收到 DONE 或 ERROR 后关闭流并终止子进程
 /// - 取消订阅时优雅终止子进程（2 秒超时后强杀）
 Stream<Map<String, dynamic>> analysisEventsFromCli({
@@ -346,7 +319,7 @@ Stream<Map<String, dynamic>> analysisEventsFromCli({
               // 跳过畸形 JSON 行但不关闭流
               debugLog?.call('[CLI] Line $lineNumber: JSON parse error, skipped: $e');
               return;
-            } on ContractViolation catch (e) {
+            } on ContractViolationError catch (e) {
               _emitErrorAndClose(
                 controller: controller,
                 sessionId: currentSessionId ?? _generateSessionId(),
@@ -513,7 +486,7 @@ Stream<Map<String, dynamic>> analysisEventsFromIsolate({
 void _validateEvent(Map<String, dynamic> event) {
   // 1. 必须有 event 字段
   if (!event.containsKey('event') || event['event'] is! String) {
-    throw ContractViolation('Missing or invalid "event" field');
+    throw ContractViolationError('Missing or invalid "event" field');
   }
 
   final eventName = event['event'] as String;
@@ -521,50 +494,50 @@ void _validateEvent(Map<String, dynamic> event) {
   // 2. 校验已知事件类型
   const validEvents = {'START', 'PHASE', 'PROGRESS', 'METRIC', 'EVIDENCE', 'DONE', 'ERROR'};
   if (!validEvents.contains(eventName)) {
-    throw ContractViolation('Unknown event type: $eventName');
+    throw ContractViolationError('Unknown event type: $eventName');
   }
 
   // 3. START 特定字段
   if (eventName == 'START') {
     if (!event.containsKey('input') || event['input'] is! Map) {
-      throw ContractViolation('START event missing "input" object');
+      throw ContractViolationError('START event missing "input" object');
     }
     if (!event.containsKey('params') || event['params'] is! Map) {
-      throw ContractViolation('START event missing "params" object');
+      throw ContractViolationError('START event missing "params" object');
     }
   }
 
   // 4. PROGRESS 特定字段
   if (eventName == 'PROGRESS') {
     if (!event.containsKey('processed') || event['processed'] is! num) {
-      throw ContractViolation('PROGRESS event missing "processed" number');
+      throw ContractViolationError('PROGRESS event missing "processed" number');
     }
     if (!event.containsKey('total') || event['total'] is! num) {
-      throw ContractViolation('PROGRESS event missing "total" number');
+      throw ContractViolationError('PROGRESS event missing "total" number');
     }
     if ((event['processed'] as num) < 0 || (event['total'] as num) < 0) {
-      throw ContractViolation('PROGRESS numbers must be non-negative');
+      throw ContractViolationError('PROGRESS numbers must be non-negative');
     }
   }
 
   // 5. DONE 特定字段
   if (eventName == 'DONE') {
     if (!event.containsKey('artifacts') || event['artifacts'] is! Map) {
-      throw ContractViolation('DONE event missing "artifacts" object');
+      throw ContractViolationError('DONE event missing "artifacts" object');
     }
     final artifacts = event['artifacts'] as Map;
     if (!artifacts.containsKey('root') || artifacts['root'] is! String || (artifacts['root'] as String).isEmpty) {
-      throw ContractViolation('DONE event missing "artifacts.root" string');
+      throw ContractViolationError('DONE event missing "artifacts.root" string');
     }
   }
 
   // 6. ERROR 特定字段
   if (eventName == 'ERROR') {
     if (!event.containsKey('code') || event['code'] is! String) {
-      throw ContractViolation('ERROR event missing "code" string');
+      throw ContractViolationError('ERROR event missing "code" string');
     }
     if (!event.containsKey('message') || event['message'] is! String) {
-      throw ContractViolation('ERROR event missing "message" string');
+      throw ContractViolationError('ERROR event missing "message" string');
     }
   }
 
@@ -576,7 +549,7 @@ void _validateEvent(Map<String, dynamic> event) {
 void _checkForInvalidNumbers(dynamic obj) {
   if (obj is num) {
     if (obj.isNaN || obj.isInfinite) {
-      throw ContractViolation('Event contains NaN or Infinity');
+      throw ContractViolationError('Event contains NaN or Infinity');
     }
   } else if (obj is Map) {
     for (final value in obj.values) {

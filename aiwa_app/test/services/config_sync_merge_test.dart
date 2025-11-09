@@ -5,7 +5,7 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:aiwa_app/services/config_sync.dart';
+import 'package:aiwa_app/services/config/config_sync.dart';
 
 void main() {
   late Directory tempDir;

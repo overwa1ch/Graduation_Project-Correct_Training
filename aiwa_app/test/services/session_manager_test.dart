@@ -4,7 +4,7 @@
 
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:aiwa_app/services/session_manager.dart';
+import 'package:aiwa_app/services/storage/session_manager.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

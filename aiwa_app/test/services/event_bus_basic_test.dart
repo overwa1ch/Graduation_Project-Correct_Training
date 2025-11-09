@@ -3,7 +3,8 @@
 
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:aiwa_app/services/event_bus.dart';
+import 'package:aiwa_app/services/analysis/event_bus.dart';
+import 'package:aiwa_core/core/errors.dart';
 
 void main() {
   group('Event Bus - Basic Tests', () {
@@ -206,30 +207,28 @@ void main() {
   });
 
   group('Exception Classes', () {
-    test('EventParseException should format correctly', () {
-      final exception = EventParseException(
-        line: 42,
-        raw: '{"invalid json',
-        cause: 'FormatException',
-      );
+    test('EventParseError should format correctly', () {
+      final exception = EventParseError('Parse error at line 42: FormatException');
       
-      expect(exception.toString(), contains('line=42'));
-      expect(exception.line, equals(42));
-      expect(exception.raw, equals('{"invalid json'));
+      expect(exception.toString(), contains('EVENT_PARSE_ERROR'));
+      expect(exception.code, equals('EVENT_PARSE_ERROR'));
+      expect(exception.message, contains('line 42'));
     });
 
-    test('ContractViolation should format correctly', () {
-      final exception = ContractViolation('Missing required field');
+    test('ContractViolationError should format correctly', () {
+      final exception = ContractViolationError('Missing required field');
       
       expect(exception.toString(), contains('Missing required field'));
+      expect(exception.code, equals('CONTRACT_VIOLATION_ERROR'));
       expect(exception.message, equals('Missing required field'));
     });
 
-    test('CliExitException should format correctly', () {
-      final exception = CliExitException(127);
+    test('CliExecutionError should format correctly', () {
+      final exception = CliExecutionError('Process exited', exitCode: 127);
       
       expect(exception.toString(), contains('127'));
       expect(exception.exitCode, equals(127));
+      expect(exception.code, equals('CLI_EXECUTION_ERROR'));
     });
   });
 }

@@ -5,7 +5,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:aiwa_app/services/event_bus.dart';
+import 'package:aiwa_app/services/analysis/event_bus.dart';
 import 'package:aiwa_app/adapters/result_adapter.dart';
 
 /// 简化的分析状态枚举（用于测试）

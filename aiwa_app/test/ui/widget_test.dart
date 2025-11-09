@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:aiwa_app/main.dart';
-import 'package:aiwa_app/services/auth_state.dart';
+import 'package:aiwa_app/services/auth/auth_state.dart';
 import 'package:aiwa_app/ui/pages/settings_page.dart';
 
 /// Widget Tests

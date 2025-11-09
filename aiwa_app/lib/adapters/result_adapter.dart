@@ -37,6 +37,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
+import 'package:aiwa_core/core/rounding.dart';
 import 'package:aiwa_app/adapters/evidence_resolver.dart';
 
 // ============================================================================
@@ -407,10 +408,11 @@ AnalysisResultLite mapToLite(Map<String, dynamic> raw) {
   debugPrint('[ResultAdapter] 📥 scores object: $scores');
 
   // 映射分数（round 取整，部分结果时可为 null）
-  final posture = scores['form'] != null ? (scores['form'] as num).round() : null;
-  final stability = scores['stability'] != null ? (scores['stability'] as num).round() : null;
-  final rhythm = scores['tempo'] != null ? (scores['tempo'] as num).round() : null;
-  final total = scores['overall'] != null ? (scores['overall'] as num).round() : null;
+  // ✅ 使用 aiwa_core/core/rounding.dart 统一精度控制
+  final posture = scores['form'] != null ? round1(scores['form'] as num).round() : null;
+  final stability = scores['stability'] != null ? round1(scores['stability'] as num).round() : null;
+  final rhythm = scores['tempo'] != null ? round1(scores['tempo'] as num).round() : null;
+  final total = scores['overall'] != null ? round1(scores['overall'] as num).round() : null;
   
   debugPrint('[ResultAdapter] 📥 Mapped scores: posture=$posture, stability=$stability, rhythm=$rhythm, total=$total');
 

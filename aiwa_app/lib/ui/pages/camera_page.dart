@@ -9,10 +9,10 @@ import 'package:aiwa_app/theme/typography.dart';
 import 'package:aiwa_app/ui/app_shell.dart';
 import 'package:aiwa_app/ui/pages/result_popup_page.dart';
 import 'package:aiwa_app/adapters/result_adapter.dart';
-import 'package:aiwa_app/services/config_sync.dart';
-import 'package:aiwa_app/services/session_manager.dart';
-import 'package:aiwa_app/services/analysis_history.dart';
-import 'package:aiwa_app/services/analysis_session_manager.dart';
+import 'package:aiwa_app/services/config/config_sync.dart';
+import 'package:aiwa_app/services/storage/session_manager.dart';
+import 'package:aiwa_app/services/analysis/analysis_history.dart';
+import 'package:aiwa_app/services/analysis/analysis_session_manager.dart';
 
 /// CameraPage
 /// 

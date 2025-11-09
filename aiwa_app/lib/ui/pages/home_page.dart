@@ -4,7 +4,7 @@ import 'package:aiwa_app/theme/colors.dart';
 import 'package:aiwa_app/theme/typography.dart';
 import 'package:aiwa_app/ui/app_shell.dart';
 import 'package:aiwa_app/ui/pages/result_popup_page.dart';
-import 'package:aiwa_app/services/analysis_history.dart';
+import 'package:aiwa_app/services/analysis/analysis_history.dart';
 import 'package:aiwa_app/ui/dialogs/edit_record_dialog.dart';
 
 /// HomePage

@@ -7,7 +7,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/services.dart';
-import 'package:aiwa_app/services/cancellation_token.dart';
+import 'package:aiwa_app/services/utils/cancellation_token.dart';
 
 /// Exception thrown when native frame extraction fails
 class NativeFrameExtractionException implements Exception {

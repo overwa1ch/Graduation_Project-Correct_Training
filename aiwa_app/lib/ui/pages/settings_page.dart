@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:aiwa_app/theme/spacing.dart';
 import 'package:aiwa_app/theme/colors.dart';
 import 'package:aiwa_app/ui/app_shell.dart';
-import 'package:aiwa_app/services/config_sync.dart';
-import 'package:aiwa_app/services/session_manager.dart';
-import 'package:aiwa_app/services/analysis_history.dart';
-import 'package:aiwa_app/services/support_bundle.dart';
-import 'package:aiwa_app/services/auth_state.dart';
-import 'package:aiwa_app/services/auth_service.dart';
+import 'package:aiwa_app/services/config/config_sync.dart';
+import 'package:aiwa_app/services/storage/session_manager.dart';
+import 'package:aiwa_app/services/analysis/analysis_history.dart';
+import 'package:aiwa_app/services/utils/support_bundle.dart';
+import 'package:aiwa_app/services/auth/auth_state.dart';
+import 'package:aiwa_app/services/auth/auth_service.dart';
 
 /// SettingsPage
 /// 

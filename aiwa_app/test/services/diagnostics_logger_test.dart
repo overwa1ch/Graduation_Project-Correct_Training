@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:aiwa_app/services/diagnostics_logger.dart';
+import 'package:aiwa_app/services/utils/diagnostics_logger.dart';
 
 void main() {
   test('diagnostics.log is valid JSONL and redacts absolute paths', () async {

@@ -157,12 +157,13 @@ void main() {
       expect(AppSpacing.sectionPadding, 64.0);
     });
 
-    test('Gap presets should match Figma tokens', () {
-      expect(AppSpacing.gapXs, 2.0);
-      expect(AppSpacing.gapSm, 4.0);
-      expect(AppSpacing.gapMd, 8.0);
-      expect(AppSpacing.gapLg, 10.0);
-    });
+    // Gap presets are currently commented out in spacing.dart (保留用于未来使用)
+    // test('Gap presets should match Figma tokens', () {
+    //   expect(AppSpacing.gapXs, 2.0);
+    //   expect(AppSpacing.gapSm, 4.0);
+    //   expect(AppSpacing.gapMd, 8.0);
+    //   expect(AppSpacing.gapLg, 10.0);
+    // });
   });
 
   group('Radius Tokens Tests', () {

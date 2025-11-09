@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:aiwa_app/theme/spacing.dart';
 import 'package:aiwa_app/theme/colors.dart';
 import 'package:aiwa_app/ui/app_shell.dart';
-import 'package:aiwa_app/services/config_sync.dart';
+import 'package:aiwa_app/services/config/config_sync.dart';
 import 'package:aiwa_core/spec/rule_models.dart';
 
 /// WelcomePage

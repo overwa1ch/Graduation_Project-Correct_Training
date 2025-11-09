@@ -8,8 +8,8 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 
-import 'package:aiwa_app/services/native_video_encoder.dart';
-import 'package:aiwa_app/services/keypoint_skeleton.dart';
+import 'package:aiwa_app/services/native/native_video_encoder.dart';
+import 'package:aiwa_app/services/visualization/keypoint_skeleton.dart';
 
 /// Generator for creating keypoint overlay videos
 class KeypointOverlayGenerator {

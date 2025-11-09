@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:aiwa_app/theme/spacing.dart';
 import 'package:aiwa_app/theme/typography.dart';
-import 'package:aiwa_app/services/auth_state.dart';
+import 'package:aiwa_app/services/auth/auth_state.dart';
 
 /// 注册页面
 /// 

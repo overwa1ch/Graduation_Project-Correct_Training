@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:aiwa_app/services/auth_service.dart';
+import 'package:aiwa_app/services/auth/auth_service.dart';
 
 /// 认证状态管理
 /// 

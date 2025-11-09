@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:archive/archive.dart';
-import 'package:aiwa_app/services/support_bundle.dart';
+import 'package:aiwa_app/services/utils/support_bundle.dart';
 
 void main() {
   test('support bundle contains expected files if present', () async {

@@ -30,9 +30,9 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:aiwa_app/services/video_analysis_service.dart';
-import 'package:aiwa_app/services/cancellation_token.dart';
-import 'package:aiwa_app/services/config_sync.dart';
+import 'package:aiwa_app/services/analysis/video_analysis_service.dart';
+import 'package:aiwa_app/services/utils/cancellation_token.dart';
+import 'package:aiwa_app/services/config/config_sync.dart';
 import 'package:aiwa_core/spec/rule_models.dart';
 
 // ============================================================================

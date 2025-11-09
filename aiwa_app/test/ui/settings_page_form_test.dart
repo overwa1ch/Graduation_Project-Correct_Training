@@ -5,7 +5,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:aiwa_app/services/config_sync.dart';
+import 'package:aiwa_app/services/config/config_sync.dart';
 
 /// 表单校验器
 class FormValidator {

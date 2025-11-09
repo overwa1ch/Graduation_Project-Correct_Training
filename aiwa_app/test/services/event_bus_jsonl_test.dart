@@ -5,7 +5,7 @@
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:aiwa_app/services/event_bus.dart';
+import 'package:aiwa_app/services/analysis/event_bus.dart';
 
 void main() {
   late Directory tempDir;

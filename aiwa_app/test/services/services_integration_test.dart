@@ -5,9 +5,9 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:aiwa_app/services/config_sync.dart';
-import 'package:aiwa_app/services/session_manager.dart';
-import 'package:aiwa_app/services/event_bus.dart';
+import 'package:aiwa_app/services/config/config_sync.dart';
+import 'package:aiwa_app/services/storage/session_manager.dart';
+import 'package:aiwa_app/services/analysis/event_bus.dart';
 import 'package:aiwa_app/adapters/result_adapter.dart';
 
 void main() {

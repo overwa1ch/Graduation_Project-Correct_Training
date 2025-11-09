@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:aiwa_app/services/api_client.dart';
+import 'package:aiwa_app/services/auth/api_client.dart';
 import 'package:aiwa_app/config/api_config.dart';
 
 /// 认证服务
