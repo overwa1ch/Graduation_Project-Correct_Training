@@ -9,6 +9,8 @@ import 'package:aiwa_app/services/config/config_sync.dart';
 import 'package:aiwa_app/services/storage/session_manager.dart';
 import 'package:aiwa_app/services/analysis/event_bus.dart';
 import 'package:aiwa_app/adapters/result_adapter.dart';
+import 'package:aiwa_core/result/result_reader.dart';
+import 'package:aiwa_core/core/errors.dart';
 
 void main() {
   late Directory tempDir;
@@ -86,13 +88,11 @@ void main() {
       await File(resultPath).writeAsString(jsonEncode(resultJson));
 
       // Step 8: Parse result via adapter
-      final resultFile = File(resultPath);
-      final parsedJson = jsonDecode(await resultFile.readAsString()) as Map<String, dynamic>;
-      assertResultContract(parsedJson);
-      final result = mapToLite(parsedJson);
+      final result = await readResultJson(sessionRoot);
+      final lite = toLite(result);
 
-      expect(result.total, equals(85));
-      expect(result.reps, equals(12));
+      expect(lite.total, equals(85));
+      expect(lite.reps, equals(12));
     });
 
     test('config changes do not affect active session snapshot', () async {
@@ -204,21 +204,21 @@ void main() {
       expect(await File('$sessionRoot/result.json').exists(), isFalse);
       await expectLater(
         readResultJson(sessionRoot),
-        throwsA(isA<ResultReadException>()),
+        throwsA(isA<DataFormatError>()),
       );
     });
 
     test('malformed result.json violates contract', () async {
-      final resultPath = '${tempDir.path}/bad_result.json';
+      final badSessionRoot = '${tempDir.path}/bad_result';
+      await Directory(badSessionRoot).create(recursive: true);
+      
       final badResult = {'scores': {'overall': 85}}; // Missing required fields
-      await File(resultPath).writeAsString(jsonEncode(badResult));
+      await File('$badSessionRoot/result.json').writeAsString(jsonEncode(badResult));
 
-      final resultJson = jsonDecode(await File(resultPath).readAsString()) as Map<String, dynamic>;
-
-      // Contract assertion should fail
-      expect(
-        () => assertResultContract(resultJson),
-      throwsA(isA<SchemaMismatch>()),
+      // Schema validation should fail
+      await expectLater(
+        readResultJson(badSessionRoot),
+        throwsA(isA<SchemaValidationError>()),
       );
     });
   });
@@ -395,12 +395,11 @@ void main() {
       };
       await File(resultPath).writeAsString(jsonEncode(resultJson));
 
-      final parsed = jsonDecode(await File(resultPath).readAsString()) as Map<String, dynamic>;
-      assertResultContract(parsed);
-      final result = mapToLite(parsed);
+      final result = await readResultJson(sessionRoot);
+      final lite = toLite(result);
 
-      expect(result.total, equals(92));
-      expect(result.reps, equals(15));
+      expect(lite.total, equals(92));
+      expect(lite.reps, equals(15));
 
       // 8. User can start new analysis - old session preserved
       final sessionRoot2 = await SessionManager.createSessionRoot();

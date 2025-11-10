@@ -5,7 +5,7 @@
 
 import 'dart:ui';
 
-import 'package:aiwa_core/pose/keypoint_names.dart';
+import 'package:aiwa_core/aiwa_core.dart';
 
 /// Represents a connection between two keypoints (a "bone")
 class SkeletonConnection {

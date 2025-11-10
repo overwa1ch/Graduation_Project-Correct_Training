@@ -8,8 +8,7 @@
 // - 远端关节（腕、指、脚趾）用低阈值（更宽松）
 // - 符合生理先验：躯干稳定，远端易遮挡
 
-import 'package:aiwa_core/pose/pose_engine.dart';
-import 'package:aiwa_core/pose/keypoint_names.dart';
+import 'package:aiwa_core/aiwa_core.dart';
 
 /// 关节组类型
 enum JointGroup {

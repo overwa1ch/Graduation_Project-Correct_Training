@@ -10,7 +10,7 @@
 // - Auto: 自动选择（根据设备性能）
 
 import 'package:flutter/foundation.dart';
-import 'package:aiwa_core/pose/pose_engine.dart';
+import 'package:aiwa_core/aiwa_core.dart';
 import 'package:aiwa_app/pose/mlkit_pose_engine.dart';
 import 'package:aiwa_app/pose/movenet_pose_engine.dart';
 

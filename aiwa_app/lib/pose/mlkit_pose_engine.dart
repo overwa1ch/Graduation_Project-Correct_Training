@@ -12,7 +12,7 @@ import 'dart:ui' as ui show Size;
 
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 
-import 'package:aiwa_core/pose/pose_engine.dart';
+import 'package:aiwa_core/aiwa_core.dart';
 
 import 'package:aiwa_app/pose/adapter/keypoint_adapter.dart';
 import 'package:aiwa_app/pose/per_joint_threshold.dart';

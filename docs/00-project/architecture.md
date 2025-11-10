@@ -67,4 +67,9 @@ c. **存储与数据库**：Supabase PostgreSQL 存储用户/作业状态，S3 �
 - `aiwa_cloud/`：部署脚本、Core API、Worker 规范。
 - `docs/`：文档中心（参见 [docs/README.md](../README.md)）。
 
+## 7. 架构边界与决策规则
+
+如需判断代码应该放在 `aiwa_core` 还是 `aiwa_app`，请参考：
+- **[架构边界决策规则](./ARCHITECTURE_BOUNDARIES.md)** - 30 秒快速决策树和详细规则表
+
 如需扩展或替换某一层，请在对应模块补充文档并更新本页，保持架构信息同步。

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:aiwa_app/services/analysis/event_bus.dart';
 import 'package:aiwa_app/adapters/result_adapter.dart';
+import 'package:aiwa_core/result/result_reader.dart';
 
 /// 简化的分析状态枚举（用于测试）
 enum AnalysisState {
@@ -56,9 +57,8 @@ class MockAnalysisController {
             _setState(AnalysisState.parsing);
 
             // 读取并解析结果
-            final raw = await readResultJson(sessionRoot);
-            assertResultContract(raw);
-            _result = mapToLite(raw);
+            final result = await readResultJson(sessionRoot);
+            _result = toLite(result);
 
             _setState(AnalysisState.success);
             break;
@@ -145,10 +145,8 @@ void main() {
       await File('dev/result_demo.json').copy('$sessionRoot/result.json');
 
       // 执行：模拟开始分析，记录进度
-      final controller = MockAnalysisController();
-      final progressValues = <double>[];
-
       // 使用流的方式监控进度变化
+      final progressValues = <double>[];
       final stream = analysisEventsFromJsonlFile(jsonlPath);
       await for (final event in stream) {
         if (event['event'] == 'PROGRESS') {
@@ -257,8 +255,7 @@ void main() {
       
       // 第一次分析
       await controller.startAnalysis(jsonlPath1, sessionRoot1);
-      // 第一次分析可能成功或失败
-      final firstState = controller.state;
+      // 第一次分析可能成功或失败（状态已记录在 controller 中）
 
       // Reset
       controller.reset();

@@ -9,7 +9,7 @@ import 'package:path/path.dart' as p;
 
 import 'package:aiwa_app/services/native/native_video_encoder.dart';
 import 'package:aiwa_app/services/visualization/keypoint_skeleton.dart';
-import 'package:aiwa_core/pose/keypoint_names.dart';
+import 'package:aiwa_core/aiwa_core.dart';
 
 /// Generator for creating keypoint overlay videos
 class KeypointOverlayGenerator {

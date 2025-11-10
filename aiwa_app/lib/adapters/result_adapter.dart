@@ -21,7 +21,7 @@
 // final lite = toLite(result);                       // UI 轻量映射
 // ```
 
-import 'package:aiwa_core/result/result_schema.dart';
+import 'package:aiwa_core/aiwa_core.dart';
 
 // ============================================================================
 // UI 轻量模型（仅用于前端展示）

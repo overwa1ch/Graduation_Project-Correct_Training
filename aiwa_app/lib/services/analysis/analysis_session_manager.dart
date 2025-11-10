@@ -33,7 +33,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:aiwa_app/services/analysis/video_analysis_service.dart';
 import 'package:aiwa_app/services/utils/cancellation_token.dart';
 import 'package:aiwa_app/services/config/config_sync.dart';
-import 'package:aiwa_core/spec/rule_models.dart';
+import 'package:aiwa_core/aiwa_core.dart';
 
 // ============================================================================
 // 状态类型定义（sealed class hierarchy）

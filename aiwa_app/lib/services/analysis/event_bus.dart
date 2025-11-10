@@ -45,8 +45,7 @@ import 'dart:math';
 
 import 'package:aiwa_app/services/analysis/video_analysis_service.dart';
 import 'package:aiwa_app/services/utils/cancellation_token.dart';
-import 'package:aiwa_core/spec/rule_models.dart';
-import 'package:aiwa_core/core/errors.dart';
+import 'package:aiwa_core/aiwa_core.dart';
 
 // ============================================================================
 // 异常类型（契约违反/解析错误/CLI 异常）

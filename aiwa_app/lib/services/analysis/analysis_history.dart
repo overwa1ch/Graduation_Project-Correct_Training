@@ -88,13 +88,14 @@ class AnalysisRecord {
       rhythm: resultJson['rhythm'] as int?,
       total: resultJson['total'] as int?,
       reps: resultJson['reps'] as int? ?? 0,
+      attempts: resultJson['attempts'] as int? ?? 0,
       evidencePath: resultJson['evidencePath'] as String?,
-      lowConfidence: resultJson['lowConfidence'] as bool?,
-      coverage: (resultJson['coverage'] as num?)?.toDouble(),
-      templateName: resultJson['templateName'] as String?,
-      strictness: resultJson['strictness'] as String?,
+      lowConfidence: resultJson['lowConfidence'] as bool? ?? false,
+      coverage: (resultJson['coverage'] as num?)?.toDouble() ?? 0.0,
+      templateName: resultJson['templateName'] as String? ?? 'unknown',
+      strictness: resultJson['strictness'] as String? ?? 'relaxed',
       engine: resultJson['engine'] as String?,
-      fps: resultJson['fps'] as int?,
+      fps: resultJson['fps'] as int? ?? 30,
     );
 
     return AnalysisRecord(
@@ -177,7 +178,7 @@ class AnalysisHistoryService {
       final id = '${DateTime.now().millisecondsSinceEpoch}';
 
       // 自动生成显示名称
-      final templateName = result.templateName ?? 'Exercise';
+      final templateName = result.templateName;
       final count = records.where((r) => 
         r.result.templateName == result.templateName
       ).length + 1;

@@ -14,8 +14,7 @@ import 'package:flutter/foundation.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:image/image.dart' as img;
 
-import 'package:aiwa_core/pose/pose_engine.dart';
-import 'package:aiwa_core/pose/keypoint_names.dart';
+import 'package:aiwa_core/aiwa_core.dart';
 import 'package:aiwa_app/pose/per_joint_threshold.dart';
 
 /// MoveNet 模型类型

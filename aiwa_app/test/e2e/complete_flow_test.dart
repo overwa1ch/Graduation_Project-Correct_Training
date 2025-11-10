@@ -10,6 +10,8 @@ import 'package:aiwa_app/main.dart';
 import 'package:aiwa_app/services/config/config_sync.dart';
 import 'package:aiwa_app/services/auth/auth_state.dart';
 import 'package:aiwa_app/adapters/result_adapter.dart';
+import 'package:aiwa_core/result/result_reader.dart';
+import 'package:aiwa_core/core/errors.dart';
 import '../test_helpers.dart';
 import '../helpers/fake_analysis.dart';
 
@@ -259,18 +261,18 @@ void main() {
         return;
       }
 
-      final resultJson = jsonDecode(await resultFile.readAsString()) as Map<String, dynamic>;
-      assertResultContract(resultJson);
-      final result = mapToLite(resultJson);
+      final sessionRoot = 'test/fixtures/e2e_scenarios/artifacts/session_success';
+      final result = await readResultJson(sessionRoot);
+      final lite = toLite(result);
 
       // Verify core fields exist (exact values may vary)
-      expect(result.total, greaterThanOrEqualTo(0));
-      expect(result.posture, greaterThanOrEqualTo(0));
-      expect(result.stability, greaterThanOrEqualTo(0));
-      expect(result.rhythm, greaterThanOrEqualTo(0));
-      expect(result.reps, greaterThanOrEqualTo(0));
-      expect(result.lowConfidence, isNotNull);
-      expect(result.coverage, greaterThanOrEqualTo(0));
+      expect(lite.total, greaterThanOrEqualTo(0));
+      expect(lite.posture, greaterThanOrEqualTo(0));
+      expect(lite.stability, greaterThanOrEqualTo(0));
+      expect(lite.rhythm, greaterThanOrEqualTo(0));
+      expect(lite.reps, greaterThanOrEqualTo(0));
+      expect(lite.lowConfidence, isNotNull);
+      expect(lite.coverage, greaterThanOrEqualTo(0));
     });
 
     test('Parse no-evidence scenario result.json', () async {
@@ -283,14 +285,14 @@ void main() {
         return;
       }
 
-      final resultJson = jsonDecode(await resultFile.readAsString()) as Map<String, dynamic>;
-      assertResultContract(resultJson);
-      final result = mapToLite(resultJson);
+      final sessionRoot = 'test/fixtures/e2e_scenarios/artifacts/session_no_evidence';
+      final result = await readResultJson(sessionRoot);
+      final lite = toLite(result);
 
       // Verify quality indicators are present
-      expect(result.total, greaterThanOrEqualTo(0));
-      expect(result.lowConfidence, isNotNull);
-      expect(result.coverage, greaterThanOrEqualTo(0));
+      expect(lite.total, greaterThanOrEqualTo(0));
+      expect(lite.lowConfidence, isNotNull);
+      expect(lite.coverage, greaterThanOrEqualTo(0));
     });
 
     test('Verify quality warning logic', () async {
@@ -303,13 +305,12 @@ void main() {
         return;
       }
 
-      final resultJson = jsonDecode(await resultFile.readAsString()) as Map<String, dynamic>;
-      assertResultContract(resultJson);
-      final result = mapToLite(resultJson);
+      final sessionRoot = 'test/fixtures/e2e_scenarios/artifacts/session_no_evidence';
+      final result = await readResultJson(sessionRoot);
+      final lite = toLite(result);
 
       // Verify warning logic can be computed (values may vary)
-      final shouldWarn = result.lowConfidence == true || 
-                        (result.coverage != null && result.coverage! < 0.7);
+      final shouldWarn = lite.lowConfidence == true || lite.coverage < 0.7;
       
       // Just verify the logic works, don't enforce specific values
       expect(shouldWarn, isA<bool>());

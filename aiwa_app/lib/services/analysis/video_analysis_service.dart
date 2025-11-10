@@ -25,16 +25,7 @@ import 'package:aiwa_app/services/config/config_sync.dart';
 import 'package:aiwa_app/pose/pose_engine_factory.dart';
 import 'package:aiwa_app/pose/temporal_smoother.dart';
 
-import 'package:aiwa_core/core/errors.dart';
-import 'package:aiwa_core/pose/pose_engine.dart';
-import 'package:aiwa_core/pose/frame_streamer.dart';
-import 'package:aiwa_core/pipeline/offline_pipeline.dart';
-import 'package:aiwa_core/pipeline/pose_input_converter.dart';
-import 'package:aiwa_core/pipeline/quality.dart';
-import 'package:aiwa_core/pipeline/pose_series.dart';
-import 'package:aiwa_core/pose/neutral_keypoint_series.dart';
-import 'package:aiwa_core/spec/rule_models.dart';
-import 'package:aiwa_core/spec/rule_parser.dart';
+import 'package:aiwa_core/aiwa_core.dart';
 
 /// 视频信息类
 class _VideoInfo {
@@ -243,10 +234,10 @@ class VideoAnalysisService {
           });
         },
       );
-      
+
       // 提取 NeutralFrame 列表并应用时序平滑
       final rawNeutralFrames = streamResult.frames;
-      
+
       // 🔧 时序平滑器：减少抖动和间歇性断线
       final smoother = TemporalSmoother(
         fps: videoInfo.fps,
@@ -277,7 +268,7 @@ class VideoAnalysisService {
           if (kp.z != null) 'z': kp.z,
         }).toList(),
       }).toList();
-
+      
       debugPrint('[VideoAnalysis] Completed pose detection for ${neutralFrames.length} frames');
 
       // 5. 计算质量指标（使用 aiwa_core 的标准化方法）
@@ -298,7 +289,7 @@ class VideoAnalysisService {
       )).toList();
       
       final quality = computeQualityFromKeypoints(poseFrames);
-      
+
       // 保存质量指标用于降级存储
       qualityMetrics = {
         'lowConfidence': quality.lowConfidence,
@@ -800,10 +791,10 @@ class VideoAnalysisService {
       }
       
       final frameFile = frames[idx];
-      
+
       try {
         // 读取帧数据
-        final frameBytes = await frameFile.readAsBytes();
+          final frameBytes = await frameFile.readAsBytes();
         
         // 获取实际尺寸
         int actualWidth = videoInfo.width;
@@ -817,25 +808,25 @@ class VideoAnalysisService {
         } catch (e) {
           debugPrint('[VideoAnalysis] Failed to read frame dimensions: $e');
         }
-        
+
         // 调试日志（前 3 帧）
         if (idx < 3) {
           debugPrint('[VideoAnalysis] 🔍 Frame $idx:');
           debugPrint('[VideoAnalysis]   Size: $actualWidth x $actualHeight');
           debugPrint('[VideoAnalysis]   File: ${frameFile.path}');
         }
-        
+
         yield RawImageFrame(
           bytes: frameBytes,
           width: actualWidth,
           height: actualHeight,
           rotationDeg: 0,
         );
-        
-        // 进度回调
-        if (onProgress != null && ((idx + 1) % 10 == 0 || idx == frames.length - 1)) {
-          onProgress(idx, frames.length);
-        }
+
+      // 进度回调
+      if (onProgress != null && ((idx + 1) % 10 == 0 || idx == frames.length - 1)) {
+        onProgress(idx, frames.length);
+      }
       } catch (e) {
         debugPrint('[VideoAnalysis] Failed to read frame $idx: $e');
         // 跳过损坏的帧

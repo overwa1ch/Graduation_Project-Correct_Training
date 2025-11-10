@@ -1,0 +1,22 @@
+{
+  "template": "squat",
+  "version": "1.0.0",
+  "counts": {
+    "minIntervalMs": 600,
+    "windowMs": 150
+  },
+  "phases": {
+    "minMs": 250
+  },
+  "metrics": {
+    "depth": { "kneeAngleMin": { "relaxed": 110, "strict": 85 } },
+    "valgus": { "kneeOutAngleMin": { "relaxed": 0, "strict": 10 }, "windowMs": 200 },
+    "trunk": { "maxForwardLean": { "relaxed": 50, "strict": 35 } },
+    "tempo": { "eccentricMs": [600, 2000], "ratio": [1.0, 2.5] }
+  },
+  "scoreWeights": { "form": 0.5, "stability": 0.25, "tempo": 0.25 },
+  "strictness": {
+    "relaxed": { "minValleyKneeAngle": 110, "detectionThreshold": 130 },
+    "strict":  { "minValleyKneeAngle": 85, "detectionThreshold": 105 }
+  }
+}

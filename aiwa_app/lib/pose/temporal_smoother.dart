@@ -18,8 +18,7 @@
 // - 离线管线使用 keypoint_smoother.dart 的批处理平滑（完整轨迹）
 // - 两者使用相同的 OneEuro 参数确保行为一致
 
-import 'package:aiwa_core/pose/pose_engine.dart';
-import 'package:aiwa_core/core/one_euro.dart';
+import 'package:aiwa_core/aiwa_core.dart';
 
 /// 单个关键点的状态（包含过滤器和历史信息）
 class _KeypointState {

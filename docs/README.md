@@ -8,10 +8,9 @@
 
 ### 00-project — 项目基础档案
 - **[00-project/architecture.md](00-project/architecture.md)**：当前分支的整体系统架构、组件边界与数据流向。
-- **[00-project/project_summary.md](00-project/project_summary.md)**：阶段性交付总结、完成事项与统计。
-- **[00-project/PROJECT_SUMMARY.md](00-project/PROJECT_SUMMARY.md)**：AIWA 项目总结（版本 3.0 - 阿里云简化架构）。
-- **[00-project/STATUS.md](00-project/STATUS.md)**：项目状态报告、完成度评估与下一步计划。
-- **[00-project/agents.md](00-project/agents.md)**：AIWA Squat Offline Pipeline 的项目说明、依赖与目录索引。
+- **[00-project/ARCHITECTURE_BOUNDARIES.md](00-project/ARCHITECTURE_BOUNDARIES.md)**：架构边界决策规则，帮助判断代码应该放在 aiwa_core 还是 aiwa_app。
+- **[00-project/AI_CODE_REVIEW_PROMPT.md](00-project/AI_CODE_REVIEW_PROMPT.md)**：AI 代码漂移检查提示词，用于检查代码是否符合架构边界规则。
+- **[00-project/CHANGELOG.md](00-project/CHANGELOG.md)**：版本更新日志。
 
 ### 01-design — 设计文档
 - **[evidence_design.md](01-design/evidence_design.md)**：证据化（Evidence Pipeline）设计规范。
@@ -47,6 +46,7 @@
 - 核心功能实现：如 **[cancellation_token_implementation_report.md](04-reports/cancellation_token_implementation_report.md)**、**[movenet_implementation.md](04-reports/movenet_implementation.md)** 等。
 - 页面/功能实现：如 **[analysis_history_implementation.md](04-reports/analysis_history_implementation.md)**、**[pages_optimization_summary.md](04-reports/pages_optimization_summary.md)**。
 - 服务与适配器交付：如 **[services_implementation_summary.md](04-reports/services_implementation_summary.md)**、**[adapters_delivery.md](04-reports/adapters_delivery.md)**。
+- 子系统文档：**[event_bus_service.md](04-reports/event_bus_service.md)**：Event Bus Service 文档（事件流处理服务）。
 - 其他阶段报告：如 **[ci_cd_complete.md](04-reports/ci_cd_complete.md)**、**[figma_theme_generation_summary.md](04-reports/figma_theme_generation_summary.md)**。
 
 ### 05-testing — 测试计划与结果
@@ -80,8 +80,6 @@
 ### 根目录与其他文档
 - **[CHANGELOG.md](CHANGELOG.md)**：更新日志（版本变更记录）。
 - **[USER_GUIDE.md](USER_GUIDE.md)**：最终用户使用说明。
-- **[RELEASE_NOTES.md](RELEASE_NOTES.md)**：版本变更与发布记录。
-- **[ORGANIZATION_SUMMARY.md](ORGANIZATION_SUMMARY.md)**：组织交付摘要。
 - 统一取消令牌架构实施报告、Figma 主题总结等补充材料位于仓库根目录。
 
 ---

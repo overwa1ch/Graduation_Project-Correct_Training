@@ -16,7 +16,7 @@ Color getScoreColor(int? score) {
 
 /// 判断是否显示质量警告
 bool shouldShowQualityWarning(AnalysisResultLite result) {
-  return (result.lowConfidence == true) || (result.coverage != null && result.coverage! < 0.7);
+  return (result.lowConfidence == true) || result.coverage < 0.7;
 }
 
 /// 简化的结果展示 Widget（用于测试）
@@ -129,9 +129,13 @@ void main() {
         rhythm: 70,
         total: 75,
         reps: 10,
+        attempts: 10,
         evidencePath: null,
         lowConfidence: true,
         coverage: 0.8,
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       expect(shouldShowQualityWarning(result), isTrue);
@@ -144,9 +148,13 @@ void main() {
         rhythm: 70,
         total: 75,
         reps: 10,
+        attempts: 10,
         evidencePath: null,
         lowConfidence: false,
         coverage: 0.65,
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       expect(shouldShowQualityWarning(result), isTrue);
@@ -159,9 +167,13 @@ void main() {
         rhythm: 71,
         total: 78,
         reps: 12,
+        attempts: 12,
         evidencePath: 'evidence/frame_612.jpg',
         lowConfidence: false,
         coverage: 0.76,
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       expect(shouldShowQualityWarning(result), isFalse);
@@ -174,7 +186,13 @@ void main() {
         rhythm: 70,
         total: 75,
         reps: 10,
+        attempts: 10,
         evidencePath: null,
+        lowConfidence: false,
+        coverage: 0.9,
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       expect(shouldShowQualityWarning(result), isFalse);
@@ -189,9 +207,13 @@ void main() {
         rhythm: 71,
         total: 78,
         reps: 12,
+        attempts: 12,
         evidencePath: 'evidence/frame_612.jpg',
         lowConfidence: false,
         coverage: 0.76,
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       await tester.pumpWidget(MaterialApp(home: MockResultView(result: result)));
@@ -208,7 +230,13 @@ void main() {
         rhythm: 68,
         total: 70,
         reps: 10,
+        attempts: 10,
         evidencePath: null,
+        lowConfidence: false,
+        coverage: 0.9,
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       await tester.pumpWidget(MaterialApp(home: MockResultView(result: result)));
@@ -225,9 +253,13 @@ void main() {
         rhythm: 70,
         total: 75,
         reps: 10,
+        attempts: 10,
         evidencePath: null,
         lowConfidence: true,
         coverage: 0.8,
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       await tester.pumpWidget(MaterialApp(home: MockResultView(result: result)));
@@ -244,9 +276,13 @@ void main() {
         rhythm: 70,
         total: 75,
         reps: 10,
+        attempts: 10,
         evidencePath: null,
         lowConfidence: false,
         coverage: 0.65,
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       await tester.pumpWidget(MaterialApp(home: MockResultView(result: result)));
@@ -262,9 +298,13 @@ void main() {
         rhythm: 71,
         total: 78,
         reps: 12,
+        attempts: 12,
         evidencePath: 'evidence/frame_612.jpg',
         lowConfidence: false,
         coverage: 0.76,
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       await tester.pumpWidget(MaterialApp(home: MockResultView(result: result)));
@@ -280,7 +320,13 @@ void main() {
         rhythm: 60,
         total: 59,
         reps: 8,
+        attempts: 8,
         evidencePath: null,
+        lowConfidence: false,
+        coverage: 0.9,
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       await tester.pumpWidget(MaterialApp(home: MockResultView(result: result)));
@@ -303,7 +349,13 @@ void main() {
         rhythm: 68,
         total: 70,
         reps: 10,
+        attempts: 10,
         evidencePath: null,
+        lowConfidence: false,
+        coverage: 0.9,
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       await tester.pumpWidget(MaterialApp(home: MockResultView(result: result)));
@@ -326,7 +378,13 @@ void main() {
         rhythm: 88,
         total: 85,
         reps: 15,
+        attempts: 15,
         evidencePath: 'evidence/frame_800.jpg',
+        lowConfidence: false,
+        coverage: 0.9,
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       await tester.pumpWidget(MaterialApp(home: MockResultView(result: result)));
@@ -349,7 +407,13 @@ void main() {
         rhythm: 71,
         total: 78,
         reps: 12,
+        attempts: 12,
         evidencePath: 'evidence/frame_612.jpg',
+        lowConfidence: false,
+        coverage: 0.76,
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       await tester.pumpWidget(MaterialApp(home: MockResultView(result: result)));

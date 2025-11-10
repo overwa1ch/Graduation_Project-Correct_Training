@@ -6,7 +6,7 @@ import 'package:video_player/video_player.dart';
 import 'package:aiwa_app/theme/colors.dart';
 import 'package:aiwa_app/theme/typography.dart';
 import 'package:aiwa_app/adapters/result_adapter.dart';
-import 'package:aiwa_core/result/result_reader.dart' as aiwacore;
+import 'package:aiwa_core/aiwa_core.dart' as aiwacore;
 
 /// ResultPopupPage
 /// 

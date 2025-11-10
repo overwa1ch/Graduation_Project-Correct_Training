@@ -20,6 +20,7 @@ void main() {
         rhythm: 88,
         total: 87,
         reps: 12,
+        attempts: 12,
         evidencePath: 'test_evidence.jpg',
         lowConfidence: false,
         coverage: 0.92,
@@ -65,9 +66,13 @@ void main() {
         rhythm: 70,
         total: 65,
         reps: 8,
+        attempts: 8,
         evidencePath: null,
         lowConfidence: true,
         coverage: 0.95,
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       await tester.pumpWidget(
@@ -93,9 +98,13 @@ void main() {
         rhythm: 82,
         total: 82,
         reps: 10,
+        attempts: 10,
         evidencePath: null,
         lowConfidence: false,
         coverage: 0.65, // Below 0.7 threshold
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       await tester.pumpWidget(
@@ -121,9 +130,13 @@ void main() {
         rhythm: 88,
         total: 87,
         reps: 12,
+        attempts: 12,
         evidencePath: 'test_evidence.jpg',
         lowConfidence: false,
         coverage: 0.92,
+        templateName: 'squat',
+        strictness: 'strict',
+        fps: 30,
       );
 
       await tester.pumpWidget(
@@ -150,9 +163,13 @@ void main() {
         rhythm: 82,
         total: 82,
         reps: 10,
+        attempts: 10,
         evidencePath: null,
         lowConfidence: false,
         coverage: 0.90,
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       await tester.pumpWidget(
@@ -189,6 +206,7 @@ void main() {
         rhythm: 88,
         total: 87,
         reps: 12,
+        attempts: 12,
         evidencePath: 'test_evidence.jpg',
         lowConfidence: false,
         coverage: 0.92,
@@ -225,10 +243,14 @@ void main() {
         rhythm: 82,
         total: 82,
         reps: 10,
+        attempts: 10,
         evidencePath: null,
         lowConfidence: false,
         coverage: 0.90,
-        // No optional fields
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
+        // No optional fields (engine is optional)
       );
 
       await tester.pumpWidget(
@@ -257,9 +279,13 @@ void main() {
         rhythm: 55, // < 60 (red)
         total: 50, // < 60 (red)
         reps: 5,
+        attempts: 5,
         evidencePath: null,
         lowConfidence: false,
         coverage: 0.90,
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       await tester.pumpWidget(
@@ -287,6 +313,7 @@ void main() {
         rhythm: 88,
         total: 87,
         reps: 12,
+        attempts: 12,
         evidencePath: 'test_evidence.jpg',
         lowConfidence: false,
         coverage: 0.92,
@@ -319,9 +346,13 @@ void main() {
         rhythm: 60, // Boundary
         total: 80, // Boundary
         reps: 0, // Minimum
+        attempts: 0,
         evidencePath: null,
         lowConfidence: false,
         coverage: 1.0, // Maximum
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       await tester.pumpWidget(
@@ -352,9 +383,13 @@ void main() {
         rhythm: 88,
         total: 87,
         reps: 12,
+        attempts: 12,
         evidencePath: 'evidence.jpg',
         lowConfidence: false,
         coverage: 0.92,
+        templateName: 'squat',
+        strictness: 'strict',
+        fps: 30,
       );
 
       await tester.pumpWidget(
@@ -379,9 +414,13 @@ void main() {
         rhythm: 88,
         total: 87,
         reps: 12,
+        attempts: 12,
         evidencePath: null, // No primary evidence
         lowConfidence: false,
         coverage: 0.92,
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       await tester.pumpWidget(
@@ -406,9 +445,13 @@ void main() {
         rhythm: 88,
         total: 87,
         reps: 12,
+        attempts: 12,
         evidencePath: null,
         lowConfidence: false,
         coverage: 0.92,
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       await tester.pumpWidget(
@@ -446,9 +489,13 @@ void main() {
         rhythm: 70,
         total: 65,
         reps: 8,
+        attempts: 8,
         evidencePath: null,
         lowConfidence: true,
         coverage: 0.60, // Low coverage
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       await tester.pumpWidget(
@@ -474,9 +521,13 @@ void main() {
         rhythm: 82,
         total: 82,
         reps: 10,
+        attempts: 10,
         evidencePath: null,
         lowConfidence: false,
         coverage: 0.71, // Just above 0.7
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       await tester.pumpWidget(
@@ -500,9 +551,13 @@ void main() {
         rhythm: 82,
         total: 82,
         reps: 10,
+        attempts: 10,
         evidencePath: null,
         lowConfidence: false,
         coverage: 0.69, // Just below 0.7
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       await tester.pumpWidget(
@@ -562,9 +617,13 @@ void main() {
         rhythm: 33,
         total: 44,
         reps: 55,
+        attempts: 55,
         evidencePath: null,
         lowConfidence: false,
         coverage: 0.90,
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       await tester.pumpWidget(
@@ -595,9 +654,13 @@ void main() {
         rhythm: 88,
         total: 87,
         reps: 12,
+        attempts: 12,
         evidencePath: null,
         lowConfidence: false,
         coverage: 0.92,
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       await tester.pumpWidget(
@@ -623,6 +686,7 @@ void main() {
         rhythm: 88,
         total: 87,
         reps: 12,
+        attempts: 12,
         evidencePath: 'evidence.jpg',
         lowConfidence: false,
         coverage: 0.92,
@@ -660,9 +724,13 @@ void main() {
         rhythm: 88,
         total: 87,
         reps: 12,
+        attempts: 12,
         evidencePath: null,
         lowConfidence: false,
         coverage: 0.92,
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       await tester.pumpWidget(
@@ -688,9 +756,13 @@ void main() {
         rhythm: 88,
         total: 87,
         reps: 12,
+        attempts: 12,
         evidencePath: null,
         lowConfidence: false,
         coverage: 0.92,
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       await tester.pumpWidget(
@@ -727,9 +799,13 @@ void main() {
         rhythm: 88,
         total: 87,
         reps: 12,
+        attempts: 12,
         evidencePath: null,
         lowConfidence: false,
-        coverage: null, // Null coverage
+        coverage: 0.0, // Use 0.0 instead of null
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       await tester.pumpWidget(
@@ -755,9 +831,13 @@ void main() {
         rhythm: 88,
         total: 87,
         reps: 999, // Extreme rep count
+        attempts: 999,
         evidencePath: null,
         lowConfidence: false,
         coverage: 0.92,
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       await tester.pumpWidget(
@@ -782,9 +862,13 @@ void main() {
         rhythm: 88,
         total: 87,
         reps: 12,
+        attempts: 12,
         evidencePath: null,
         lowConfidence: false,
         coverage: 0.92,
+        templateName: 'squat',
+        strictness: 'relaxed',
+        fps: 30,
       );
 
       await tester.pumpWidget(
