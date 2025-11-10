@@ -6,7 +6,7 @@ import 'package:video_player/video_player.dart';
 import 'package:aiwa_app/theme/colors.dart';
 import 'package:aiwa_app/theme/typography.dart';
 import 'package:aiwa_app/adapters/result_adapter.dart';
-import 'package:aiwa_app/adapters/evidence_resolver.dart';
+import 'package:aiwa_core/result/result_reader.dart' as aiwacore;
 
 /// ResultPopupPage
 /// 
@@ -106,11 +106,11 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
     setState(() => _isLoadingWindow = true);
 
     try {
-      // 读取原始 result.json
-      final raw = await readResultJson(widget.sessionRoot);
+      // 读取并验证 result.json（使用 aiwa_core 标准化方法）
+      final result = await aiwacore.readResultJson(widget.sessionRoot);
       
-      // 解析时间窗
-      final window = resolveEvidenceWindow(raw);
+      // 解析时间窗（使用 aiwa_core 的证据解析）
+      final window = aiwacore.resolveEvidenceWindow(result);
       
       if (mounted) {
         setState(() {

@@ -9,6 +9,8 @@ import 'package:aiwa_app/theme/typography.dart';
 import 'package:aiwa_app/ui/app_shell.dart';
 import 'package:aiwa_app/ui/pages/result_popup_page.dart';
 import 'package:aiwa_app/adapters/result_adapter.dart';
+import 'package:aiwa_core/result/result_reader.dart' as aiwacore;
+import 'package:aiwa_core/core/errors.dart';
 import 'package:aiwa_app/services/config/config_sync.dart';
 import 'package:aiwa_app/services/storage/session_manager.dart';
 import 'package:aiwa_app/services/analysis/analysis_history.dart';
@@ -202,33 +204,27 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
     }
 
     try {
-      // ===== 步骤 1: 读取 result.json =====
+      // ===== 步骤 1: 读取并验证 result.json =====
+      // ✅ 重构说明：使用 aiwa_core 的标准化读取和验证
       debugPrint('[Camera] [步骤1] 开始读取 result.json');
       debugPrint('[Camera] [步骤1] 文件路径: $_sessionRoot/result.json');
-      final raw = await readResultJson(_sessionRoot!);
-      debugPrint('[Camera] [步骤1] ✓ 读取成功');
-      debugPrint('[Camera] [步骤1] JSON keys: ${raw.keys.join(", ")}');
+      final result = await aiwacore.readResultJson(_sessionRoot!);
+      debugPrint('[Camera] [步骤1] ✓ 读取并验证成功');
       
       // 打印完整 JSON（用于诊断）
       debugPrint('[Camera] ========== result.json 完整内容 ==========');
       try {
-        debugPrint(const JsonEncoder.withIndent('  ').convert(raw));
+        debugPrint(const JsonEncoder.withIndent('  ').convert(result.toJson()));
       } catch (e) {
         debugPrint('[Camera] JSON 格式化失败: $e');
-        debugPrint('[Camera] 原始内容: $raw');
       }
       debugPrint('[Camera] ========== result.json 结束 ==========');
       
-      // ===== 步骤 2: 验证 Schema =====
-      debugPrint('[Camera] [步骤2] 开始验证 Schema');
-      assertResultContract(raw);
-      debugPrint('[Camera] [步骤2] ✓ Schema 验证通过');
-      
-      // ===== 步骤 3: 映射到 AnalysisResultLite =====
-      debugPrint('[Camera] [步骤3] 开始映射到 AnalysisResultLite');
-      final lite = mapToLite(raw);
-      debugPrint('[Camera] [步骤3] ✓ 映射成功');
-      debugPrint('[Camera] [步骤3] 结果: total=${lite.total}, reps=${lite.reps}, posture=${lite.posture}, stability=${lite.stability}, rhythm=${lite.rhythm}');
+      // ===== 步骤 2: 映射到 AnalysisResultLite =====
+      debugPrint('[Camera] [步骤2] 开始映射到 AnalysisResultLite');
+      final lite = toLite(result);
+      debugPrint('[Camera] [步骤2] ✓ 映射成功');
+      debugPrint('[Camera] [步骤2] 结果: total=${lite.total}, reps=${lite.reps}, posture=${lite.posture}, stability=${lite.stability}, rhythm=${lite.rhythm}');
 
       if (mounted) {
         setState(() => _state = CameraState.success);
@@ -266,12 +262,12 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
       
       debugPrint('[Camera] ========== _onDone 成功完成 ==========');
       
-    } on SchemaMismatch catch (e, stackTrace) {
-      debugPrint('[Camera] ✗ Schema mismatch: $e');
+    } on SchemaValidationError catch (e, stackTrace) {
+      debugPrint('[Camera] ✗ Schema validation error: $e');
       debugPrint('[Camera] 详细堆栈:\n$stackTrace');
-      _setError('422_SCHEMA_MISMATCH', 'Schema mismatch: ${e.message}');
-    } on ResultReadException catch (e, stackTrace) {
-      debugPrint('[Camera] ✗ Result read error: $e');
+      _setError('422_SCHEMA_MISMATCH', 'Schema validation error: ${e.message}');
+    } on DataFormatError catch (e, stackTrace) {
+      debugPrint('[Camera] ✗ Data format error: $e');
       debugPrint('[Camera] 详细堆栈:\n$stackTrace');
       _setError('500_RESULT_READ', 'Failed to read result: ${e.message}');
     } catch (e, stackTrace) {
