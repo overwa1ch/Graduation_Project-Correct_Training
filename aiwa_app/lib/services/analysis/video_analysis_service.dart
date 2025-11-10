@@ -27,9 +27,11 @@ import 'package:aiwa_app/pose/temporal_smoother.dart';
 
 import 'package:aiwa_core/core/errors.dart';
 import 'package:aiwa_core/pose/pose_engine.dart';
-import 'package:aiwa_core/pose/keypoint_names.dart';
+import 'package:aiwa_core/pose/frame_streamer.dart';
 import 'package:aiwa_core/pipeline/offline_pipeline.dart';
 import 'package:aiwa_core/pipeline/pose_input_converter.dart';
+import 'package:aiwa_core/pipeline/quality.dart';
+import 'package:aiwa_core/pipeline/pose_series.dart';
 import 'package:aiwa_core/pose/neutral_keypoint_series.dart';
 import 'package:aiwa_core/spec/rule_models.dart';
 import 'package:aiwa_core/spec/rule_parser.dart';
@@ -219,14 +221,16 @@ class VideoAnalysisService {
         return;
       }
 
-      // 使用 PoseEngine 进行姿态检测
-      final neutralFrames = await _inferPoses(
+      // 使用 FrameStreamer（aiwa_core）进行姿态检测
+      // 注意：frames 已经过 stride 采样，所以这里 stride=1
+      final streamResult = await _inferPosesWithFrameStreamer(
         token: token,
         engine: engine,
         frames: frames,
         videoInfo: videoInfo,
         stride: stride,
         controller: controller,
+        engineInfo: engineInfo,
         onProgress: (idx, total) {
           controller.add({
             'event': 'PROGRESS',
@@ -239,78 +243,80 @@ class VideoAnalysisService {
           });
         },
       );
+      
+      // 提取 NeutralFrame 列表并应用时序平滑
+      final rawNeutralFrames = streamResult.frames;
+      
+      // 🔧 时序平滑器：减少抖动和间歇性断线
+      final smoother = TemporalSmoother(
+        fps: videoInfo.fps,
+        scoreDecay: 0.9,
+        maxMissingFrames: 5,
+      );
+      
+      final smoothedFrames = <NeutralFrame>[];
+      for (final frame in rawNeutralFrames) {
+        if (token.isCancelling) {
+          debugPrint('[VideoAnalysis] Cancelled during temporal smoothing');
+          return;
+        }
+        smoothedFrames.add(smoother.smooth(frame));
+      }
+      
+      // 转换为 JSON 格式（用于后续管线）
+      final neutralFrames = smoothedFrames.map((frame) => {
+        'frameIndex': frame.frameIndex,
+        'timestampMs': frame.timestampMs,
+        'lowConfidence': frame.lowConfidence,
+        'mirrorApplied': frame.mirrorApplied,
+        'keypoints': frame.keypoints.map((kp) => {
+          'name': kp.name,
+          'x': kp.x,
+          'y': kp.y,
+          'score': kp.score,
+          if (kp.z != null) 'z': kp.z,
+        }).toList(),
+      }).toList();
 
       debugPrint('[VideoAnalysis] Completed pose detection for ${neutralFrames.length} frames');
 
-      // 5. 发送质量指标
-      final lowConfCount = neutralFrames.where((f) => f['lowConfidence'] == true).length;
-      final lowConfRatio = neutralFrames.isEmpty ? 0.0 : lowConfCount / neutralFrames.length;
-      final usableRatio = 1.0 - lowConfRatio;
-
-      // 🔍 诊断日志：统计必需关键点的覆盖率
-      final requiredNames = ['leftHip', 'rightHip', 'leftKnee', 'rightKnee', 'leftAnkle', 'rightAnkle'];
-      var framesWithAll6 = 0;
-      var framesWith6Reliable = 0;
-      final requiredStats = <String, int>{};
-      for (final name in requiredNames) {
-        requiredStats[name] = 0;
-      }
+      // 5. 计算质量指标（使用 aiwa_core 的标准化方法）
+      // ✅ 重构说明：复用 computeQualityFromKeypoints 替代手动统计（约 70 行）
+      final poseFrames = smoothedFrames.map((frame) => PoseFrame(
+        index: frame.frameIndex,
+        timestampMs: frame.timestampMs,
+        lowConfidence: frame.lowConfidence,
+        keypoints: {
+          for (final kp in frame.keypoints)
+            kp.name: PoseLandmark(
+              x: kp.x,
+              y: kp.y,
+              z: kp.z,
+              score: kp.score,
+            ),
+        },
+      )).toList();
       
-      for (final frame in neutralFrames) {
-        final keypoints = (frame['keypoints'] as List).map((k) => k as Map<String, dynamic>).toList();
-        var hasAll6 = true;
-        var has6Reliable = true;
-        
-        for (final name in requiredNames) {
-          final kp = keypoints.firstWhere(
-            (k) => k['name'] == name,
-            orElse: () => <String, dynamic>{'name': name, 'score': 0.0},
-          );
-          final score = (kp['score'] as num?)?.toDouble() ?? 0.0;
-          if (score > 0) {
-            requiredStats[name] = (requiredStats[name] ?? 0) + 1;
-          }
-          if (score == 0) {
-            hasAll6 = false;
-            has6Reliable = false;
-          } else if (score < 0.5) {
-            has6Reliable = false;
-          }
-        }
-        
-        if (hasAll6) framesWithAll6++;
-        if (has6Reliable) framesWith6Reliable++;
-      }
+      final quality = computeQualityFromKeypoints(poseFrames);
       
-      final coverageByFrame = framesWith6Reliable / neutralFrames.length;
-      
-      debugPrint('[VideoAnalysis] 🔍 Coverage Diagnosis:');
-      debugPrint('[VideoAnalysis] 🔍   Total frames: ${neutralFrames.length}');
-      debugPrint('[VideoAnalysis] 🔍   Low confidence frames: $lowConfCount (${(lowConfRatio * 100).toStringAsFixed(1)}%)');
-      debugPrint('[VideoAnalysis] 🔍   Frames with all 6 required joints: $framesWithAll6 (${(framesWithAll6 / neutralFrames.length * 100).toStringAsFixed(1)}%)');
-      debugPrint('[VideoAnalysis] 🔍   Frames with all 6 reliable (score>=0.5): $framesWith6Reliable (${(coverageByFrame * 100).toStringAsFixed(1)}%)');
-      debugPrint('[VideoAnalysis] 🔍   Required joints detection rate:');
-      for (final name in requiredNames) {
-        final detected = requiredStats[name] ?? 0;
-        final rate = neutralFrames.isEmpty ? 0.0 : detected / neutralFrames.length;
-        debugPrint('[VideoAnalysis] 🔍     $name: $detected/${neutralFrames.length} (${(rate * 100).toStringAsFixed(1)}%)');
-      }
-
       // 保存质量指标用于降级存储
       qualityMetrics = {
-        'lowConfidence': lowConfRatio > 0.3,
-        'coverage': usableRatio,
+        'lowConfidence': quality.lowConfidence,
+        'coverage': quality.coverage,
       };
+
+      debugPrint('[VideoAnalysis] 🔍 Quality Metrics (from aiwa_core):');
+      debugPrint('[VideoAnalysis] 🔍   Coverage: ${(quality.coverage * 100).toStringAsFixed(1)}%');
+      debugPrint('[VideoAnalysis] 🔍   Low confidence: ${quality.lowConfidence}');
 
       controller.add({
         'event': 'METRIC',
         'sessionId': sessionId,
-        'lowConfidenceRatio': lowConfRatio,
-        'usableFrameRatio': usableRatio,
+        'coverage': quality.coverage,
+        'lowConfidence': quality.lowConfidence,
       });
 
-      debugPrint('[VideoAnalysis] Quality: ${(usableRatio * 100).toInt()}% usable');
-      debugPrint('[VideoAnalysis] 🔍 Expected coverage (from pipeline): ${(coverageByFrame * 100).toStringAsFixed(1)}%');
+      debugPrint('[VideoAnalysis] Quality: ${(quality.coverage * 100).toInt()}% coverage');
 
       // 6. 阶段 3：分析管道 (90-100%)
       controller.add({
@@ -728,196 +734,120 @@ class VideoAnalysisService {
     }
   }
 
-  /// 使用 PoseEngine 逐帧姿态检测
-  static Future<List<Map<String, dynamic>>> _inferPoses({
+  /// 使用 FrameStreamer（aiwa_core）进行姿态检测
+  /// 
+  /// ✅ 重构说明：
+  /// - 复用 aiwa_core 的 FrameStreamer 替代手写推理循环
+  /// - 统一日志与错误处理逻辑
+  /// - 减少约 160 行重复代码
+  static Future<FrameStreamResult> _inferPosesWithFrameStreamer({
     required CancellationToken token,
     required PoseEngine engine,
     required List<File> frames,
     required _VideoInfo videoInfo,
     required int stride,
     required StreamController<Map<String, dynamic>> controller,
+    required Map<String, dynamic> engineInfo,
     void Function(int, int)? onProgress,
   }) async {
-    final neutralFrames = <Map<String, dynamic>>[];
-    
-    // 🔧 时序平滑器：减少抖动和间歇性断线
-    // ✅ 使用 OneEuroFilter 自适应平滑（提升 20-30% 平滑效果）
-    final smoother = TemporalSmoother(
-      fps: videoInfo.fps,  // 使用视频实际帧率
-      scoreDecay: 0.9,     // 缺失时分数衰减
-      maxMissingFrames: 5, // 最多补齐5帧
+    // 创建 FrameStreamer 配置
+    final config = FrameStreamerConfig(
+      engineName: (engineInfo['name'] as String?) ?? 'unknown',
+      modelName: (engineInfo['model'] as String?) ?? 'unknown',
+      sdkVersion: (engineInfo['sdkVersion'] as String?) ?? 'unknown',
+      videoBasename: 'video',
+      fps: videoInfo.fps,
+      stride: 1, // frames 已经过 stride 采样，这里设为 1
+      mirror: false,
     );
-
+    
+    const engineConfig = PoseEngineConfig(
+      preferAccurate: true,
+      outputZ: false,
+      minScore: 0.0, // 推理阶段不筛，后续质量统计时再判断
+      returnEmptyWhenLow: false,
+    );
+    
+    final streamer = FrameStreamer(
+      engine: engine,
+      engineConfig: engineConfig,
+      config: config,
+    );
+    
+    // 将 List<File> 转换为 Stream<RawImageFrame>
+    final frameStream = _createFrameStream(
+      frames: frames,
+      videoInfo: videoInfo,
+      token: token,
+      onProgress: onProgress,
+    );
+    
+    // 运行 FrameStreamer
+    return await streamer.run(frameStream);
+  }
+  
+  /// 创建帧流（从文件列表）
+  static Stream<RawImageFrame> _createFrameStream({
+    required List<File> frames,
+    required _VideoInfo videoInfo,
+    required CancellationToken token,
+    void Function(int, int)? onProgress,
+  }) async* {
     for (int idx = 0; idx < frames.length; idx++) {
-      // ✅ 增强检查点：每帧都检查取消（而不是每10帧）
       if (token.isCancelling) {
-        debugPrint('[VideoAnalysis] Cancellation detected during pose inference at frame $idx');
-        return neutralFrames; // Early exit
+        debugPrint('[VideoAnalysis] Cancellation detected during frame streaming at $idx');
+        return;
       }
       
       final frameFile = frames[idx];
-      final frameIndex = idx * stride;
-      final timestampMs = ((frameIndex / videoInfo.fps) * 1000).toInt();
-
+      
       try {
-        // 读取实际帧图像的尺寸（用于调试和验证）
-        int actualFrameWidth = videoInfo.width;
-        int actualFrameHeight = videoInfo.height;
+        // 读取帧数据
+        final frameBytes = await frameFile.readAsBytes();
+        
+        // 获取实际尺寸
+        int actualWidth = videoInfo.width;
+        int actualHeight = videoInfo.height;
         try {
-          final frameBytes = await frameFile.readAsBytes();
           final codec = await ui.instantiateImageCodec(frameBytes);
           final frameImage = await codec.getNextFrame();
-          actualFrameWidth = frameImage.image.width;
-          actualFrameHeight = frameImage.image.height;
-          frameImage.image.dispose(); // dispose() returns void, no await needed
+          actualWidth = frameImage.image.width;
+          actualHeight = frameImage.image.height;
+          frameImage.image.dispose();
         } catch (e) {
           debugPrint('[VideoAnalysis] Failed to read frame dimensions: $e');
         }
-
-        // 调试日志：前 3 帧的详细信息
-        if (idx < 3) {
-          debugPrint('[VideoAnalysis] 🔍 Frame $idx (frameIndex=$frameIndex) debug:');
-          debugPrint('[VideoAnalysis]   Video info: ${videoInfo.width}x${videoInfo.height}');
-          debugPrint('[VideoAnalysis]   Actual frame: $actualFrameWidth x $actualFrameHeight');
-          debugPrint('[VideoAnalysis]   Frame file: ${frameFile.path}');
-        }
-
-        // 读取帧图像字节（MoveNet 引擎需要）
-        final frameBytes = await frameFile.readAsBytes();
-
-        // 使用 PoseEngine 推理
-        // 🔧 修复：同时传递 filePath（MLKit 使用）和 imageBytes（MoveNet 使用）
-        final engineInput = PoseEngineInput(
-          imageBytes: frameBytes,
-          filePath: frameFile.path, // MLKit 引擎使用文件路径避免 JPEG 格式问题
-          width: actualFrameWidth,
-          height: actualFrameHeight,
-          frameIndex: frameIndex,
-          timestampMs: timestampMs,
-          rotationDeg: 0,
-          mirrorHorizontally: false,
-        );
-
-        final rawFrame = await engine.infer(engineInput);
         
-        // 🔧 应用时序平滑（减少抖动和间歇性断线）
-        final neutralFrame = smoother.smooth(rawFrame);
-
-        // 🔍 诊断日志：检查推理结果（前3帧详细，后续每10帧统计）
-        if (idx < 3 || idx % 10 == 0) {
-          debugPrint('[VideoAnalysis] 🔍 Frame $idx (frameIndex=$frameIndex):');
-          debugPrint('[VideoAnalysis] 🔍   Total keypoints: ${neutralFrame.keypoints.length}');
-          debugPrint('[VideoAnalysis] 🔍   Low confidence flag: ${neutralFrame.lowConfidence}');
-          
-          // 检查必需关键点（coverage计算需要的6个点）
-          final requiredNames = ['leftHip', 'rightHip', 'leftKnee', 'rightKnee', 'leftAnkle', 'rightAnkle'];
-          var requiredCount = 0;
-          var requiredReliableCount = 0;
-          final requiredDetails = <String, String>{};
-          
-          for (final name in requiredNames) {
-            final matchingKps = neutralFrame.keypoints.where((k) => k.name == name).toList();
-            if (matchingKps.isNotEmpty) {
-              final kp = matchingKps.first;
-              requiredCount++;
-              final isReliable = kp.score >= 0.5;
-              if (isReliable) requiredReliableCount++;
-              requiredDetails[name] = 'score=${kp.score.toStringAsFixed(3)}, reliable=$isReliable';
-            } else {
-              requiredDetails[name] = 'MISSING';
-            }
-          }
-          
-          debugPrint('[VideoAnalysis] 🔍   Required joints (6): detected=$requiredCount, reliable=$requiredReliableCount');
-          if (idx < 3) {
-            // 前3帧输出详细信息
-            for (final name in requiredNames) {
-              debugPrint('[VideoAnalysis] 🔍     $name: ${requiredDetails[name]}');
-            }
-          }
-          
-          // 统计置信度分布
-          if (neutralFrame.keypoints.isNotEmpty) {
-            final scores = neutralFrame.keypoints.map((k) => k.score).toList();
-            scores.sort();
-            final avgScore = scores.reduce((a, b) => a + b) / scores.length;
-            final minScore = scores.first;
-            final maxScore = scores.last;
-            final medianScore = scores[scores.length ~/ 2];
-            final scoreAbove05 = scores.where((s) => s >= 0.5).length;
-            
-            debugPrint('[VideoAnalysis] 🔍   Score stats: avg=${avgScore.toStringAsFixed(3)}, min=${minScore.toStringAsFixed(3)}, max=${maxScore.toStringAsFixed(3)}, median=${medianScore.toStringAsFixed(3)}');
-            debugPrint('[VideoAnalysis] 🔍   Score >= 0.5: $scoreAbove05/${scores.length} (${(scoreAbove05 / scores.length * 100).toStringAsFixed(1)}%)');
-          }
+        // 调试日志（前 3 帧）
+        if (idx < 3) {
+          debugPrint('[VideoAnalysis] 🔍 Frame $idx:');
+          debugPrint('[VideoAnalysis]   Size: $actualWidth x $actualHeight');
+          debugPrint('[VideoAnalysis]   File: ${frameFile.path}');
         }
-
-        // 转换 NeutralFrame 为 JSON 格式（用于管线）
-        final frameJson = {
-          'frameIndex': neutralFrame.frameIndex,
-          'timestampMs': neutralFrame.timestampMs,
-          'lowConfidence': neutralFrame.lowConfidence,
-          'mirrorApplied': neutralFrame.mirrorApplied,
-          'keypoints': neutralFrame.keypoints
-              .map((kp) => {
-                    'name': kp.name,
-                    'x': kp.x,
-                    'y': kp.y,
-                    'score': kp.score,
-                    if (kp.z != null) 'z': kp.z,
-                  })
-              .toList(),
-        };
-
-        neutralFrames.add(frameJson);
+        
+        yield RawImageFrame(
+          bytes: frameBytes,
+          width: actualWidth,
+          height: actualHeight,
+          rotationDeg: 0,
+        );
+        
+        // 进度回调
+        if (onProgress != null && ((idx + 1) % 10 == 0 || idx == frames.length - 1)) {
+          onProgress(idx, frames.length);
+        }
       } catch (e) {
-        debugPrint('[VideoAnalysis] Failed to process frame $idx: $e');
-        // 添加空帧
-        neutralFrames.add(_emptyFrameJson(
-          width: videoInfo.width,
-          height: videoInfo.height,
-          frameIndex: frameIndex,
-          timestampMs: timestampMs,
-        ));
-      }
-
-      // 进度回调
-      if (onProgress != null && ((idx + 1) % 10 == 0 || idx == frames.length - 1)) {
-        onProgress(idx, frames.length);
+        debugPrint('[VideoAnalysis] Failed to read frame $idx: $e');
+        // 跳过损坏的帧
+        continue;
       }
     }
-
-    return neutralFrames;
   }
 
-  /// 生成空帧 JSON（占位关键点）
-  static Map<String, dynamic> _emptyFrameJson({
-    required int width,
-    required int height,
-    required int frameIndex,
-    required int timestampMs,
-  }) {
-    final keypoints = <Map<String, dynamic>>[];
-    for (final name in kNeutralKeypointNames) {
-      keypoints.add({
-        'name': name,
-        'x': 0.5,
-        'y': 0.5,
-        'z': 0.0,
-        'score': 0.0,
-      });
-    }
-
-    return {
-      'frameIndex': frameIndex,
-      'timestampMs': timestampMs,
-      'lowConfidence': true,
-      'mirrorApplied': false,
-      'keypoints': keypoints,
-    };
-  }
-
-  // 🔧 已移除：_landmarksToNeutral 函数已被 adaptMlKitPose (keypoint_adapter.dart) 替代
-  // 现在使用 PoseEngine 接口统一处理，不再需要此函数
+  // 🔧 已移除：_emptyFrameJson 函数，FrameStreamer 已处理空帧逻辑
+  // 🔧 已移除：_inferPoses 手写推理循环（约 160 行），改用 FrameStreamer
+  // 🔧 已移除：_landmarksToNeutral 函数，已被 adaptMlKitPose (keypoint_adapter.dart) 替代
+  // 现在使用 PoseEngine 接口和 FrameStreamer 统一处理
 
   /// 构建 NeutralKeypointSeries
   static NeutralKeypointSeries _buildNeutralSeries({

@@ -6,6 +6,7 @@ import '../core/rounding.dart';
 import '../core/angles.dart';
 import '../core/one_euro.dart';
 import '../pose/keypoint_names.dart';
+import '../pose/keypoint_smoother.dart';
 import 'pose_series.dart';
 import '../result/csv_export.dart';
 import '../spec/rule_models.dart';
@@ -955,31 +956,30 @@ List<Map<String, _PoseCoord?>> _filterKeypoints(PoseSeries series) {
   };
 
   final rawTracks = {
-    for (final name in trackedNames) name: <_PoseCoord?>[],
+    for (final name in trackedNames) name: <KeypointCoord?>[],
   };
 
+  // 提取原始轨迹
   for (final frame in series.frames) {
     for (final entry in rawTracks.entries) {
       final name = entry.key;
       final kp = frame.keypoints[name];
       if (kp != null && kp.isReliable) {
-        entry.value.add(_PoseCoord(kp.x, kp.y));
+        entry.value.add(KeypointCoord(kp.x, kp.y));
       } else {
         entry.value.add(null);
       }
     }
   }
 
-  final interpolated = {
-    for (final entry in rawTracks.entries)
-      entry.key: _interpolateCoords(entry.value, maxGap: 3),
-  };
-
+  // 使用公共 API 进行平滑（插值 + OneEuro）
+  const config = KeypointSmootherConfig.defaultConfig;
   final filteredTracks = {
-    for (final entry in interpolated.entries)
-      entry.key: _applyOneEuro(entry.value, series.fps),
+    for (final entry in rawTracks.entries)
+      entry.key: smoothKeypointTrack(entry.value, series.fps, config: config),
   };
 
+  // 重组为帧格式
   final frames = List.generate(
     frameCount,
     (_) => <String, _PoseCoord?>{},
@@ -990,88 +990,24 @@ List<Map<String, _PoseCoord?>> _filterKeypoints(PoseSeries series) {
     final name = entry.key;
     final track = entry.value;
     for (var i = 0; i < track.length; i++) {
-      frames[i][name] = track[i];
+      final coord = track[i];
+      frames[i][name] = coord != null ? _PoseCoord(coord.x, coord.y) : null;
     }
   }
 
   return frames;
 }
 
-List<_PoseCoord?> _interpolateCoords(List<_PoseCoord?> values,
-    {required int maxGap}) {
-  final result = List<_PoseCoord?>.from(values);
-  var index = 0;
-  while (index < result.length) {
-    if (result[index] != null) {
-      index++;
-      continue;
-    }
-
-    final gapStart = index;
-    while (index < result.length && result[index] == null) {
-      index++;
-    }
-    final gapEnd = index - 1;
-    final gapLength = gapEnd - gapStart + 1;
-
-    int? prevIdx = gapStart - 1;
-    while (prevIdx != null && prevIdx >= 0 && result[prevIdx] == null) {
-      prevIdx--;
-    }
-    if (prevIdx != null && prevIdx < 0) {
-      prevIdx = null;
-    }
-
-    int? nextIdx = index;
-    while (
-        nextIdx != null && nextIdx < result.length && result[nextIdx] == null) {
-      nextIdx++;
-    }
-    if (nextIdx != null && nextIdx >= result.length) {
-      nextIdx = null;
-    }
-
-    if (prevIdx == null || nextIdx == null || gapLength > maxGap) {
-      continue;
-    }
-
-    final start = result[prevIdx]!;
-    final end = result[nextIdx]!;
-    final span = nextIdx - prevIdx;
-    for (var offset = 1; offset <= gapLength; offset++) {
-      final ratio = offset / span;
-      final x = start.x + (end.x - start.x) * ratio;
-      final y = start.y + (end.y - start.y) * ratio;
-      result[gapStart + offset - 1] = _PoseCoord(x, y);
-    }
-  }
-
-  return result;
-}
-
-List<_PoseCoord?> _applyOneEuro(List<_PoseCoord?> values, double fps) {
-  if (fps <= 0) {
-    return List<_PoseCoord?>.from(values);
-  }
-
-  final filterX = OneEuroFilter(minCutoff: 1.0, beta: 0.01, dCutoff: 1.0);
-  final filterY = OneEuroFilter(minCutoff: 1.0, beta: 0.01, dCutoff: 1.0);
-  final result = List<_PoseCoord?>.from(values);
-
-  for (var i = 0; i < values.length; i++) {
-    final sample = values[i];
-    if (sample == null) {
-      result[i] = null;
-      continue;
-    }
-    final t = i / fps;
-    final fx = filterX.filter(t, sample.x);
-    final fy = filterY.filter(t, sample.y);
-    result[i] = _PoseCoord(fx, fy);
-  }
-
-  return result;
-}
+// 🔧 已移除：_interpolateCoords 和 _applyOneEuro 函数（约 80 行）
+// 现已提取为公共 API：aiwa_core/lib/pose/keypoint_smoother.dart
+// - interpolateCoords()
+// - applyOneEuroFilter()
+// - smoothKeypointTrack()（组合函数）
+//
+// 重构说明：
+// - 统一了离线管线和端侧实时平滑的逻辑
+// - 消除了重复代码和参数不一致风险
+// - 提供了灵活的配置接口（KeypointSmootherConfig）
 
 double? _angleAt(List<double?> angles, List<int> tMs, int targetMs) {
   for (var i = 0; i < angles.length; i++) {

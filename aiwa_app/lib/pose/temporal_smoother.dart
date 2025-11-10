@@ -9,8 +9,14 @@
 // 
 // ✅ 重构说明：
 // - 使用 aiwa_core/core/one_euro.dart 中的 OneEuroFilter
-// - 与离线管道保持一致的平滑算法
+// - 平滑参数与 aiwa_core/pose/keypoint_smoother.dart 保持一致
+// - 与离线管线使用相同的 OneEuro 配置（minCutoff: 1.0, beta: 0.01）
 // - 根据运动速度自适应调整截止频率，减少抖动和延迟
+//
+// 📝 架构说明：
+// - 本平滑器用于实时流式处理（逐帧调用）
+// - 离线管线使用 keypoint_smoother.dart 的批处理平滑（完整轨迹）
+// - 两者使用相同的 OneEuro 参数确保行为一致
 
 import 'package:aiwa_core/pose/pose_engine.dart';
 import 'package:aiwa_core/core/one_euro.dart';
