@@ -16,9 +16,10 @@ class AuthState extends ChangeNotifier {
   String? _userEmail;
   String? _errorMessage;
 
-  // 私有构造函数
+  // 私有构造函数（on401 使用静态回调，避免构造期循环引用）
   AuthState._internal({AuthService? authService})
-      : _authService = authService ?? AuthService();
+      : _authService = authService ??
+            AuthService(on401: AuthState._handle401Refresh);
 
   /// 获取单例实例
   factory AuthState({AuthService? authService}) {
@@ -178,6 +179,13 @@ class AuthState extends ChangeNotifier {
   }
 
   // ========== 私有方法 ==========
+
+  /// 401 时刷新 token（由 ApiClient 回调，使用静态方法避免构造期引用）
+  static Future<bool> _handle401Refresh() async {
+    final inst = _instance;
+    if (inst == null) return false;
+    return await inst.refreshToken();
+  }
 
   void _setLoading(bool loading) {
     _isLoading = loading;

@@ -17,8 +17,10 @@ class AuthService {
   static const String _refreshTokenKey = 'refresh_token';
   static const String _userEmailKey = 'user_email';
 
-  AuthService({ApiClient? apiClient})
-      : _apiClient = apiClient ?? ApiClient();
+  AuthService({
+    ApiClient? apiClient,
+    Future<bool> Function()? on401,
+  }) : _apiClient = apiClient ?? ApiClient(on401: on401);
 
   /// 用户注册
   /// 

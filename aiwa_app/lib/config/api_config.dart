@@ -6,16 +6,15 @@
 class ApiConfig {
   ApiConfig._();
 
-  /// 基础 URL
+  /// 基础 URL（需与 core-api 的 PORT 一致）
   /// 
   /// 开发环境选项：
-  /// - 本地开发: http://localhost:8080
-  /// - Android 模拟器: http://10.0.2.2:8080
-  /// - iOS 模拟器: http://localhost:8080
-  /// - 真机: http://<电脑IP>:8080
+  /// - 真机 USB 调试: http://127.0.0.1:3002（需先执行 adb reverse tcp:3002 tcp:3002）
+  /// - 本地/模拟器: http://localhost:3002 或 http://10.0.2.2:3002
+  /// - 真机 WiFi: http://<电脑局域网IP>:3002
   /// 
   /// 生产环境：配置为云端地址
-  static const String baseUrl = 'http://localhost:8080';
+  static const String baseUrl = 'http://127.0.0.1:3002';
   
   /// API 版本前缀
   static const String apiVersion = '/v1';
@@ -29,7 +28,8 @@ class ApiConfig {
   static String get refreshUrl => '$baseUrl$authPrefix/refresh';
   
   /// 请求超时时间（秒）
-  static const int timeoutSeconds = 30;
+  /// 真机/弱网环境适当放宽，避免局域网首次连接慢导致超时
+  static const int timeoutSeconds = 60;
   
   /// 获取电脑 IP 的命令（用于真机测试）
   /// Windows: ipconfig | findstr IPv4
@@ -39,7 +39,7 @@ class ApiConfig {
 Windows: ipconfig | findstr IPv4
 Mac/Linux: ifconfig | grep inet
 
-然后将 baseUrl 改为: http://<电脑IP>:8080
+然后将 baseUrl 改为: http://<电脑IP>:3002
 ''';
 }
 

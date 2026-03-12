@@ -5,11 +5,14 @@ import 'package:aiwa_app/config/api_config.dart';
 /// API 客户端
 /// 
 /// 封装所有 HTTP 请求，提供统一的错误处理和请求/响应拦截
+/// 可选 [on401]：收到 401 时尝试刷新 token 并重试
 class ApiClient {
   final http.Client _client;
   String? _accessToken;
+  final Future<bool> Function()? on401;
 
-  ApiClient({http.Client? client}) : _client = client ?? http.Client();
+  ApiClient({http.Client? client, this.on401})
+      : _client = client ?? http.Client();
 
   /// 设置访问令牌
   void setAccessToken(String? token) {
@@ -39,7 +42,7 @@ class ApiClient {
     return headers;
   }
 
-  /// POST 请求
+  /// POST 请求（401 时若配置 on401 会尝试刷新 token 并重试一次）
   Future<ApiResponse> post(
     String endpoint, {
     Map<String, dynamic>? body,
@@ -47,7 +50,7 @@ class ApiClient {
   }) async {
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
-      final response = await _client
+      var response = await _client
           .post(
             uri,
             headers: _buildHeaders(additionalHeaders: headers),
@@ -55,13 +58,26 @@ class ApiClient {
           )
           .timeout(Duration(seconds: ApiConfig.timeoutSeconds));
 
+      if (response.statusCode == 401 && on401 != null) {
+        final refreshed = await on401!();
+        if (refreshed) {
+          response = await _client
+              .post(
+                uri,
+                headers: _buildHeaders(additionalHeaders: headers),
+                body: body != null ? json.encode(body) : null,
+              )
+              .timeout(Duration(seconds: ApiConfig.timeoutSeconds));
+        }
+      }
+
       return _handleResponse(response);
     } catch (e) {
       return ApiResponse.error(_handleException(e));
     }
   }
 
-  /// GET 请求
+  /// GET 请求（401 时若配置 on401 会尝试刷新 token 并重试一次）
   Future<ApiResponse> get(
     String endpoint, {
     Map<String, String>? queryParameters,
@@ -73,12 +89,24 @@ class ApiClient {
         uri = uri.replace(queryParameters: queryParameters);
       }
 
-      final response = await _client
+      var response = await _client
           .get(
             uri,
             headers: _buildHeaders(additionalHeaders: headers),
           )
           .timeout(Duration(seconds: ApiConfig.timeoutSeconds));
+
+      if (response.statusCode == 401 && on401 != null) {
+        final refreshed = await on401!();
+        if (refreshed) {
+          response = await _client
+              .get(
+                uri,
+                headers: _buildHeaders(additionalHeaders: headers),
+              )
+              .timeout(Duration(seconds: ApiConfig.timeoutSeconds));
+        }
+      }
 
       return _handleResponse(response);
     } catch (e) {

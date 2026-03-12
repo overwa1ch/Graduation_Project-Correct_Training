@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "init-sqlite": "npx tsx scripts/init-sqlite.ts",
-    "dev": "next dev",
+    "dev": "next dev -p 3003",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

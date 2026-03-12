@@ -25,7 +25,7 @@ import 'package:aiwa_app/ui/pages/register_page.dart';
 import 'package:aiwa_app/ui/pages/task_template_editor_page.dart';
 import 'package:aiwa_app/ui/pages/welcome_page.dart';
 
-const bool kDisableAuthForTesting = true;
+const bool kDisableAuthForTesting = false;
 
 Widget _buildPageForRoute(String? name) {
   switch (name) {
