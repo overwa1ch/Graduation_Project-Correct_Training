@@ -7,10 +7,19 @@
       "name": "aiwa_core",
       "version": "0.1.0",
       "dependencies": [
+        "archive",
         "csv",
-        "path"
+        "drift",
+        "freezed_annotation",
+        "json_annotation",
+        "path",
+        "sqlite3"
       ],
       "devDependencies": [
+        "build_runner",
+        "drift_dev",
+        "freezed",
+        "json_serializable",
         "lints",
         "test"
       ]
@@ -53,14 +62,172 @@
       "dependencies": []
     },
     {
+      "name": "json_serializable",
+      "version": "6.9.5",
+      "dependencies": [
+        "analyzer",
+        "async",
+        "build",
+        "build_config",
+        "collection",
+        "dart_style",
+        "json_annotation",
+        "meta",
+        "path",
+        "pub_semver",
+        "pubspec_parse",
+        "source_gen",
+        "source_helper"
+      ]
+    },
+    {
+      "name": "freezed",
+      "version": "2.5.8",
+      "dependencies": [
+        "analyzer",
+        "build",
+        "build_config",
+        "collection",
+        "dart_style",
+        "freezed_annotation",
+        "json_annotation",
+        "meta",
+        "source_gen"
+      ]
+    },
+    {
+      "name": "drift_dev",
+      "version": "2.28.0",
+      "dependencies": [
+        "analyzer",
+        "args",
+        "build",
+        "build_config",
+        "build_resolvers",
+        "charcode",
+        "cli_util",
+        "collection",
+        "dart_style",
+        "drift",
+        "io",
+        "json_annotation",
+        "logging",
+        "meta",
+        "package_config",
+        "path",
+        "pub_semver",
+        "recase",
+        "source_gen",
+        "source_span",
+        "sqlite3",
+        "sqlparser",
+        "stream_transform",
+        "string_scanner",
+        "yaml"
+      ]
+    },
+    {
+      "name": "build_runner",
+      "version": "2.5.4",
+      "dependencies": [
+        "analyzer",
+        "args",
+        "async",
+        "build",
+        "build_config",
+        "build_daemon",
+        "build_resolvers",
+        "build_runner_core",
+        "code_builder",
+        "collection",
+        "crypto",
+        "dart_style",
+        "frontend_server_client",
+        "glob",
+        "graphs",
+        "http",
+        "http_multi_server",
+        "io",
+        "js",
+        "logging",
+        "meta",
+        "mime",
+        "package_config",
+        "path",
+        "pool",
+        "pub_semver",
+        "pubspec_parse",
+        "shelf",
+        "shelf_web_socket",
+        "stack_trace",
+        "stream_transform",
+        "timing",
+        "watcher",
+        "web",
+        "web_socket_channel",
+        "yaml"
+      ]
+    },
+    {
+      "name": "json_annotation",
+      "version": "4.9.0",
+      "dependencies": [
+        "meta"
+      ]
+    },
+    {
+      "name": "freezed_annotation",
+      "version": "2.4.4",
+      "dependencies": [
+        "collection",
+        "json_annotation",
+        "meta"
+      ]
+    },
+    {
+      "name": "sqlite3",
+      "version": "2.9.4",
+      "dependencies": [
+        "collection",
+        "ffi",
+        "meta",
+        "path",
+        "typed_data",
+        "web"
+      ]
+    },
+    {
       "name": "path",
       "version": "1.9.1",
       "dependencies": []
     },
     {
+      "name": "drift",
+      "version": "2.28.2",
+      "dependencies": [
+        "async",
+        "collection",
+        "convert",
+        "meta",
+        "path",
+        "sqlite3",
+        "stack_trace",
+        "stream_channel",
+        "web"
+      ]
+    },
+    {
       "name": "csv",
       "version": "6.0.0",
       "dependencies": []
+    },
+    {
+      "name": "archive",
+      "version": "3.6.1",
+      "dependencies": [
+        "crypto",
+        "path"
+      ]
     },
     {
       "name": "yaml",
@@ -294,7 +461,7 @@
     },
     {
       "name": "analyzer",
-      "version": "8.1.1",
+      "version": "7.7.1",
       "dependencies": [
         "_fe_analyzer_shared",
         "collection",
@@ -311,10 +478,139 @@
       ]
     },
     {
+      "name": "source_helper",
+      "version": "1.3.7",
+      "dependencies": [
+        "analyzer",
+        "source_gen"
+      ]
+    },
+    {
+      "name": "source_gen",
+      "version": "2.0.0",
+      "dependencies": [
+        "analyzer",
+        "async",
+        "build",
+        "dart_style",
+        "glob",
+        "path",
+        "pub_semver",
+        "source_span",
+        "yaml"
+      ]
+    },
+    {
+      "name": "pubspec_parse",
+      "version": "1.5.0",
+      "dependencies": [
+        "checked_yaml",
+        "collection",
+        "json_annotation",
+        "pub_semver",
+        "yaml"
+      ]
+    },
+    {
+      "name": "pub_semver",
+      "version": "2.2.0",
+      "dependencies": [
+        "collection"
+      ]
+    },
+    {
+      "name": "meta",
+      "version": "1.17.0",
+      "dependencies": []
+    },
+    {
+      "name": "dart_style",
+      "version": "3.1.1",
+      "dependencies": [
+        "analyzer",
+        "args",
+        "collection",
+        "package_config",
+        "path",
+        "pub_semver",
+        "source_span",
+        "yaml"
+      ]
+    },
+    {
+      "name": "build_config",
+      "version": "1.1.2",
+      "dependencies": [
+        "checked_yaml",
+        "json_annotation",
+        "path",
+        "pubspec_parse",
+        "yaml"
+      ]
+    },
+    {
+      "name": "build",
+      "version": "2.5.4",
+      "dependencies": [
+        "analyzer",
+        "async",
+        "build_runner_core",
+        "built_collection",
+        "built_value",
+        "convert",
+        "crypto",
+        "glob",
+        "graphs",
+        "logging",
+        "meta",
+        "package_config",
+        "path",
+        "pool"
+      ]
+    },
+    {
       "name": "string_scanner",
       "version": "1.4.1",
       "dependencies": [
         "source_span"
+      ]
+    },
+    {
+      "name": "build_resolvers",
+      "version": "2.5.4",
+      "dependencies": [
+        "analyzer",
+        "async",
+        "build",
+        "build_runner_core",
+        "collection",
+        "convert",
+        "crypto",
+        "graphs",
+        "logging",
+        "package_config",
+        "path",
+        "pool",
+        "pub_semver",
+        "stream_transform"
+      ]
+    },
+    {
+      "name": "sqlparser",
+      "version": "0.41.2",
+      "dependencies": [
+        "charcode",
+        "collection",
+        "meta",
+        "source_span"
+      ]
+    },
+    {
+      "name": "cli_util",
+      "version": "0.4.2",
+      "dependencies": [
+        "meta",
+        "path"
       ]
     },
     {
@@ -323,11 +619,24 @@
       "dependencies": []
     },
     {
-      "name": "web_socket",
-      "version": "1.0.1",
-      "dependencies": [
-        "web"
-      ]
+      "name": "args",
+      "version": "2.7.0",
+      "dependencies": []
+    },
+    {
+      "name": "stream_transform",
+      "version": "2.1.1",
+      "dependencies": []
+    },
+    {
+      "name": "recase",
+      "version": "4.1.0",
+      "dependencies": []
+    },
+    {
+      "name": "charcode",
+      "version": "1.4.0",
+      "dependencies": []
     },
     {
       "name": "web",
@@ -335,10 +644,142 @@
       "dependencies": []
     },
     {
+      "name": "watcher",
+      "version": "1.1.4",
+      "dependencies": [
+        "async",
+        "path"
+      ]
+    },
+    {
+      "name": "timing",
+      "version": "1.0.2",
+      "dependencies": [
+        "json_annotation"
+      ]
+    },
+    {
+      "name": "mime",
+      "version": "2.0.0",
+      "dependencies": []
+    },
+    {
+      "name": "http",
+      "version": "1.6.0",
+      "dependencies": [
+        "async",
+        "http_parser",
+        "meta",
+        "web"
+      ]
+    },
+    {
+      "name": "graphs",
+      "version": "2.3.2",
+      "dependencies": [
+        "collection"
+      ]
+    },
+    {
+      "name": "glob",
+      "version": "2.1.3",
+      "dependencies": [
+        "async",
+        "collection",
+        "file",
+        "path",
+        "string_scanner"
+      ]
+    },
+    {
+      "name": "frontend_server_client",
+      "version": "4.0.0",
+      "dependencies": [
+        "async",
+        "path"
+      ]
+    },
+    {
       "name": "crypto",
       "version": "3.0.6",
       "dependencies": [
         "typed_data"
+      ]
+    },
+    {
+      "name": "code_builder",
+      "version": "4.11.1",
+      "dependencies": [
+        "built_collection",
+        "built_value",
+        "collection",
+        "matcher",
+        "meta"
+      ]
+    },
+    {
+      "name": "build_runner_core",
+      "version": "9.1.2",
+      "dependencies": [
+        "analyzer",
+        "async",
+        "build",
+        "build_config",
+        "build_resolvers",
+        "build_runner",
+        "built_collection",
+        "built_value",
+        "collection",
+        "convert",
+        "crypto",
+        "glob",
+        "graphs",
+        "json_annotation",
+        "logging",
+        "meta",
+        "package_config",
+        "path",
+        "pool",
+        "timing",
+        "watcher",
+        "yaml"
+      ]
+    },
+    {
+      "name": "build_daemon",
+      "version": "4.1.1",
+      "dependencies": [
+        "built_collection",
+        "built_value",
+        "crypto",
+        "http_multi_server",
+        "logging",
+        "path",
+        "pool",
+        "shelf",
+        "shelf_web_socket",
+        "stream_transform",
+        "watcher",
+        "web_socket_channel"
+      ]
+    },
+    {
+      "name": "ffi",
+      "version": "2.2.0",
+      "dependencies": []
+    },
+    {
+      "name": "convert",
+      "version": "3.1.2",
+      "dependencies": [
+        "typed_data"
+      ]
+    },
+    {
+      "name": "web_socket",
+      "version": "1.0.1",
+      "dependencies": [
+        "web"
       ]
     },
     {
@@ -363,42 +804,8 @@
       ]
     },
     {
-      "name": "meta",
-      "version": "1.17.0",
-      "dependencies": []
-    },
-    {
-      "name": "glob",
-      "version": "2.1.3",
-      "dependencies": [
-        "async",
-        "collection",
-        "file",
-        "path",
-        "string_scanner"
-      ]
-    },
-    {
-      "name": "frontend_server_client",
-      "version": "4.0.0",
-      "dependencies": [
-        "async",
-        "path"
-      ]
-    },
-    {
-      "name": "args",
-      "version": "2.7.0",
-      "dependencies": []
-    },
-    {
       "name": "term_glyph",
       "version": "1.2.2",
-      "dependencies": []
-    },
-    {
-      "name": "mime",
-      "version": "2.0.0",
       "dependencies": []
     },
     {
@@ -412,13 +819,6 @@
       ]
     },
     {
-      "name": "convert",
-      "version": "3.1.2",
-      "dependencies": [
-        "typed_data"
-      ]
-    },
-    {
       "name": "cli_config",
       "version": "0.2.0",
       "dependencies": [
@@ -427,26 +827,35 @@
       ]
     },
     {
-      "name": "watcher",
-      "version": "1.1.4",
-      "dependencies": [
-        "async",
-        "path"
-      ]
-    },
-    {
-      "name": "pub_semver",
-      "version": "2.2.0",
-      "dependencies": [
-        "collection"
-      ]
-    },
-    {
       "name": "_fe_analyzer_shared",
-      "version": "88.0.0",
+      "version": "85.0.0",
       "dependencies": [
         "meta"
       ]
+    },
+    {
+      "name": "checked_yaml",
+      "version": "2.0.4",
+      "dependencies": [
+        "json_annotation",
+        "source_span",
+        "yaml"
+      ]
+    },
+    {
+      "name": "built_value",
+      "version": "8.12.4",
+      "dependencies": [
+        "built_collection",
+        "collection",
+        "fixnum",
+        "meta"
+      ]
+    },
+    {
+      "name": "built_collection",
+      "version": "5.1.1",
+      "dependencies": []
     },
     {
       "name": "file",
@@ -455,6 +864,11 @@
         "meta",
         "path"
       ]
+    },
+    {
+      "name": "fixnum",
+      "version": "1.1.1",
+      "dependencies": []
     }
   ],
   "configVersion": 1

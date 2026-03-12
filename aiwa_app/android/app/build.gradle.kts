@@ -42,3 +42,17 @@ android {
 flutter {
     source = "../.."
 }
+
+// Sync APK to where Flutter CLI expects it (build/app/outputs/flutter-apk under project root).
+// With modern AGP DSL, Gradle may output to app/build/outputs/apk/debug/ and Flutter looks under project_root/build/.
+val flutterCliApkDir = rootProject.file("${rootProject.projectDir.parent}/build/app/outputs/flutter-apk")
+
+tasks.register<Copy>("syncFlutterApks") {
+    from(layout.buildDirectory.dir("outputs/apk/debug"))
+    into(flutterCliApkDir)
+    include("*.apk")
+}
+
+tasks.matching { it.name in listOf("assembleDebug", "assembleRelease") }.configureEach {
+    finalizedBy("syncFlutterApks")
+}

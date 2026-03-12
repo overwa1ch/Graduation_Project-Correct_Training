@@ -4,7 +4,7 @@ import 'package:aiwa_app/theme/typography.dart';
 import 'package:aiwa_app/services/auth/auth_state.dart';
 
 /// 登录页面
-/// 
+///
 /// 基于 Figma 设计和现有主题实现
 /// 功能：
 /// - 用户登录
@@ -22,7 +22,7 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  
+
   bool _isPasswordVisible = false;
   bool _isLoading = false;
 
@@ -36,27 +36,27 @@ class _LoginPageState extends State<LoginPage> {
   /// 表单验证 - 邮箱
   String? _validateEmail(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Please enter your email';
+      return '请输入邮箱';
     }
-    
+
     final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
     if (!emailRegex.hasMatch(value)) {
-      return 'Please enter a valid email';
+      return '请输入正确的邮箱';
     }
-    
+
     return null;
   }
 
   /// 表单验证 - 密码
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Please enter your password';
+      return '请输入密码';
     }
-    
+
     if (value.length < 8) {
-      return 'Password must be at least 8 characters';
+      return '密码至少 8 位';
     }
-    
+
     return null;
   }
 
@@ -85,11 +85,11 @@ class _LoginPageState extends State<LoginPage> {
         Navigator.pushReplacementNamed(context, '/home');
       } else {
         // 显示错误信息
-        _showErrorSnackBar(authState.errorMessage ?? 'Login failed');
+        _showErrorSnackBar(authState.errorMessage ?? '登录失败');
       }
     } catch (e) {
       if (mounted) {
-        _showErrorSnackBar('An error occurred: $e');
+        _showErrorSnackBar('发生错误：$e');
       }
     } finally {
       if (mounted) {
@@ -141,38 +141,38 @@ class _LoginPageState extends State<LoginPage> {
                       size: 80,
                       color: theme.colorScheme.primary,
                     ),
-                    
+
                     const SizedBox(height: AppSpacing.xl),
-                    
+
                     // 标题
                     Text(
-                      'Welcome Back',
+                      '欢迎回来',
                       style: theme.textTheme.displaySmall?.copyWith(
                         color: theme.colorScheme.onSurface,
                         fontWeight: AppTypography.extraBold,
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    
+
                     const SizedBox(height: AppSpacing.sm),
-                    
+
                     // 副标题
                     Text(
-                      'Sign in to continue your workout journey',
+                      '登录后继续训练',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    
+
                     const SizedBox(height: AppSpacing.xxxl),
-                    
+
                     // 邮箱输入框
                     TextFormField(
                       controller: _emailController,
                       decoration: InputDecoration(
-                        labelText: 'Email',
-                        hintText: 'Enter your email',
+                        labelText: '邮箱',
+                        hintText: '请输入邮箱',
                         prefixIcon: Icon(
                           Icons.email_outlined,
                           color: theme.colorScheme.onSurfaceVariant,
@@ -183,15 +183,15 @@ class _LoginPageState extends State<LoginPage> {
                       validator: _validateEmail,
                       enabled: !_isLoading,
                     ),
-                    
+
                     const SizedBox(height: AppSpacing.lg),
-                    
+
                     // 密码输入框
                     TextFormField(
                       controller: _passwordController,
                       decoration: InputDecoration(
-                        labelText: 'Password',
-                        hintText: 'Enter your password',
+                        labelText: '密码',
+                        hintText: '请输入密码',
                         prefixIcon: Icon(
                           Icons.lock_outlined,
                           color: theme.colorScheme.onSurfaceVariant,
@@ -216,9 +216,9 @@ class _LoginPageState extends State<LoginPage> {
                       enabled: !_isLoading,
                       onFieldSubmitted: (_) => _handleLogin(),
                     ),
-                    
+
                     const SizedBox(height: AppSpacing.xxl),
-                    
+
                     // 登录按钮
                     ElevatedButton(
                       onPressed: _isLoading ? null : _handleLogin,
@@ -233,11 +233,11 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                               ),
                             )
-                          : const Text('Sign In'),
+                          : const Text('登录'),
                     ),
-                    
+
                     const SizedBox(height: AppSpacing.lg),
-                    
+
                     // 分隔线
                     Row(
                       children: [
@@ -251,7 +251,7 @@ class _LoginPageState extends State<LoginPage> {
                             horizontal: AppSpacing.md,
                           ),
                           child: Text(
-                            'OR',
+                            '或',
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
@@ -264,13 +264,13 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: AppSpacing.lg),
-                    
+
                     // 注册按钮
                     OutlinedButton(
                       onPressed: _isLoading ? null : _navigateToRegister,
-                      child: const Text('Create New Account'),
+                      child: const Text('注册'),
                     ),
                   ],
                 ),
@@ -282,4 +282,3 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
-

@@ -7,17 +7,18 @@ import 'package:aiwa_app/theme/colors.dart';
 import 'package:aiwa_app/theme/typography.dart';
 import 'package:aiwa_app/adapters/result_adapter.dart';
 import 'package:aiwa_core/aiwa_core.dart' as aiwacore;
+import 'package:aiwa_core/fit_domain/fit_domain.dart';
 
 /// ResultPopupPage
-/// 
+///
 /// 结果展示弹窗页面：显示训练结果
 /// 基于 Figma 设计：https://www.figma.com/design/q3hgTOdVGt42WkOfDixtsp/Graduation-Project?node-id=40-6
-/// 
+///
 /// 包含三个板块：
 /// 1. 视频/证据占位（顶部）
 /// 2. 打分卡片（中部）- 显示 posture/stability/rhythm 分数
 /// 3. 评估详情（底部，可滚动）- 显示次数、元信息、质量提示
-/// 
+///
 /// ⚠️ 本版本实现数据展示：接收 AnalysisResultLite 并映射到 UI
 
 /// 显示结果弹窗的方法
@@ -80,11 +81,12 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
     try {
       final overlayPath = p.join(widget.sessionRoot, 'keypoints_overlay.mp4');
       final overlayFile = File(overlayPath);
-      
+
       if (await overlayFile.exists()) {
         final size = await overlayFile.length();
-        debugPrint('[ResultPopup] Found overlay video: $overlayPath ($size bytes)');
-        
+        debugPrint(
+            '[ResultPopup] Found overlay video: $overlayPath ($size bytes)');
+
         if (size > 0) {
           setState(() {
             _overlayVideoPath = overlayPath;
@@ -108,10 +110,10 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
     try {
       // 读取并验证 result.json（使用 aiwa_core 标准化方法）
       final result = await aiwacore.readResultJson(widget.sessionRoot);
-      
+
       // 解析时间窗（使用 aiwa_core 的证据解析）
       final window = aiwacore.resolveEvidenceWindow(result);
-      
+
       if (mounted) {
         setState(() {
           _evidenceWindow = window;
@@ -137,8 +139,8 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
         onTap: () {}, // 阻止点击内容时关闭
         child: DraggableScrollableSheet(
           initialChildSize: 0.67, // 初始占 2/3 高度
-          minChildSize: 0.5,      // 最小 1/2 高度
-          maxChildSize: 0.9,      // 最大 9/10 高度
+          minChildSize: 0.5, // 最小 1/2 高度
+          maxChildSize: 0.9, // 最大 9/10 高度
           builder: (context, scrollController) {
             return Container(
               decoration: const BoxDecoration(
@@ -159,7 +161,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  
+
                   // 可滚动内容
                   Expanded(
                     child: SingleChildScrollView(
@@ -169,20 +171,23 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
                         child: Column(
                           children: [
                             const SizedBox(height: 8),
-                            
+
                             // 1. 视频占位区域
                             _buildVideoPlaceholder(context),
-                            
+
                             const SizedBox(height: 37),
-                            
+
                             // 2. 打分卡片区域
                             _buildScoreCards(context),
-                            
+
                             const SizedBox(height: 37),
-                            
+
                             // 3. 评估详情区域
                             _buildEvaluationPanel(context),
-                            
+
+                            const SizedBox(height: 20),
+                            // 动作：关闭 / 继续到编辑器（UI 2.0）
+                            _buildResultActions(context),
                             const SizedBox(height: 20),
                           ],
                         ),
@@ -198,6 +203,31 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
     );
   }
 
+  /// 结果页动作：关闭、继续到编辑器
+  Widget _buildResultActions(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('关闭'),
+        ),
+        const SizedBox(width: 12),
+        FilledButton(
+          onPressed: () {
+            final nav = Navigator.of(context);
+            final dateStr =
+                DateOnly.fromDateTimeUtc(DateTime.now().toUtc()).toString();
+            nav.pop();
+            nav.pushNamed('/editor',
+                arguments: <String, dynamic>{'date': dateStr});
+          },
+          child: const Text('继续到编辑器'),
+        ),
+      ],
+    );
+  }
+
   /// 视频/证据占位区域（顶部）
   Widget _buildVideoPlaceholder(BuildContext context) {
     // 显示优先级：
@@ -207,7 +237,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
     // 4. 占位图标
 
     Widget content;
-    
+
     if (_hasOverlayVideo && _overlayVideoPath != null) {
       // 显示骨架视频
       content = _buildOverlayVideoPlayer();
@@ -251,13 +281,13 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
                 if (snapshot.connectionState == ConnectionState.done) {
                   if (snapshot.hasData && snapshot.data!.value.isInitialized) {
                     final controller = snapshot.data!;
-                    
+
                     // 自动循环播放
                     controller.setLooping(true);
                     if (!controller.value.isPlaying) {
                       controller.play();
                     }
-                    
+
                     return SizedBox(
                       width: 343,
                       height: 200,
@@ -300,7 +330,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
                 ),
                 SizedBox(width: 4),
                 Text(
-                  'Keypoints',
+                  '骨架',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 11,
@@ -335,10 +365,11 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
   /// 打开全屏视频
   void _openFullscreenVideo(BuildContext context) {
     if (_overlayVideoPath == null) return;
-    
+
     Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
-        builder: (context) => _FullscreenVideoPage(videoPath: _overlayVideoPath!),
+        builder: (context) =>
+            _FullscreenVideoPage(videoPath: _overlayVideoPath!),
       ),
     );
   }
@@ -347,10 +378,10 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
   Future<VideoPlayerController> _initializeVideoPlayer(String path) async {
     final controller = VideoPlayerController.file(File(path));
     await controller.initialize();
-    
+
     // 保存控制器引用以便清理
     _videoController = controller;
-    
+
     return controller;
   }
 
@@ -367,7 +398,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            'No video preview',
+            '暂无预览',
             style: AppTypography.bodyBase.copyWith(
               color: AppColors.textInvert.withOpacity(0.5),
               fontSize: 12,
@@ -395,7 +426,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Evidence Segment',
+            '关键片段',
             style: AppTypography.bodyBold.copyWith(
               color: AppColors.textInvert,
               fontSize: 16,
@@ -413,7 +444,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Review this segment in the video',
+            '建议重点查看这一段',
             style: AppTypography.bodyBase.copyWith(
               color: AppColors.textInvert.withOpacity(0.7),
               fontSize: 12,
@@ -432,11 +463,11 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _buildScoreCard('Posture', widget.result.posture),
+        _buildScoreCard('姿态', widget.result.posture),
         const SizedBox(width: 20),
-        _buildScoreCard('Stability', widget.result.stability),
+        _buildScoreCard('稳定', widget.result.stability),
         const SizedBox(width: 20),
-        _buildScoreCard('Rhythm', widget.result.rhythm),
+        _buildScoreCard('节奏', widget.result.rhythm),
       ],
     );
   }
@@ -444,7 +475,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
   /// 单个打分卡片
   Widget _buildScoreCard(String label, int? score) {
     final isNA = score == null;
-    
+
     // 根据分数选择颜色（参见 ui_contracts.md）
     // <60 灰，60~79 灰，≥80 绿
     final Color scoreColor;
@@ -496,7 +527,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
               ),
               const SizedBox(height: 2),
               Text(
-                isNA ? 'N/A' : score.toString(),
+                isNA ? '暂无' : score.toString(),
                 key: ValueKey('score_value_${label.toLowerCase()}'),
                 softWrap: false,
                 overflow: TextOverflow.ellipsis,
@@ -518,9 +549,8 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
   /// 评估详情区域（底部，包含总分、次数、质量提示、元信息）
   Widget _buildEvaluationPanel(BuildContext context) {
     // 质量提示判断（包括部分结果）
-    final showQualityWarning = 
-        widget.result.isPartial ||
-        (widget.result.lowConfidence == true) || 
+    final showQualityWarning = widget.result.isPartial ||
+        (widget.result.lowConfidence == true) ||
         (widget.result.coverage != null && widget.result.coverage! < 0.7);
 
     return Container(
@@ -543,25 +573,21 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
         children: [
           // 总分与次数
           _buildSummarySection(),
-          
-          if (_shouldShowAttemptFeedback())
-            const SizedBox(height: 24),
+
+          if (_shouldShowAttemptFeedback()) const SizedBox(height: 24),
 
           if (_shouldShowAttemptFeedback())
             _buildAttemptFeedbackSection(context),
 
-          if (_shouldShowAttemptFeedback())
-            const SizedBox(height: 24),
-          
+          if (_shouldShowAttemptFeedback()) const SizedBox(height: 24),
+
           const SizedBox(height: 24),
-          
+
           // 质量提示（黄条）
-          if (showQualityWarning)
-            _buildQualityWarning(),
-          
-          if (showQualityWarning)
-            const SizedBox(height: 24),
-          
+          if (showQualityWarning) _buildQualityWarning(),
+
+          if (showQualityWarning) const SizedBox(height: 24),
+
           // 元信息（可折叠）
           _buildMetaSection(),
         ],
@@ -573,16 +599,15 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
   Widget _buildSummarySection() {
     final isNA = widget.result.total == null;
     // 总分颜色固定为纯白，提升可读性
-    final Color totalColor = isNA 
-        ? AppColors.textInvert.withOpacity(0.5) 
-        : AppColors.textInvert;
+    final Color totalColor =
+        isNA ? AppColors.textInvert.withOpacity(0.5) : AppColors.textInvert;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // 总分标题
         Text(
-          'Overall Score',
+          '总分',
           style: AppTypography.heading.copyWith(
             color: AppColors.textInvert,
             fontSize: 20,
@@ -591,10 +616,10 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
           ),
         ),
         const SizedBox(height: 8),
-        
+
         // 总分数值
         Text(
-          isNA ? 'N/A' : '${widget.result.total}/100',
+          isNA ? '暂无' : '${widget.result.total}/100',
           key: const ValueKey('overall_score'),
           style: AppTypography.heading.copyWith(
             color: totalColor,
@@ -603,9 +628,9 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
             height: 1.2,
           ),
         ),
-        
+
         const SizedBox(height: 16),
-        
+
         // 次数
         Row(
           children: [
@@ -616,7 +641,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
             ),
             const SizedBox(width: 8),
             Text(
-              'Repetitions: ${widget.result.reps}',
+              '完成次数：${widget.result.reps}',
               key: const ValueKey('reps_count'),
               style: AppTypography.bodyBase.copyWith(
                 color: AppColors.textInvert,
@@ -639,7 +664,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Detected Attempts: ${widget.result.attempts}',
+                  '识别次数：${widget.result.attempts}',
                   style: AppTypography.bodyBase.copyWith(
                     color: AppColors.textInvert.withOpacity(0.85),
                     fontSize: 15,
@@ -664,15 +689,16 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
     final feedback = widget.result.attemptFeedback;
     final attemptsTotal = feedback?.total ?? widget.result.attempts;
     final attemptsQualified = feedback?.qualified ?? widget.result.reps;
-    final attemptsUnqualified = feedback?.unqualified ??
-        math.max(0, attemptsTotal - attemptsQualified);
+    final attemptsUnqualified =
+        feedback?.unqualified ?? math.max(0, attemptsTotal - attemptsQualified);
     final avgAngle = feedback?.avgAngle;
     final targetAngle = feedback?.targetAngle;
     final detectionThreshold = feedback?.detectionThreshold;
     final suggestions = feedback?.suggestions ?? const <String>[];
     debugPrint('[ResultPopup] 🎨 Building feedback badge');
     debugPrint('[ResultPopup] 🎨 feedback?.mode: ${feedback?.mode}');
-    debugPrint('[ResultPopup] 🎨 widget.result.strictness: ${widget.result.strictness}');
+    debugPrint(
+        '[ResultPopup] 🎨 widget.result.strictness: ${widget.result.strictness}');
     final modeLabel = feedback?.mode ?? (widget.result.strictness ?? 'relaxed');
     debugPrint('[ResultPopup] 🎨 Final modeLabel: $modeLabel');
 
@@ -687,9 +713,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
     final Color badgeTextColor = isRelaxed
         ? AppColors.brandPrimaryVariant
         : AppColors.textInvert.withOpacity(0.85);
-    final String badgeText = isRelaxed
-        ? 'Relaxed · Beginner Friendly'
-        : 'Strict · Advanced Challenge';
+    final String badgeText = isRelaxed ? '宽松 · 新手' : '严格 · 进阶';
 
     return Container(
       width: double.infinity,
@@ -724,9 +748,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
               ),
             ),
           ),
-
           const SizedBox(height: 14),
-
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -734,7 +756,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Attempt Summary',
+                  '动作概览',
                   style: AppTypography.bodyBold.copyWith(
                     color: AppColors.textInvert,
                     fontSize: 16,
@@ -746,7 +768,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Detected $attemptsTotal attempts • Qualified $attemptsQualified • Needs work $attemptsUnqualified',
+            '共识别 $attemptsTotal 次，合格 $attemptsQualified 次，待改进 $attemptsUnqualified 次',
             style: AppTypography.bodyBase.copyWith(
               color: AppColors.textInvert.withOpacity(0.85),
               fontSize: 14,
@@ -756,7 +778,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                'Average depth: ${avgAngle.toStringAsFixed(1)}° (goal < ${targetAngle.toStringAsFixed(1)}°)',
+                '平均深度：${avgAngle.toStringAsFixed(1)}°（目标 < ${targetAngle.toStringAsFixed(1)}°）',
                 style: AppTypography.bodyBase.copyWith(
                   color: AppColors.textInvert.withOpacity(0.7),
                   fontSize: 13,
@@ -767,7 +789,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
-                'Detection window: up to ${detectionThreshold.toStringAsFixed(0)}°',
+                '识别阈值：${detectionThreshold.toStringAsFixed(0)}° 以内',
                 style: AppTypography.caption.copyWith(
                   color: AppColors.textInvert.withOpacity(0.55),
                 ),
@@ -776,7 +798,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
           if (suggestions.isNotEmpty) ...[
             const SizedBox(height: 12),
             Text(
-              'Coaching Tips',
+              '建议',
               style: AppTypography.bodyBold.copyWith(
                 color: accentColor,
                 fontSize: 14,
@@ -787,7 +809,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
             ...suggestions.map((tip) => _buildSuggestionItem(tip)),
           ] else ...[
             const SizedBox(height: 12),
-            _buildSuggestionItem('Replay your successful reps and replicate their depth and pacing.'),
+            _buildSuggestionItem('回看合格动作，尽量保持相同深度和节奏。'),
           ],
         ],
       ),
@@ -828,15 +850,16 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
     if (widget.result.isPartial) {
       return _buildPartialResultWarning();
     }
-    
+
     // 普通质量警告
     String message;
     if (widget.result.lowConfidence == true) {
-      message = '⚠️ Low confidence detected. Results may be less accurate.';
-    } else if (widget.result.coverage != null && widget.result.coverage! < 0.7) {
-      message = '⚠️ Low coverage (${(widget.result.coverage! * 100).toInt()}%). Some frames may be missing.';
+      message = '置信度较低，结果可能不够准确。';
+    } else if (widget.result.coverage != null &&
+        widget.result.coverage! < 0.7) {
+      message = '覆盖率较低（${(widget.result.coverage! * 100).toInt()}%），部分帧可能缺失。';
     } else {
-      message = '⚠️ Quality issue detected.';
+      message = '检测到质量问题。';
     }
 
     return Container(
@@ -848,7 +871,8 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.warning, color: AppColors.surfaceSecondary, size: 20),
+          const Icon(Icons.warning,
+              color: AppColors.surfaceSecondary, size: 20),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -867,27 +891,27 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
   /// 构建部分结果警告（降级模式）
   Widget _buildPartialResultWarning() {
     final partialInfo = widget.result.partialFailure;
-    
-    String title = 'Partial Analysis Results';
-    String message = 'Keypoints detected successfully, but angle calculation failed.';
-    String suggestion = '💡 Suggestions: Ensure clear view of knees and hips, improve lighting, or adjust camera angle.';
-    
+
+    String title = '部分分析结果';
+    String message = '已识别骨架，但角度计算失败。';
+    String suggestion = '建议：确保膝盖和髋部清晰可见，改善光线或调整机位。';
+
     if (partialInfo != null) {
       switch (partialInfo.code) {
         case 'ANGLE_COMPUTE_FAILED':
-          message = 'Keypoints detected successfully, but angle calculation failed.\nReason: ${partialInfo.message}';
-          suggestion = '💡 Suggestions: Ensure clear view of knees and hips, improve lighting, or adjust camera angle.';
+          message = '已识别骨架，但角度计算失败。\n原因：${partialInfo.message}';
+          suggestion = '建议：确保膝盖和髋部清晰可见，改善光线或调整机位。';
           break;
         case 'METRICS_COMPUTE_FAILED':
-          message = 'Angles computed, but scoring metrics failed.\nReason: ${partialInfo.message}';
-          suggestion = '💡 Try recording again with better visibility.';
+          message = '角度已计算，但评分失败。\n原因：${partialInfo.message}';
+          suggestion = '建议：在更清晰的条件下重新录制。';
           break;
         default:
-          message = 'Analysis completed with limitations: ${partialInfo.message}';
-          suggestion = '💡 Try recording again with better conditions.';
+          message = '分析已完成，但结果受限：${partialInfo.message}';
+          suggestion = '建议：在更好的环境下重新录制。';
       }
     }
-    
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -950,7 +974,7 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Analysis Details',
+          '分析详情',
           style: AppTypography.heading.copyWith(
             color: AppColors.textInvert,
             fontSize: 18,
@@ -959,26 +983,26 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
           ),
         ),
         const SizedBox(height: 12),
-        
+
         // 模板名称
         if (widget.result.templateName != null)
-          _buildMetaRow('Template', widget.result.templateName!),
-        
+          _buildMetaRow('模板', widget.result.templateName!),
+
         // 严格度
         if (widget.result.strictness != null)
-          _buildMetaRow('Strictness', widget.result.strictness!),
-        
+          _buildMetaRow('模式', _localizedStrictness(widget.result.strictness!)),
+
         // 推理引擎
         if (widget.result.engine != null)
-          _buildMetaRow('Engine', widget.result.engine!),
-        
+          _buildMetaRow('引擎', widget.result.engine!),
+
         // 帧率
         if (widget.result.fps != null)
           _buildMetaRow('FPS', '${widget.result.fps}'),
-        
+
         // 覆盖率
         if (widget.result.coverage != null)
-          _buildMetaRow('Coverage', '${(widget.result.coverage! * 100).toInt()}%'),
+          _buildMetaRow('覆盖率', '${(widget.result.coverage! * 100).toInt()}%'),
       ],
     );
   }
@@ -1008,6 +1032,17 @@ class _ResultPopupPageState extends State<ResultPopupPage> {
         ],
       ),
     );
+  }
+
+  String _localizedStrictness(String value) {
+    switch (value.toLowerCase()) {
+      case 'relaxed':
+        return '宽松';
+      case 'strict':
+        return '严格';
+      default:
+        return value;
+    }
   }
 }
 
@@ -1040,7 +1075,7 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
     await _controller.initialize();
     _controller.setLooping(true);
     _controller.play();
-    
+
     if (mounted) {
       setState(() => _isInitialized = true);
     }
@@ -1060,7 +1095,7 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
         backgroundColor: Colors.black,
         iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
-          'Skeleton Video',
+          '骨架视频',
           style: TextStyle(color: Colors.white),
         ),
       ),
@@ -1091,4 +1126,3 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
     );
   }
 }
-

@@ -6,9 +6,9 @@ import 'package:aiwa_app/services/config/config_sync.dart';
 import 'package:aiwa_core/aiwa_core.dart';
 
 /// WelcomePage
-/// 
+///
 /// 欢迎/模式选择页面，无底部导航
-/// 
+///
 /// 功能：
 /// - 显示欢迎信息
 /// - 让用户选择评估模式（Relaxed/Strict）
@@ -33,9 +33,10 @@ class _WelcomePageState extends State<WelcomePage> {
       final config = await readAppRuntimeConfig();
       config['strictness'] = _selectedStrictness.value;
       await writeAppRuntimeConfig(config);
-      
-      debugPrint('[WelcomePage] Saved strictness: ${_selectedStrictness.value}');
-      
+
+      debugPrint(
+          '[WelcomePage] Saved strictness: ${_selectedStrictness.value}');
+
       // 导航到首页
       if (mounted) {
         Navigator.pushReplacementNamed(
@@ -74,9 +75,9 @@ class _WelcomePageState extends State<WelcomePage> {
                   size: 100,
                   color: theme.colorScheme.primary,
                 ),
-                
+
                 const SizedBox(height: AppSpacing.lg),
-                
+
                 // 标题
                 Text(
                   'AIWA',
@@ -84,20 +85,20 @@ class _WelcomePageState extends State<WelcomePage> {
                     color: theme.colorScheme.primary,
                   ),
                 ),
-                
+
                 const SizedBox(height: AppSpacing.sm),
-                
+
                 // 副标题
                 Text(
-                  'AI-Powered Workout Assistant',
+                  '智能训练助手',
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                
+
                 const SizedBox(height: AppSpacing.xxxl),
-                
+
                 // 选择标题
                 Text(
                   '选择评估模式',
@@ -105,16 +106,16 @@ class _WelcomePageState extends State<WelcomePage> {
                     color: theme.colorScheme.onSurface,
                   ),
                 ),
-                
+
                 const SizedBox(height: AppSpacing.lg),
-                
+
                 // 新手模式卡片
                 _buildModeCard(
                   context: context,
                   strictness: Strictness.relaxed,
                   icon: Icons.sentiment_satisfied_rounded,
-                  title: '新手模式 (Relaxed)',
-                  description: '标准宽松，更容易获得反馈\n推荐给刚开始练习的用户',
+                  title: '新手模式',
+                  description: '标准更宽松，更容易拿到反馈\n适合刚开始训练',
                   isSelected: _selectedStrictness == Strictness.relaxed,
                   onTap: () {
                     setState(() {
@@ -122,16 +123,16 @@ class _WelcomePageState extends State<WelcomePage> {
                     });
                   },
                 ),
-                
+
                 const SizedBox(height: AppSpacing.lg),
-                
+
                 // 严格模式卡片
                 _buildModeCard(
                   context: context,
                   strictness: Strictness.strict,
                   icon: Icons.emoji_events_rounded,
-                  title: '严格模式 (Strict)',
-                  description: '专业标准，挑战更高分\n推荐给已掌握基本动作的用户',
+                  title: '严格模式',
+                  description: '标准更严格，动作要求更高\n适合已有基础的用户',
                   isSelected: _selectedStrictness == Strictness.strict,
                   onTap: () {
                     setState(() {
@@ -139,9 +140,9 @@ class _WelcomePageState extends State<WelcomePage> {
                     });
                   },
                 ),
-                
+
                 const SizedBox(height: AppSpacing.xxxl),
-                
+
                 // 开始按钮
                 ElevatedButton(
                   onPressed: _onStartPressed,
@@ -151,7 +152,7 @@ class _WelcomePageState extends State<WelcomePage> {
                       vertical: AppSpacing.sm,
                     ),
                     child: Text(
-                      '开始使用 (${_selectedStrictness == Strictness.relaxed ? '新手模式' : '严格模式'})',
+                      '进入应用（${_selectedStrictness == Strictness.relaxed ? '新手' : '严格'}）',
                     ),
                   ),
                 ),
@@ -174,12 +175,11 @@ class _WelcomePageState extends State<WelcomePage> {
     required VoidCallback onTap,
   }) {
     final theme = Theme.of(context);
-    
+
     // 根据选中状态动态确定图标颜色
-    final iconColor = isSelected 
-        ? SemanticColors.success 
-        : SemanticColors.warning;
-    
+    final iconColor =
+        isSelected ? SemanticColors.success : SemanticColors.warning;
+
     return GestureDetector(
       onTap: onTap,
       child: Transform.scale(
@@ -188,11 +188,11 @@ class _WelcomePageState extends State<WelcomePage> {
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeInOut,
           decoration: BoxDecoration(
-            color: isSelected 
+            color: isSelected
                 ? theme.colorScheme.primary.withOpacity(0.1)
                 : Colors.transparent,
             border: Border.all(
-              color: isSelected 
+              color: isSelected
                   ? theme.colorScheme.primary
                   : theme.colorScheme.outline.withOpacity(0.3),
               width: isSelected ? 2 : 1,
@@ -215,9 +215,9 @@ class _WelcomePageState extends State<WelcomePage> {
                   color: iconColor,
                 ),
               ),
-              
+
               const SizedBox(width: AppSpacing.lg),
-              
+
               // 文字内容
               Expanded(
                 child: Column(
@@ -227,7 +227,8 @@ class _WelcomePageState extends State<WelcomePage> {
                       title,
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: theme.colorScheme.onSurface,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.normal,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xs),
@@ -241,7 +242,7 @@ class _WelcomePageState extends State<WelcomePage> {
                   ],
                 ),
               ),
-              
+
               // 选中标记
               if (isSelected)
                 Icon(
@@ -256,4 +257,3 @@ class _WelcomePageState extends State<WelcomePage> {
     );
   }
 }
-

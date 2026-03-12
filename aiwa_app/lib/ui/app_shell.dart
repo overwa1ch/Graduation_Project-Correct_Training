@@ -20,6 +20,7 @@ class AppShell extends StatelessWidget {
   final List<Widget>? actions;
   final int currentNavIndex;
   final FloatingActionButton? floatingActionButton;
+  final bool automaticallyImplyLeading;
 
   const AppShell({
     super.key,
@@ -30,6 +31,7 @@ class AppShell extends StatelessWidget {
     this.actions,
     this.currentNavIndex = 0,
     this.floatingActionButton,
+    this.automaticallyImplyLeading = true,
   });
 
   @override
@@ -42,6 +44,7 @@ class AppShell extends StatelessWidget {
           ? AppBar(
               title: title != null ? Text(title!) : null,
               actions: actions,
+              automaticallyImplyLeading: automaticallyImplyLeading,
               // 所有样式来自 theme.appBarTheme
             )
           : null,
@@ -50,7 +53,7 @@ class AppShell extends StatelessWidget {
       
       // ✅ 底部导航栏（自定义样式）
       bottomNavigationBar: showBottomNav
-          ? _CustomBottomNavigationBar(
+          ? AppBottomNavigationBar(
               currentIndex: currentNavIndex,
               onTap: (index) => _onNavTap(context, index),
             )
@@ -64,29 +67,14 @@ class AppShell extends StatelessWidget {
   }
 
   void _onNavTap(BuildContext context, int index) {
-    // 根据索引导航到对应页面（无动画）
-    switch (index) {
-      case 0:
-        Navigator.pushReplacementNamed(
-          context, 
-          '/home',
-          arguments: {'noAnimation': true},
-        );
-        break;
-      case 1:
-        Navigator.pushReplacementNamed(
-          context, 
-          '/camera',
-          arguments: {'noAnimation': true},
-        );
-        break;
-      case 2:
-        Navigator.pushReplacementNamed(
-          context, 
-          '/settings',
-          arguments: {'noAnimation': true},
-        );
-        break;
+    // UI 2.0: 4 项底栏 → Home / Plan / Library / Settings（无动画切页）
+    final routes = ['/home', '/plan', '/library', '/settings'];
+    if (index >= 0 && index < routes.length) {
+      Navigator.pushReplacementNamed(
+        context,
+        routes[index],
+        arguments: {'noAnimation': true},
+      );
     }
   }
 }
@@ -178,11 +166,13 @@ class PageHeader extends StatelessWidget {
 
 /// 自定义底部导航栏
 /// 根据设计图实现：选中项有绿色圆角背景，未选中为白色图标
-class _CustomBottomNavigationBar extends StatelessWidget {
+/// 公开类，供 MainTabShell 复用。
+class AppBottomNavigationBar extends StatelessWidget {
   final int currentIndex;
   final void Function(int) onTap;
 
-  const _CustomBottomNavigationBar({
+  const AppBottomNavigationBar({
+    super.key,
     required this.currentIndex,
     required this.onTap,
   });
@@ -195,7 +185,7 @@ class _CustomBottomNavigationBar extends StatelessWidget {
         color: AppColors.surfaceSecondary,
         boxShadow: [
           BoxShadow(
-            color: AppColors.surfaceSecondary.withOpacity(0.25),
+            color: AppColors.surfaceSecondary.withValues(alpha: 0.25),
             offset: const Offset(0, -2),
             blurRadius: 8,
           ),
@@ -210,14 +200,19 @@ class _CustomBottomNavigationBar extends StatelessWidget {
             index: 0,
           ),
           _buildNavItem(
-            icon: Icons.videocam_outlined,
-            selectedIcon: Icons.videocam,
+            icon: Icons.calendar_today_outlined,
+            selectedIcon: Icons.calendar_today,
             index: 1,
           ),
           _buildNavItem(
-            icon: Icons.person_outline,
-            selectedIcon: Icons.person,
+            icon: Icons.fitness_center_outlined,
+            selectedIcon: Icons.fitness_center,
             index: 2,
+          ),
+          _buildNavItem(
+            icon: Icons.settings_outlined,
+            selectedIcon: Icons.settings,
+            index: 3,
           ),
         ],
       ),
@@ -231,16 +226,19 @@ class _CustomBottomNavigationBar extends StatelessWidget {
   }) {
     final isSelected = currentIndex == index;
     
-    // Assign stable keys for testing
+    // Assign stable keys for testing (UI 2.0: Home / Plan / Library / Settings)
     final String keyName;
     switch (index) {
       case 0:
         keyName = 'nav.home.icon';
         break;
       case 1:
-        keyName = 'nav.camera.icon';
+        keyName = 'nav.plan.icon';
         break;
       case 2:
+        keyName = 'nav.library.icon';
+        break;
+      case 3:
         keyName = 'nav.settings.icon';
         break;
       default:

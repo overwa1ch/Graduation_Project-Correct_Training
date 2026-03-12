@@ -14,7 +14,7 @@
 - `REINFER`: 45 minutes (must exceed job timeout)
 - `ADVICE`: 10 minutes (must exceed job timeout)
 
-**Rationale:** Visibility timeout > Job timeout prevents premature message re-queueing.
+**Rationale:** Visibility timeout > Job timeoutYTG5RUJHIKJUHGVFCGUYJHGTUYJHYHTGRUJHYGTYHUJHY XCB NMNBV prevents premature message re-queueing.
 
 ---
 

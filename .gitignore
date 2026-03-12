@@ -100,6 +100,7 @@ result.json
 # ============================================
 .vscode/
 .idea/
+.cursor/
 *.iml
 *.ipr
 *.iws
@@ -124,10 +125,12 @@ Thumbs.db
 # ============================================
 gradle-wrapper.jar
 /.gradle
+**/.gradle/
 /captures/
 /gradlew
 /gradlew.bat
 /local.properties
+**/local.properties
 GeneratedPluginRegistrant.java
 .cxx/
 # Remember to never publicly share your keystore.
@@ -160,8 +163,19 @@ coverage/
 # ============================================
 tmp/
 temp/
+.tmp/
+**/.tmp/
 *.tmp
 *.patch
+
+# Flutter analyze/build output (prevent accidental commit)
+**/analyze*.txt
+**/build_err*.txt
+**/err.txt
+
+# Dev test fixtures
+aiwa_app/dev/*.json
+aiwa_app/dev/*.jsonl
 
 # ============================================
 # Logs

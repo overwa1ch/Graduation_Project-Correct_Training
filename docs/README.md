@@ -35,7 +35,7 @@
 - **[修复端口问题.md](03-guides/修复端口问题.md)**：修复 Windows 端口权限问题。
 - **[cli_usage.md](03-guides/cli_usage.md)**：Hybrid & Evidence CLI 参数说明。
 - **[environment_config.md](03-guides/environment_config.md)**：环境变量配置指南与常见问题。
-- **[tools_quick_start.md](03-guides/tools_quick_start.md)**、**[tool_quick_start.md](03-guides/tool_quick_start.md)**：工具快速开始。
+- **[tool_quick_start.md](03-guides/tool_quick_start.md)**：工具快速开始。
 - **[movenet_quick_start.md](03-guides/movenet_quick_start.md)**、**[event_bus_quick_start.md](03-guides/event_bus_quick_start.md)**：关键子系统使用指南。
 - **[movenet_models.md](03-guides/movenet_models.md)**：MoveNet 模型文件获取与使用说明。
 - **[tflite_version_fix.md](03-guides/tflite_version_fix.md)**：TFLite Flutter 版本兼容性修复指南。

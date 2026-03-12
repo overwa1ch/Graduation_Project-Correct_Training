@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>AIWA needs photo library access to save tracked videos.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>AIWA uses your photo library to export tracked training videos.</string>
 </dict>
 </plist>
