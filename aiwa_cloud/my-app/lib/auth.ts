@@ -1,8 +1,23 @@
 import { cookies } from "next/headers";
 import { createHash, randomUUID } from "crypto";
+import bcrypt from "bcrypt";
 import { db } from "@/lib/db";
-import { adminSessions, adminUsers } from "@/lib/schema";
+import { adminSessions, adminUsers, adminLoginLogs } from "@/lib/schema";
 import { and, count, eq, gt } from "drizzle-orm";
+
+export async function recordAdminLogin(params: {
+  adminUserId?: string | null;
+  success: boolean;
+  ipAddress?: string | null;
+  emailAttempted?: string | null;
+}) {
+  await db.insert(adminLoginLogs).values({
+    adminUserId: params.adminUserId ?? null,
+    success: params.success,
+    ipAddress: params.ipAddress ?? null,
+    emailAttempted: params.emailAttempted ?? null,
+  });
+}
 
 export type SessionUser = {
   id: string;
@@ -11,8 +26,17 @@ export type SessionUser = {
   isSystemAdmin: boolean;
 };
 
+const SALT_ROUNDS = 10;
+
 function hashPassword(password: string): string {
-  return createHash("sha256").update(password).digest("hex");
+  return bcrypt.hashSync(password, SALT_ROUNDS);
+}
+
+function verifyPassword(password: string, storedHash: string): boolean {
+  if (storedHash.startsWith("$2") || storedHash.startsWith("$2a") || storedHash.startsWith("$2b")) {
+    return bcrypt.compareSync(password, storedHash);
+  }
+  return createHash("sha256").update(password).digest("hex") === storedHash;
 }
 
 export async function hasAnyAdmin(): Promise<boolean> {
@@ -60,7 +84,7 @@ export async function authenticate(email: string, password: string): Promise<Ses
     .limit(1);
   if (!user) return null;
   if (!user.isActive) return null;
-  const isValid = user.passwordHash === hashPassword(password);
+  const isValid = verifyPassword(password, user.passwordHash);
   if (!isValid) return null;
   return { id: user.id, name: user.name, email: user.email, isSystemAdmin: user.isSystemAdmin };
 }
@@ -69,7 +93,11 @@ export async function setSession(userId: string) {
   const cookieStore = await cookies();
   const token = randomUUID();
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-  await db.insert(adminSessions).values({ userId, sessionToken: token, expiresAt });
+  await db.insert(adminSessions).values({
+    userId,
+    sessionToken: token,
+    expiresAt: expiresAt.toISOString(),
+  });
   cookieStore.set("session", token, {
     httpOnly: true,
     sameSite: "lax",
@@ -93,6 +121,7 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
   const token = cookieStore.get("session")?.value;
   if (!token) return null;
   const now = new Date();
+  const nowStr = now.toISOString();
   const rows = await db
     .select({
       id: adminUsers.id,
@@ -103,7 +132,7 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
     })
     .from(adminSessions)
     .innerJoin(adminUsers, eq(adminSessions.userId, adminUsers.id))
-    .where(and(eq(adminSessions.sessionToken, token), gt(adminSessions.expiresAt, now)))
+    .where(and(eq(adminSessions.sessionToken, token), gt(adminSessions.expiresAt, nowStr)))
     .limit(1);
   const row = rows[0];
   if (!row) return null;

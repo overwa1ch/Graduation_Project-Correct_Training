@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import { CONFIG } from './config';
 import { authRoutes } from './modules/auth/auth.routes';
+import { adminRoutes } from './modules/admin/admin.routes';
 
 const fastify = Fastify({
   logger: {
@@ -32,10 +33,9 @@ async function start() {
       };
     });
 
-    // Register routes (仅认证模块)
+    // Register routes
     await fastify.register(authRoutes, { prefix: '/v1/auth' });
-    
-    // 未来扩展：可在此添加其他路由模块
+    await fastify.register(adminRoutes, { prefix: '/v1/admin' });
     // 例如：会话管理、文件上传、用户信息管理等
 
     // Error handler

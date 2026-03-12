@@ -1,14 +1,16 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { adminUsers } from "@/lib/schema";
+import { adminUsers, adminOperationLogs } from "@/lib/schema";
 import { and, eq, not, count } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
-import { createHash } from "crypto";
+import bcrypt from "bcrypt";
+
+const SALT_ROUNDS = 10;
 
 function hashPassword(password: string): string {
-  return createHash("sha256").update(password).digest("hex");
+  return bcrypt.hashSync(password, SALT_ROUNDS);
 }
 
 async function emailExists(email: string): Promise<boolean> {
@@ -43,13 +45,22 @@ export async function createAdminUser(_: any, formData: FormData): Promise<Admin
   }
   
   try {
-    await db.insert(adminUsers).values({
+    const [created] = await db.insert(adminUsers).values({
       name,
       email,
       passwordHash: hashPassword(password),
       isSystemAdmin,
       isActive,
-    });
+    }).returning();
+    if (created && current) {
+      await db.insert(adminOperationLogs).values({
+        adminUserId: current.id,
+        action: "admin_create",
+        targetType: "admin",
+        targetId: created.id,
+        details: { email, isSystemAdmin, isActive },
+      });
+    }
   } catch (e: any) {
     console.error("=== 数据库插入错误 ===");
     console.error("错误信息:", e);
@@ -104,6 +115,13 @@ export async function updateAdminUser(_: any, formData: FormData): Promise<Admin
       update.isActive = isActive;
     }
     await db.update(adminUsers).set(update).where(eq(adminUsers.id, id));
+    await db.insert(adminOperationLogs).values({
+      adminUserId: current.id,
+      action: "admin_update",
+      targetType: "admin",
+      targetId: id,
+      details: { name, email, isSystemAdmin, isActive },
+    });
   } catch (e: any) {
     console.error("=== 数据库更新错误 ===");
     console.error("错误信息:", e);

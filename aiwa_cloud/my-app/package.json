@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "init-sqlite": "npx tsx scripts/init-sqlite.ts",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -13,6 +14,7 @@
     "drizzle:introspect": "drizzle-kit introspect --config=drizzle.config.ts"
   },
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "clsx": "^2.1.1",
     "dotenv": "17.2.3",
     "drizzle-kit": "0.31.5",
@@ -26,6 +28,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/bcrypt": "^6.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

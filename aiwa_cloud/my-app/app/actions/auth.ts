@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import {
   authenticate,
   clearSession,
@@ -8,6 +9,7 @@ import {
   emailExists,
   setSession,
   hasAnyAdmin,
+  recordAdminLogin,
 } from "@/lib/auth";
 
 export type ActionState = {
@@ -60,10 +62,16 @@ export async function signinAction(_: ActionState, formData: FormData): Promise<
   if (!email || !password) {
     return { error: "请输入邮箱和密码" };
   }
+
+  const hdrs = await headers();
+  const ipAddress = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() || hdrs.get("x-real-ip") || null;
+
   const user = await authenticate(email, password);
   if (!user) {
+    await recordAdminLogin({ success: false, ipAddress, emailAttempted: email });
     return { error: "邮箱或密码错误" };
   }
+  await recordAdminLogin({ adminUserId: user.id, success: true, ipAddress });
   await setSession(user.id);
   redirect("/books");
 }

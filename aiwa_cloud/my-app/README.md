@@ -38,6 +38,9 @@ NEXTAUTH_URL=http://localhost:3001
 
 # API 地址（core-api）
 API_BASE_URL=http://localhost:3000
+
+# Admin API 密钥（需与 core-api 的 ADMIN_API_KEY 一致，用于调用用户管理接口）
+ADMIN_API_KEY=your_admin_api_key_32_chars_min
 ```
 
 ### 3. 运行数据库迁移
@@ -60,8 +63,10 @@ npm run dev
 
 ### 当前实现
 - ✅ 管理员登录
-- ✅ 查看用户列表
-- ✅ 用户状态管理（激活/停用）
+- ✅ 管理员管理（创建、编辑、启用/停用）
+- ✅ 用户管理（查看系统用户、启用/禁用、搜索）
+- ✅ 登录日志
+- ✅ 操作日志
 
 ### 未来扩展
 - [ ] 用户详情页

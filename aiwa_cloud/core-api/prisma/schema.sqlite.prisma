@@ -28,12 +28,29 @@ model User {
   name         String?   // 用户名（可选）
   avatar       String?   // 头像URL（可选，可存储在阿里云OSS）
   status       String    @default("active") // active | inactive | suspended
+  lastLoginAt  DateTime? @map("last_login_at")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
   
   refreshTokens RefreshToken[]
+  loginLogs     UserLoginLog[]
   
   @@map("users")
+}
+
+// 用户登录日志
+model UserLoginLog {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  success   Boolean
+  ipAddress String?  @map("ip_address")
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([createdAt])
+  @@map("user_login_logs")
 }
 
 // 刷新Token表

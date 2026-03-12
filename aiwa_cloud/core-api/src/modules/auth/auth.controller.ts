@@ -71,8 +71,9 @@ export async function login(
     // Validate input
     const input = loginSchema.parse(request.body);
 
-    // Login user
-    const tokens = await authService.login(input);
+    // Login user (pass IP for login log)
+    const ipAddress = request.ip;
+    const tokens = await authService.login(input, ipAddress);
 
     // Sign JWT access token
     const accessToken = request.server.jwt.sign(

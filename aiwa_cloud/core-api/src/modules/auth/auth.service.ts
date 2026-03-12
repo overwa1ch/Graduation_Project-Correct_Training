@@ -47,7 +47,7 @@ export class AuthService {
   }
 
   // Login user
-  async login(input: LoginInput): Promise<AuthTokens> {
+  async login(input: LoginInput, ipAddress?: string): Promise<AuthTokens> {
     // Find user
     const user = await prisma.user.findUnique({
       where: { email: input.email.toLowerCase() },
@@ -67,6 +67,22 @@ export class AuthService {
     if (!isValid) {
       throw new Error('Invalid credentials');
     }
+
+    // Update lastLoginAt and create login log
+    const now = new Date();
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: user.id },
+        data: { lastLoginAt: now },
+      }),
+      prisma.userLoginLog.create({
+        data: {
+          userId: user.id,
+          success: true,
+          ipAddress: ipAddress ?? null,
+        },
+      }),
+    ]);
 
     // Generate tokens
     return this.generateTokens(user.id, user.email);

@@ -15,6 +15,20 @@
       "when": 1761387132669,
       "tag": "0001_aspiring_ikaris",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1773298347164,
+      "tag": "0002_add_admin_logs",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1773298495676,
+      "tag": "0003_add_email_attempted",
+      "breakpoints": true
     }
   ]
 }

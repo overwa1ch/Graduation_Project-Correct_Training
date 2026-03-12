@@ -30,6 +30,9 @@ export const CONFIG = {
     timeWindow: process.env.RATE_LIMIT_WINDOW || '1m',
   },
 
+  // 后台管理 API 鉴权（my-app 服务端调用时携带）
+  adminApiKey: process.env.ADMIN_API_KEY || '',
+
   // 阿里云配置（可选，用于后续扩展文件存储功能）
   aliyun: {
     enabled: process.env.USE_ALIYUN_OSS === 'true',
